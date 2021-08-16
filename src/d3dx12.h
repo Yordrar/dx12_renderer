@@ -4264,7 +4264,7 @@ public: // Function declaration
     BOOL AtomicInt64OnTypedResourceSupported() const;
     BOOL AtomicInt64OnGroupSharedSupported() const;
     BOOL DerivativesInMeshAndAmplificationShadersSupported() const;
-    D3D12_WAVE_MMA_TIER WaveMMATier() const;
+    /*D3D12_WAVE_MMA_TIER WaveMMATier() const;*/
 
     // D3D12_OPTIONS10
     BOOL VariableRateShadingSumCombinerSupported() const;
@@ -4319,15 +4319,15 @@ private: // Member data
     std::vector<D3D12_FEATURE_DATA_SERIALIZATION> m_dSerialization; // Cat2 NodeIndex
     D3D12_FEATURE_DATA_CROSS_NODE m_dCrossNode;
     D3D12_FEATURE_DATA_D3D12_OPTIONS5 m_dOptions5;
-    D3D12_FEATURE_DATA_DISPLAYABLE m_dDisplayable;
+    /*D3D12_FEATURE_DATA_DISPLAYABLE m_dDisplayable;*/
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 m_dOptions6;
     D3D12_FEATURE_DATA_D3D12_OPTIONS7 m_dOptions7;
     std::vector<D3D12_FEATURE_DATA_PROTECTED_RESOURCE_SESSION_TYPE_COUNT> m_dProtectedResourceSessionTypeCount; // Cat2 NodeIndex
     std::vector<ProtectedResourceSessionTypesLocal> m_dProtectedResourceSessionTypes; // Cat3
-    D3D12_FEATURE_DATA_D3D12_OPTIONS8 m_dOptions8;
+    /*D3D12_FEATURE_DATA_D3D12_OPTIONS8 m_dOptions8;
     D3D12_FEATURE_DATA_D3D12_OPTIONS9 m_dOptions9;
     D3D12_FEATURE_DATA_D3D12_OPTIONS10 m_dOptions10;
-    D3D12_FEATURE_DATA_D3D12_OPTIONS11 m_dOptions11;
+    D3D12_FEATURE_DATA_D3D12_OPTIONS11 m_dOptions11;*/
 };
 
 // Implementations for CD3DX12FeatureSupport functions
@@ -4461,11 +4461,11 @@ inline HRESULT CD3DX12FeatureSupport::Init( ID3D12Device* pDevice )
         m_dOptions5.RaytracingTier = D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
     }
 
-    if ( FAILED( m_pDevice->CheckFeatureSupport( D3D12_FEATURE_DISPLAYABLE, &m_dDisplayable, sizeof( m_dDisplayable ) ) ) )
+    /*if ( FAILED( m_pDevice->CheckFeatureSupport( D3D12_FEATURE_DISPLAYABLE, &m_dDisplayable, sizeof( m_dDisplayable ) ) ) )
     {
         m_dDisplayable.DisplayableTexture = false;
         m_dDisplayable.SharedResourceCompatibilityTier = D3D12_SHARED_RESOURCE_COMPATIBILITY_TIER_0;
-    }
+    }*/
 
     if ( FAILED( m_pDevice->CheckFeatureSupport( D3D12_FEATURE_D3D12_OPTIONS6, &m_dOptions6, sizeof( m_dOptions6 ) ) ) )
     {
@@ -4482,7 +4482,7 @@ inline HRESULT CD3DX12FeatureSupport::Init( ID3D12Device* pDevice )
         m_dOptions7.SamplerFeedbackTier = D3D12_SAMPLER_FEEDBACK_TIER_NOT_SUPPORTED;
     }
 
-    if ( FAILED( m_pDevice->CheckFeatureSupport( D3D12_FEATURE_D3D12_OPTIONS8, &m_dOptions8, sizeof( m_dOptions8 ) ) ) )
+    /*if ( FAILED( m_pDevice->CheckFeatureSupport( D3D12_FEATURE_D3D12_OPTIONS8, &m_dOptions8, sizeof( m_dOptions8 ) ) ) )
     {
         m_dOptions8.UnalignedBlockTexturesSupported = false;
     }
@@ -4506,7 +4506,7 @@ inline HRESULT CD3DX12FeatureSupport::Init( ID3D12Device* pDevice )
     if ( FAILED( m_pDevice->CheckFeatureSupport( D3D12_FEATURE_D3D12_OPTIONS11, &m_dOptions11, sizeof( m_dOptions11 ) ) ) )
     {
         m_dOptions11.AtomicInt64OnDescriptorHeapResourceSupported = false;
-    }
+    }*/
 
     // Initialize per-node feature support data structures
     const UINT uNodeCount = m_pDevice->GetNodeCount();
@@ -4769,7 +4769,7 @@ FEATURE_SUPPORT_GET( D3D12_RENDER_PASS_TIER, m_dOptions5, RenderPassesTier );
 FEATURE_SUPPORT_GET( D3D12_RAYTRACING_TIER, m_dOptions5, RaytracingTier );
 
 // 28: Displayable
-FEATURE_SUPPORT_GET( BOOL, m_dDisplayable, DisplayableTexture );
+//FEATURE_SUPPORT_GET( BOOL, m_dDisplayable, DisplayableTexture );
 // SharedResourceCompatibilityTier handled in D3D12Options4
 
 // 30: D3D12 Options6
@@ -4797,22 +4797,22 @@ FEATURE_SUPPORT_GET_NODE_INDEXED_NAME( UINT, m_dProtectedResourceSessionTypeCoun
 FEATURE_SUPPORT_GET_NODE_INDEXED_NAME( std::vector<GUID>, m_dProtectedResourceSessionTypes, TypeVec, ProtectedResourceSessionTypes );
 
 // 36: Options8
-FEATURE_SUPPORT_GET( BOOL, m_dOptions8, UnalignedBlockTexturesSupported );
-
-// 37: Options9
-FEATURE_SUPPORT_GET( BOOL, m_dOptions9, MeshShaderPipelineStatsSupported );
-FEATURE_SUPPORT_GET( BOOL, m_dOptions9, MeshShaderSupportsFullRangeRenderTargetArrayIndex );
-FEATURE_SUPPORT_GET( BOOL, m_dOptions9, AtomicInt64OnTypedResourceSupported );
-FEATURE_SUPPORT_GET( BOOL, m_dOptions9, AtomicInt64OnGroupSharedSupported );
-FEATURE_SUPPORT_GET( BOOL, m_dOptions9, DerivativesInMeshAndAmplificationShadersSupported );
-FEATURE_SUPPORT_GET( D3D12_WAVE_MMA_TIER, m_dOptions9, WaveMMATier );
-
-// 39: Options10
-FEATURE_SUPPORT_GET( BOOL, m_dOptions10, VariableRateShadingSumCombinerSupported );
-FEATURE_SUPPORT_GET( BOOL, m_dOptions10, MeshShaderPerPrimitiveShadingRateSupported );
-
-// 40: Options11
-FEATURE_SUPPORT_GET( BOOL, m_dOptions11, AtomicInt64OnDescriptorHeapResourceSupported );
+//FEATURE_SUPPORT_GET( BOOL, m_dOptions8, UnalignedBlockTexturesSupported );
+//
+//// 37: Options9
+//FEATURE_SUPPORT_GET( BOOL, m_dOptions9, MeshShaderPipelineStatsSupported );
+//FEATURE_SUPPORT_GET( BOOL, m_dOptions9, MeshShaderSupportsFullRangeRenderTargetArrayIndex );
+//FEATURE_SUPPORT_GET( BOOL, m_dOptions9, AtomicInt64OnTypedResourceSupported );
+//FEATURE_SUPPORT_GET( BOOL, m_dOptions9, AtomicInt64OnGroupSharedSupported );
+//FEATURE_SUPPORT_GET( BOOL, m_dOptions9, DerivativesInMeshAndAmplificationShadersSupported );
+//FEATURE_SUPPORT_GET( D3D12_WAVE_MMA_TIER, m_dOptions9, WaveMMATier );
+//
+//// 39: Options10
+//FEATURE_SUPPORT_GET( BOOL, m_dOptions10, VariableRateShadingSumCombinerSupported );
+//FEATURE_SUPPORT_GET( BOOL, m_dOptions10, MeshShaderPerPrimitiveShadingRateSupported );
+//
+//// 40: Options11
+//FEATURE_SUPPORT_GET( BOOL, m_dOptions11, AtomicInt64OnDescriptorHeapResourceSupported );
 
 // Helper function to decide the highest shader model supported by the system
 // Stores the result in m_dShaderModel
@@ -4824,7 +4824,7 @@ inline HRESULT CD3DX12FeatureSupport::QueryHighestShaderModel()
 
     D3D_SHADER_MODEL allModelVersions[] =
     {
-        D3D_SHADER_MODEL_6_7,
+        /*D3D_SHADER_MODEL_6_7,*/
         D3D_SHADER_MODEL_6_6,
         D3D_SHADER_MODEL_6_5,
         D3D_SHADER_MODEL_6_4,
@@ -4901,7 +4901,7 @@ inline HRESULT CD3DX12FeatureSupport::QueryHighestFeatureLevel()
     // Needs to be updated for future feature levels
     D3D_FEATURE_LEVEL allLevels[] =
     {
-        D3D_FEATURE_LEVEL_12_2,
+        /*D3D_FEATURE_LEVEL_12_2,*/
         D3D_FEATURE_LEVEL_12_1,
         D3D_FEATURE_LEVEL_12_0,
         D3D_FEATURE_LEVEL_11_1,
