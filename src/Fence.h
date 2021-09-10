@@ -8,8 +8,6 @@
 #include <wrl.h>
 using namespace Microsoft::WRL;
 
-#include <Renderer.h>
-
 class Fence
 {
 public:
@@ -23,6 +21,5 @@ private:
     ComPtr<ID3D12Fence> m_fence;
     HANDLE m_fenceEvent;
     uint64_t m_fenceValue = 0;
-    uint64_t m_frameFenceValues[ Renderer::sc_numBackBuffers ] = {};
 };
 

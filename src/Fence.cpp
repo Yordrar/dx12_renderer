@@ -9,6 +9,7 @@ Fence::Fence( ComPtr<ID3D12Device> device )
 
 Fence::~Fence()
 {
+
 }
 
 uint64_t Fence::signal( ComPtr<ID3D12CommandQueue> cmdQueue )

@@ -10,8 +10,8 @@ using namespace Microsoft::WRL;
 // D3D12 extension library
 #include <d3dx12.h>
 
-#include "assimp/Importer.hpp"
-#include "Renderer.h"
+#include <assimp/Importer.hpp>
+#include <Renderer.h>
 
 LRESULT CALLBACK WndProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
@@ -98,5 +98,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             TranslateMessage( &msg );
             DispatchMessage( &msg );
         }
+
+        renderer.renderScene();
     }
 }
