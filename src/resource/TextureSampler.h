@@ -1,6 +1,6 @@
 #pragma once
 
-#include <bindable/IBindable.h>
+#include <resource/IBindable.h>
 
 class TextureSampler : public IBindable
 {

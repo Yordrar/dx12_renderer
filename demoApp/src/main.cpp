@@ -12,6 +12,7 @@ using namespace Microsoft::WRL;
 
 #include <assimp/Importer.hpp>
 #include <Renderer.h>
+#include <Scene.h>
 
 LRESULT CALLBACK WndProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
@@ -89,6 +90,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     ShowWindow( hWnd, SW_SHOW );
 
     Renderer renderer( hWnd, windowRect );
+    Scene scene;
 
     MSG msg = {};
     while ( msg.message != WM_QUIT )
@@ -99,6 +101,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             DispatchMessage( &msg );
         }
 
-        renderer.renderScene();
+        renderer.renderScene(scene);
     }
 }

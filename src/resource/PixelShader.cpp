@@ -19,5 +19,5 @@ PixelShader::~PixelShader()
 
 void PixelShader::bind( Renderer::RenderContext& context )
 {
-	context.m_pipelineState.PS = CD3DX12_SHADER_BYTECODE( m_bytecode.Get() );
+	context.m_pipelineState.m_pixelShader = CD3DX12_SHADER_BYTECODE( m_bytecode.Get() );
 }

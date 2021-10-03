@@ -6,10 +6,10 @@ using namespace Microsoft::WRL;
 
 #include "IDrawable.h"
 
-#include <bindable/IBindable.h>
-#include <bindable/VertexBuffer.h>
-#include <bindable/IndexBuffer.h>
-#include <bindable/PixelShader.h>
+#include <resource/IBindable.h>
+#include <resource/VertexBuffer.h>
+#include <resource/IndexBuffer.h>
+#include <resource/PixelShader.h>
 
 template<typename vertex_t>
 class Mesh : public IDrawable

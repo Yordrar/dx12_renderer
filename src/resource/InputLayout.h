@@ -2,7 +2,7 @@
 
 #include <d3d12.h>
 
-#include <bindable/IBindable.h>
+#include <resource/IBindable.h>
 
 class InputLayout : public IBindable
 {

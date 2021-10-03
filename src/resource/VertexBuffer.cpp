@@ -57,5 +57,5 @@ void VertexBuffer<vertex_t>::bind( Renderer::RenderContext& context )
 	view.StrideInBytes = sizeof( vertex_t );
 	context.m_commandList->IASetVertexBuffers( 0, 1, &view );
 
-	context.m_pipelineState.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	context.m_pipelineState.m_topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 }

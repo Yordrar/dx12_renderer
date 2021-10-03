@@ -6,23 +6,24 @@
 #include <directxmath.h>
 #include <directxcolors.h>
 
-#include <bindable/ConstantBuffer.h>
+#include <resource/ConstantBuffer.h>
 
 class Camera
 {
 public:
-	Camera( DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, DirectX::XMVECTOR right, DirectX::XMVECTOR up, float fov, float aspect_ratio);
+	Camera( DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio);
 	~Camera();
+
+	ConstantBuffer* getCameraBuffer() const { return m_cameraBuffer; }
 
 	void move(float delta_x, float delta_y, float delta_z);
 	void rotate(float angles_x, float angles_y);
 
-	void update_camera_shader_buffers();
+	void updateCameraBuffers();
 
 	DirectX::XMMATRIX m_viewProjMatrix;
-	ConstantBuffer* m_viewProjBuffer;
-	DirectX::XMVECTOR position;
-	ConstantBuffer* m_positionBuffer;
+	DirectX::XMVECTOR m_position;
+	ConstantBuffer* m_cameraBuffer;
 
 	DirectX::XMVECTOR right;
 	DirectX::XMVECTOR up;

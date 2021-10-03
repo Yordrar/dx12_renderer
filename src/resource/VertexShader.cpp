@@ -19,5 +19,5 @@ VertexShader::~VertexShader()
 
 void VertexShader::bind( Renderer::RenderContext& context )
 {
-	context.m_pipelineState.VS = CD3DX12_SHADER_BYTECODE( m_bytecode.Get() );
+	context.m_pipelineState.m_vertexShader = CD3DX12_SHADER_BYTECODE( m_bytecode.Get() );
 }

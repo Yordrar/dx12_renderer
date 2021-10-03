@@ -17,5 +17,5 @@ InputLayout::~InputLayout()
 
 void InputLayout::bind( Renderer::RenderContext& context )
 {
-    context.m_pipelineState.InputLayout = m_inputLayoutDesc;
+    context.m_pipelineState.m_inputLayout = m_inputLayoutDesc;
 }

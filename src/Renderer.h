@@ -8,24 +8,26 @@ using namespace Microsoft::WRL;
 
 #include <memory>
 
-#include "Fence.h"
+#include <Fence.h>
+
+class Scene;
 
 class Renderer
 {
 public:
     struct PipelineStateStream
     {
-        CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
-        CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT InputLayout;
-        CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PrimitiveTopologyType;
-        CD3DX12_PIPELINE_STATE_STREAM_VS VS;
-        CD3DX12_PIPELINE_STATE_STREAM_PS PS;
+        CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE m_rootSignature;
+        CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT m_inputLayout;
+        CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY m_topologyType;
+        CD3DX12_PIPELINE_STATE_STREAM_VS m_vertexShader;
+        CD3DX12_PIPELINE_STATE_STREAM_PS m_pixelShader;
     };
 
     struct RenderContext
     {
         ComPtr<ID3D12GraphicsCommandList> m_commandList;
-        PipelineStateStream& m_pipelineState;
+        PipelineStateStream m_pipelineState;
         ComPtr<ID3D12DescriptorHeap> m_cameraDescriptors;
     };
 
@@ -34,7 +36,7 @@ public:
 
     static ComPtr<ID3D12Device2> device() { return m_device; }
 
-    void renderScene();
+    void renderScene(Scene& scene);
 
     static constexpr UINT sc_numBackBuffers = 3;
 
@@ -49,9 +51,8 @@ private:
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     ComPtr<ID3D12CommandQueue> m_commandQueue;
     std::unique_ptr<Fence> m_fence;
-    ComPtr<ID3D12DescriptorHeap> m_RTVDescriptorHeap;
-    UINT m_rtvDescriptorSize;
     ComPtr<ID3D12Resource> m_backBuffers[ sc_numBackBuffers ];
     UINT m_currentBackBufferIndex;
+    ComPtr<ID3D12RootSignature> m_rootSignature;
 };
 

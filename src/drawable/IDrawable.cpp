@@ -4,10 +4,11 @@
 #include <cassert>
 
 #include <Renderer.h>
-#include <bindable/IndexBuffer.h>
+#include <resource/IndexBuffer.h>
 
 IDrawable::IDrawable()
 {
+	m_bindlessIndices = new ConstantBuffer( 128 );
 }
 
 IDrawable::~IDrawable()
@@ -16,6 +17,7 @@ IDrawable::~IDrawable()
 	{
 		delete bindable;
 	}
+	delete m_bindlessIndices;
 }
 
 void IDrawable::addBindable(IBindable* bindable)
@@ -38,6 +40,9 @@ void IDrawable::deleteBindable( IBindable* bindable )
 
 void IDrawable::draw( Renderer::RenderContext& context )
 {
+	// Update indices buffer for bindless
+	context.m_commandList->SetGraphicsRootConstantBufferView( 1, m_bindlessIndices->getGPUBufferLocation() );
+
 	UINT numIndicesToDraw = -1;
 	for (IBindable* bindable : m_bindables)
 	{

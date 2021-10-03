@@ -2,6 +2,9 @@
 
 #include <d3dx12.h>
 
+#include <resource/ResourceManager.h>
+#include <Scene.h>
+
 ComPtr<ID3D12Device2> Renderer::m_device{ nullptr };
 
 Renderer::Renderer( HWND hWnd, RECT windowRect )
@@ -84,21 +87,12 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     dxgiFactory->CreateSwapChainForHwnd( m_commandQueue.Get(), m_hWnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf() );
     swapChain.As( &m_swapChain );
 
-    // Create descriptor heap
-    D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-    heapDesc.NumDescriptors = sc_numBackBuffers;
-    heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    m_device->CreateDescriptorHeap( &heapDesc, IID_PPV_ARGS( &m_RTVDescriptorHeap ) );
-
     // Create RTVs and command allocators for each backbuffer
-    m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize( D3D12_DESCRIPTOR_HEAP_TYPE_RTV );
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle( m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart() );
     for ( int i = 0; i < sc_numBackBuffers; ++i )
     {
         ComPtr<ID3D12Resource> backBuffer;
         m_swapChain->GetBuffer( i, IID_PPV_ARGS( &m_backBuffers[ i ] ) );
-        m_device->CreateRenderTargetView( m_backBuffers[ i ].Get(), nullptr, rtvHandle );
-        rtvHandle.Offset( m_rtvDescriptorSize );
+        ResourceManager::it()->getRtvDescriptorHeap()->addRTV( m_backBuffers[ i ], nullptr );
 
         m_device->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_commandAllocators[ i ] ) );
     }
@@ -106,16 +100,55 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     // Create command list
     m_device->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_commandList ) );
     m_commandList->Close();
+
+
+    CD3DX12_ROOT_PARAMETER slotRootParameters[ 3 ] = { {}, {}, {} };
+
+    slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 );
+    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 );
+
+    D3D12_DESCRIPTOR_RANGE srvRange{};
+    srvRange.BaseShaderRegister = 0;
+    srvRange.NumDescriptors = 128;
+    srvRange.OffsetInDescriptorsFromTableStart = 0;
+    srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    srvRange.RegisterSpace = 0;
+    slotRootParameters[ 2 ].InitAsDescriptorTable( 1, &srvRange );
+
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( 3, slotRootParameters, 0, nullptr,
+                                             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+                                             D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+                                             D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+                                             D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+                                             D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS |
+                                             D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS );
+
+    ComPtr<ID3DBlob> serializedRootSig = nullptr;
+    ComPtr<ID3DBlob> errorBlob = nullptr;
+    HRESULT hr = D3D12SerializeRootSignature( &rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+                                              serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf() );
+
+    Renderer::device()->CreateRootSignature( 0,
+                                             serializedRootSig->GetBufferPointer(),
+                                             serializedRootSig->GetBufferSize(),
+                                             IID_PPV_ARGS( m_rootSignature.GetAddressOf() ) );
 }
 
 Renderer::~Renderer()
 {
 }
 
-void Renderer::renderScene()
+void Renderer::renderScene( Scene& scene )
 {
     m_commandAllocators[ m_currentBackBufferIndex ]->Reset();
     m_commandList->Reset( m_commandAllocators[ m_currentBackBufferIndex ].Get(), nullptr );
+
+    m_commandList->SetGraphicsRootSignature( m_rootSignature.Get() );
+
+    // Descriptor heaps
+    ID3D12DescriptorHeap* descriptorHeaps[] = { ResourceManager::it()->getSrvCbvUavDescriptorHeap()->getHeap().Get() };
+    m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
+    m_commandList->SetGraphicsRootDescriptorTable( 2, ResourceManager::it()->getSrvCbvUavDescriptorHeap()->getHeap()->GetGPUDescriptorHandleForHeapStart() );
 
     // Transition backbuffer to render target
     CD3DX12_RESOURCE_BARRIER presentToRenderTargetBarrier = CD3DX12_RESOURCE_BARRIER::Transition
@@ -128,10 +161,14 @@ void Renderer::renderScene()
 
     // Clear the backbuffer
     static FLOAT clearColor[ 4 ] = { 0.4f, 0.6f, 0.9f, 1.0f };
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv( m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv( ResourceManager::it()->getRtvDescriptorHeap()->getHeap()->GetCPUDescriptorHandleForHeapStart(),
                                        m_currentBackBufferIndex,
-                                       m_rtvDescriptorSize );
+                                       ResourceManager::it()->getRtvDescriptorHeap()->getIncrementSize() );
     m_commandList->ClearRenderTargetView( rtv, clearColor, 0, nullptr );
+
+    RenderContext context;
+    context.m_commandList = m_commandList;
+    scene.draw( context );
 
     // Transition backbuffer to present
     CD3DX12_RESOURCE_BARRIER renderTargetToPresentBarrier = CD3DX12_RESOURCE_BARRIER::Transition

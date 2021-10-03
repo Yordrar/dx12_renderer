@@ -25,6 +25,8 @@ public:
 
     SceneNode* addDrawable( IDrawable* drawable );
 
+    void draw( Renderer::RenderContext& context );
+
 private:
     SceneNode* m_root;
     Camera m_camera;

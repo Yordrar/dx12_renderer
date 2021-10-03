@@ -13,3 +13,4 @@ public:
 
 	virtual void bind( Renderer::RenderContext& context ) = 0;
 };
+

@@ -1,31 +1,31 @@
 #include "Camera.h"
 
-Camera::Camera(DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, DirectX::XMVECTOR right, DirectX::XMVECTOR up, float fov, float aspect_ratio)
-	: position(position)
-	, up(up)
-	, right(right)
+Camera::Camera(DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio)
+	: m_position(position)
 	, lookat(lookat)
 	, fov(fov)
 	, aspect_ratio(aspect_ratio)
 {
+	up = DirectX::XMVectorSet( 0, 1, 0, 0 );
+	right = DirectX::XMVectorSet( 1, 0, 0, 0 );
 
+	m_cameraBuffer = new ConstantBuffer( sizeof(m_viewProjMatrix) + sizeof(m_position) );
 }
 
 Camera::~Camera()
 {
-	delete m_viewProjBuffer;
-	delete m_positionBuffer;
+	delete m_cameraBuffer;
 }
 
 void Camera::move(float delta_x, float delta_y, float delta_z)
 {
-	position.m128_f32[0] += delta_x;
-	position.m128_f32[1] += delta_y;
-	position.m128_f32[2] += delta_z;
+	m_position.m128_f32[0] += delta_x;
+	m_position.m128_f32[1] += delta_y;
+	m_position.m128_f32[2] += delta_z;
 
-	m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookAtRH(position, lookat, up) * DirectX::XMMatrixPerspectiveFovRH(fov, aspect_ratio, 0.1f, 500.f));
+	m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookAtRH(m_position, lookat, up) * DirectX::XMMatrixPerspectiveFovRH(fov, aspect_ratio, 0.1f, 500.f));
 
-	update_camera_shader_buffers();
+	updateCameraBuffers();
 }
 
 void Camera::rotate(float angles_x, float angles_y)
@@ -47,11 +47,11 @@ void Camera::rotate(float angles_x, float angles_y)
 
 	//Apply result quaternion to camera position and right vector
 	{
-		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply(quaternion, DirectX::XMVectorSet(position.m128_f32[0], position.m128_f32[1], position.m128_f32[2], 0));
+		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply(quaternion, DirectX::XMVectorSet(m_position.m128_f32[0], m_position.m128_f32[1], m_position.m128_f32[2], 0));
 		intermediate_result = DirectX::XMQuaternionMultiply(intermediate_result, DirectX::XMQuaternionConjugate(quaternion));
-		position.m128_f32[0] = intermediate_result.m128_f32[0];
-		position.m128_f32[1] = intermediate_result.m128_f32[1];
-		position.m128_f32[2] = intermediate_result.m128_f32[2];
+		m_position.m128_f32[0] = intermediate_result.m128_f32[0];
+		m_position.m128_f32[1] = intermediate_result.m128_f32[1];
+		m_position.m128_f32[2] = intermediate_result.m128_f32[2];
 	}
 	{
 		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply(quaternion_y, DirectX::XMVectorSet(right.m128_f32[0], right.m128_f32[1], right.m128_f32[2], 0));
@@ -62,17 +62,33 @@ void Camera::rotate(float angles_x, float angles_y)
 	}
 
 	// Update camera lookat and up vectors
-	lookat = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(DirectX::XMVectorSet(0, 0, 0, 2), position));
+	lookat = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(DirectX::XMVectorSet(0, 0, 0, 2), m_position));
 	lookat.m128_f32[3] = 1;
 	up = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(lookat, DirectX::XMVectorNegate(right)));
 	up.m128_f32[3] = 1;
 
-	m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookAtRH(position, lookat, up) * DirectX::XMMatrixPerspectiveFovRH(fov, aspect_ratio, 0.1f, 500.f));
+	m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookAtRH(m_position, lookat, up) * DirectX::XMMatrixPerspectiveFovRH(fov, aspect_ratio, 0.1f, 500.f));
 
-	update_camera_shader_buffers();
+	updateCameraBuffers();
 }
 
-void Camera::update_camera_shader_buffers()
+void Camera::updateCameraBuffers()
 {
+	void* mappedResource = nullptr;
 
+	D3D12_RANGE range;
+	range.Begin = 0;
+	range.End = sizeof( m_viewProjMatrix );
+
+	m_cameraBuffer->getResource()->Map( 0, &range, &mappedResource );
+	memcpy( mappedResource, &m_viewProjMatrix, sizeof( m_viewProjMatrix ) );
+	m_cameraBuffer->getResource()->Unmap( 0, &range );
+
+
+	range.Begin = sizeof( m_viewProjMatrix );
+	range.End = sizeof( m_viewProjMatrix ) + sizeof( m_position );
+
+	m_cameraBuffer->getResource()->Map( 0, &range, &mappedResource );
+	memcpy( mappedResource, &m_position, sizeof( m_position ) );
+	m_cameraBuffer->getResource()->Unmap( 0, &range );
 }

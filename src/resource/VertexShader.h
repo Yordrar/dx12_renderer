@@ -2,13 +2,13 @@
 
 #include <string>
 
-#include <bindable/IBindable.h>
+#include <resource/IBindable.h>
 
-class PixelShader : public IBindable
+class VertexShader : public IBindable
 {
 public:
-	PixelShader( std::string filename );
-	~PixelShader();
+	VertexShader( std::string filename );
+	~VertexShader();
 
 	virtual void bind( Renderer::RenderContext& context ) override;
 

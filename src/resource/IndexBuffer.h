@@ -2,22 +2,21 @@
 
 #include <vector>
 
-#include <d3dx12.h>
+#include <resource/IBindable.h>
 
-#include <bindable/IBindable.h>
-
-template<typename vertex_t>
-class VertexBuffer : public IBindable
+class IndexBuffer : public IBindable
 {
 public:
-	VertexBuffer( vertex_t* vertices, UINT count );
-	virtual ~VertexBuffer();
+	IndexBuffer( UINT* indices, UINT count );
+	virtual ~IndexBuffer();
 
 	virtual void bind( Renderer::RenderContext& context ) override;
 
+	UINT getIndexCount() const { return m_indexCount; }
+
 private:
-	vertex_t* m_vertices;
-	UINT m_vertexCount;
+	UINT* m_indices;
+	UINT m_indexCount;
 	ComPtr<ID3D12Resource> m_bufferResource;
 	ComPtr<ID3D12Resource> m_intermediateUploadBuffer;
 	D3D12_SUBRESOURCE_DATA m_subResourceData;

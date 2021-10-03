@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "IBindable.h"
+#include <resource/IBindable.h>
 
 class TextureCube : public IBindable
 {
