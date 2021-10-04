@@ -11,8 +11,24 @@ using namespace Microsoft::WRL;
 #include <d3dx12.h>
 
 #include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
 #include <Renderer.h>
 #include <Scene.h>
+#include <drawable/Mesh.h>
+#include <resource/InputLayout.h>
+#include <resource/VertexShader.h>
+#include <resource/PixelShader.h>
+
+struct Vertex
+{
+    DirectX::XMFLOAT3 m_position;
+};
+
+D3D12_INPUT_ELEMENT_DESC inputLayoutDesc[ 1 ] = {
+    {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+};
 
 LRESULT CALLBACK WndProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
@@ -92,6 +108,46 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     Renderer renderer( hWnd, windowRect );
     Scene scene;
 
+    Assimp::Importer importer;
+    const aiScene* aiScene = importer.ReadFile( "suzanne.obj",
+                                              aiProcess_CalcTangentSpace |
+                                              aiProcess_Triangulate |
+                                              aiProcess_GenNormals |
+                                              aiProcess_ValidateDataStructure |
+                                              aiProcess_GenUVCoords |
+                                              aiProcess_FixInfacingNormals |
+                                              aiProcess_JoinIdenticalVertices |
+                                              aiProcess_SortByPType );
+    aiNode* rootNode = aiScene->mRootNode;
+    aiMesh* ai_mesh = aiScene->mMeshes[ rootNode->mChildren[ 0 ]->mMeshes[ 0 ] ];
+
+    UINT vertices_count = ai_mesh->mNumVertices;
+    Vertex* vertex_buffer_data = new Vertex[ vertices_count ];
+    for ( unsigned int i = 0; i < ai_mesh->mNumVertices; i++ )
+    {
+        Vertex vert;
+        vert.m_position.x = ai_mesh->mVertices[ i ].x;
+        vert.m_position.y = ai_mesh->mVertices[ i ].y;
+        vert.m_position.z = ai_mesh->mVertices[ i ].z;
+
+        vertex_buffer_data[ i ] = vert;
+    }
+
+    UINT indices_count = ai_mesh->mNumFaces * 3;
+    UINT* vertex_indices_data = new UINT[ indices_count ];
+    for ( unsigned int i = 0; i < ai_mesh->mNumFaces; i++ )
+    {
+        aiFace face = ai_mesh->mFaces[ i ];
+        for ( unsigned int j = 0; j < face.mNumIndices; j++ )
+            vertex_indices_data[ i * 3 + j ] = face.mIndices[ j ];
+    }
+
+    Mesh<Vertex>* mesh = new Mesh<Vertex>( vertex_buffer_data, vertices_count, vertex_indices_data, indices_count );
+    mesh->addBindable( new InputLayout( inputLayoutDesc, 1 ) );
+    mesh->addBindable( new VertexShader( "test_vs.cso" ) );
+    mesh->addBindable( new PixelShader( "test_ps.cso" ) );
+    scene.addDrawable( mesh );
+
     MSG msg = {};
     while ( msg.message != WM_QUIT )
     {
@@ -103,4 +159,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
         renderer.renderScene(scene);
     }
+
+    return 0;
 }

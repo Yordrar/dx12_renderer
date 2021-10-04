@@ -54,4 +54,5 @@ target_link_libraries( dx12_renderer
     PUBLIC d3d12.lib
     PUBLIC dxgi.lib
     PUBLIC dxguid.lib
+    PUBLIC d3dcompiler.lib
 )

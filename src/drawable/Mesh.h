@@ -9,9 +9,8 @@ using namespace Microsoft::WRL;
 #include <resource/IBindable.h>
 #include <resource/VertexBuffer.h>
 #include <resource/IndexBuffer.h>
-#include <resource/PixelShader.h>
 
-template<typename vertex_t>
+template<class vertex_t>
 class Mesh : public IDrawable
 {
 public:
@@ -19,6 +18,21 @@ public:
 	~Mesh();
 
 private:
-	VertexBuffer<vertex_t> m_vertexBuffer;
-	IndexBuffer m_indexBuffer;
+	VertexBuffer<vertex_t>* m_vertexBuffer;
+	IndexBuffer* m_indexBuffer;
 };
+
+template<class vertex_t>
+Mesh<vertex_t>::Mesh( vertex_t* vertices, UINT vertexCount, UINT* indices, UINT indexCount )
+    : m_vertexBuffer( new VertexBuffer<vertex_t>( vertices, vertexCount ) )
+    , m_indexBuffer( new IndexBuffer( indices, indexCount ) )
+{
+    addBindable( m_vertexBuffer );
+    addBindable( m_indexBuffer );
+}
+
+template<class vertex_t>
+Mesh<vertex_t>::~Mesh()
+{
+
+}

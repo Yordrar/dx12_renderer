@@ -8,7 +8,7 @@
 
 IDrawable::IDrawable()
 {
-	m_bindlessIndices = new ConstantBuffer( 128 );
+	m_bindlessIndices = new ConstantBuffer( 256 );
 }
 
 IDrawable::~IDrawable()

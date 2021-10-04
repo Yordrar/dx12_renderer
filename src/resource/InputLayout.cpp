@@ -12,7 +12,7 @@ InputLayout::InputLayout( D3D12_INPUT_ELEMENT_DESC inputElements[], UINT count )
 
 InputLayout::~InputLayout()
 {
-    delete m_inputElements;
+    //delete m_inputElements;
 }
 
 void InputLayout::bind( Renderer::RenderContext& context )

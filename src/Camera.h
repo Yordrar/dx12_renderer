@@ -6,6 +6,7 @@
 #include <directxmath.h>
 #include <directxcolors.h>
 
+#include <Renderer.h>
 #include <resource/ConstantBuffer.h>
 
 class Camera
@@ -19,11 +20,15 @@ public:
 	void move(float delta_x, float delta_y, float delta_z);
 	void rotate(float angles_x, float angles_y);
 
-	void updateCameraBuffers();
+	void updateCameraBuffers( Renderer::RenderContext& context );
 
 	DirectX::XMMATRIX m_viewProjMatrix;
+	D3D12_SUBRESOURCE_DATA m_subResourceDataViewProjMatrix;
 	DirectX::XMVECTOR m_position;
+	D3D12_SUBRESOURCE_DATA m_subResourceDataPosition;
+
 	ConstantBuffer* m_cameraBuffer;
+	ComPtr<ID3D12Resource> m_intermediateUploadBuffer;
 
 	DirectX::XMVECTOR right;
 	DirectX::XMVECTOR up;

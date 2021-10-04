@@ -19,6 +19,7 @@ ResourceManager::ResourceManager()
     m_descriptorHeapSampler = std::make_unique<DescriptorHeap>( heapDesc );
 
     heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
     m_descriptorHeapRtv = std::make_unique<DescriptorHeap>( heapDesc );
 
     heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;

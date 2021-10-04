@@ -4,7 +4,7 @@
 
 Scene::Scene()
     : m_root(nullptr)
-    , m_camera( DirectX::XMVectorSet( 0, 0, 0, 0 ), DirectX::XMVectorSet( 0, 0, 1, 0 ), 90, 16.0f/9.0f )
+    , m_camera( DirectX::XMVectorSet( 0, 0, 2, 0 ), DirectX::XMVectorSet( 0, 0, -1, 0 ), 90, 16.0f/9.0f )
 {
 }
 
@@ -20,6 +20,7 @@ Scene::SceneNode* Scene::addDrawable( IDrawable* drawable )
         Scene::SceneNode* newSceneNode = new SceneNode();
         newSceneNode->m_drawable = drawable;
         m_root->m_children.push_back( newSceneNode );
+        return newSceneNode;
     }
     else
     {
@@ -32,6 +33,7 @@ Scene::SceneNode* Scene::addDrawable( IDrawable* drawable )
 void Scene::draw( Renderer::RenderContext& context )
 {
     context.m_commandList->SetGraphicsRootConstantBufferView( 0, m_camera.getCameraBuffer()->getGPUBufferLocation() );
+    m_camera.updateCameraBuffers( context );
     if ( m_root )
     {
         m_root->m_drawable->draw( context );

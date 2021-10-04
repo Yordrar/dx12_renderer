@@ -71,7 +71,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     cmdQueueDesc.NodeMask = 0;
     m_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_commandQueue ) );
 
-    // Creae swapchain
+    // Create swapchain
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
     swapChainDesc.Width = m_windowRect.right - m_windowRect.left;
     swapChainDesc.Height = m_windowRect.bottom - m_windowRect.top;
@@ -87,15 +87,31 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     dxgiFactory->CreateSwapChainForHwnd( m_commandQueue.Get(), m_hWnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf() );
     swapChain.As( &m_swapChain );
 
-    // Create RTVs and command allocators for each backbuffer
+
+    D3D12_CLEAR_VALUE optimizedClearValue = {};
+    optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+    optimizedClearValue.DepthStencil = { 1.0f, 0 };
+    // Create RTVs, DSVs and command allocators for each backbuffer
     for ( int i = 0; i < sc_numBackBuffers; ++i )
     {
         ComPtr<ID3D12Resource> backBuffer;
         m_swapChain->GetBuffer( i, IID_PPV_ARGS( &m_backBuffers[ i ] ) );
         ResourceManager::it()->getRtvDescriptorHeap()->addRTV( m_backBuffers[ i ], nullptr );
 
+        m_device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_DEFAULT ),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, swapChainDesc.Width, swapChainDesc.Height,
+                                           1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ),
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            &optimizedClearValue,
+            IID_PPV_ARGS( m_depthBuffers[i].GetAddressOf() )
+        );
+        ResourceManager::it()->getDsvDescriptorHeap()->addDSV( m_depthBuffers[i], nullptr );
+
         m_device->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_commandAllocators[ i ] ) );
     }
+
 
     // Create command list
     m_device->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_commandList ) );
@@ -104,8 +120,8 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
 
     CD3DX12_ROOT_PARAMETER slotRootParameters[ 3 ] = { {}, {}, {} };
 
-    slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 );
-    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 );
+    slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Camera buffer
+    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Bindless indices
 
     D3D12_DESCRIPTOR_RANGE srvRange{};
     srvRange.BaseShaderRegister = 0;
@@ -113,7 +129,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRange.OffsetInDescriptorsFromTableStart = 0;
     srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     srvRange.RegisterSpace = 0;
-    slotRootParameters[ 2 ].InitAsDescriptorTable( 1, &srvRange );
+    slotRootParameters[ 2 ].InitAsDescriptorTable( 1, &srvRange ); // Bindless resources
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( 3, slotRootParameters, 0, nullptr,
                                              D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -143,10 +159,28 @@ void Renderer::renderScene( Scene& scene )
     m_commandAllocators[ m_currentBackBufferIndex ]->Reset();
     m_commandList->Reset( m_commandAllocators[ m_currentBackBufferIndex ].Get(), nullptr );
 
+    // Set viewport
+    m_commandList->RSSetViewports( 1, &CD3DX12_VIEWPORT( 0.0f, 0.0f, static_cast<float>( m_windowRect.right - m_windowRect.left ), static_cast<float>( m_windowRect.bottom - m_windowRect.top ) ) );
+    m_commandList->RSSetScissorRects( 1, &CD3DX12_RECT( 0, 0, LONG_MAX, LONG_MAX ) );
+
+    // Set render target and depth buffer
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv( ResourceManager::it()->getRtvDescriptorHeap()->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                       m_currentBackBufferIndex,
+                                       ResourceManager::it()->getRtvDescriptorHeap()->getIncrementSize() );
+    CD3DX12_CPU_DESCRIPTOR_HANDLE dsv( ResourceManager::it()->getDsvDescriptorHeap()->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                       m_currentBackBufferIndex,
+                                       ResourceManager::it()->getDsvDescriptorHeap()->getIncrementSize() );
+    m_commandList->OMSetRenderTargets( 1, &rtv, false, &dsv );
+
+    // Set root signature
     m_commandList->SetGraphicsRootSignature( m_rootSignature.Get() );
 
     // Descriptor heaps
-    ID3D12DescriptorHeap* descriptorHeaps[] = { ResourceManager::it()->getSrvCbvUavDescriptorHeap()->getHeap().Get() };
+    ID3D12DescriptorHeap* descriptorHeaps[] = 
+    { 
+        ResourceManager::it()->getSrvCbvUavDescriptorHeap()->getHeap().Get(),
+        ResourceManager::it()->getSamplerDescriptorHeap()->getHeap().Get(),
+    };
     m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
     m_commandList->SetGraphicsRootDescriptorTable( 2, ResourceManager::it()->getSrvCbvUavDescriptorHeap()->getHeap()->GetGPUDescriptorHandleForHeapStart() );
 
@@ -159,15 +193,16 @@ void Renderer::renderScene( Scene& scene )
     );
     m_commandList->ResourceBarrier( 1, &presentToRenderTargetBarrier );
 
-    // Clear the backbuffer
+    // Clear the backbuffer and depth buffer
     static FLOAT clearColor[ 4 ] = { 0.4f, 0.6f, 0.9f, 1.0f };
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtv( ResourceManager::it()->getRtvDescriptorHeap()->getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                       m_currentBackBufferIndex,
-                                       ResourceManager::it()->getRtvDescriptorHeap()->getIncrementSize() );
     m_commandList->ClearRenderTargetView( rtv, clearColor, 0, nullptr );
+    m_commandList->ClearDepthStencilView( dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0.0f, 0, nullptr );
 
     RenderContext context;
     context.m_commandList = m_commandList;
+    context.m_pipelineState.m_rootSignature = m_rootSignature.Get();
+    context.m_pipelineState.m_rtvFormats = { { DXGI_FORMAT_R8G8B8A8_UNORM }, 1 };
+    context.m_pipelineState.m_dsvFormat = DXGI_FORMAT_D32_FLOAT;
     scene.draw( context );
 
     // Transition backbuffer to present

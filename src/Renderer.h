@@ -22,6 +22,8 @@ public:
         CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY m_topologyType;
         CD3DX12_PIPELINE_STATE_STREAM_VS m_vertexShader;
         CD3DX12_PIPELINE_STATE_STREAM_PS m_pixelShader;
+        CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT m_dsvFormat;
+        CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS m_rtvFormats;
     };
 
     struct RenderContext
@@ -52,6 +54,7 @@ private:
     ComPtr<ID3D12CommandQueue> m_commandQueue;
     std::unique_ptr<Fence> m_fence;
     ComPtr<ID3D12Resource> m_backBuffers[ sc_numBackBuffers ];
+    ComPtr<ID3D12Resource> m_depthBuffers[ sc_numBackBuffers ];
     UINT m_currentBackBufferIndex;
     ComPtr<ID3D12RootSignature> m_rootSignature;
 };
