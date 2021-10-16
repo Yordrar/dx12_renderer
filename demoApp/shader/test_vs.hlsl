@@ -1,17 +1,30 @@
-cbuffer cameraBuffer
+#include "common.hlsli"
+
+struct VSIn
 {
-    float4x4 m_viewProj;
-    float4 m_cameraPosition;
+    float3 m_position : POSITION;
+    float3 m_normal : NORMAL;
+    float2 m_uvs : TEXCOORDS;
+    float3 m_tangent : TANGENT;
+    float3 m_bitangent : BITANGENT;
 };
 
-cbuffer bindlessIndices
+struct VSOut
 {
-
+    float4 m_position : SV_POSITION;
+    float3 m_normal : NORMAL;
+    float2 m_uvs : TEXCOORDS;
+    float3 m_tangent : TANGENT;
+    float3 m_bitangent : BITANGENT;
 };
 
-Texture2D Texture2DTable[] : register( t0, space0 );
-
-float4 main_vs( float3 pos : POSITION ) : SV_POSITION
+VSOut main_vs( VSIn vertexData )
 {
-    return mul( float4( pos, 1.0f ), m_viewProj );
+    VSOut vsOut;
+    vsOut.m_position = mul( float4( vertexData.m_position, 1.0f ), viewProj );
+    vsOut.m_normal = vertexData.m_normal;
+    vsOut.m_uvs = vertexData.m_uvs;
+    vsOut.m_tangent = vertexData.m_tangent;
+    vsOut.m_bitangent = vertexData.m_bitangent;
+    return vsOut;
 }

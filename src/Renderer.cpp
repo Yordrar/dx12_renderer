@@ -118,20 +118,45 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     m_commandList->Close();
 
 
-    CD3DX12_ROOT_PARAMETER slotRootParameters[ 3 ] = { {}, {}, {} };
+    CD3DX12_ROOT_PARAMETER slotRootParameters[ 6 ] = {};
 
     slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Camera buffer
     slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Bindless indices
 
-    D3D12_DESCRIPTOR_RANGE srvRange{};
-    srvRange.BaseShaderRegister = 0;
-    srvRange.NumDescriptors = 128;
-    srvRange.OffsetInDescriptorsFromTableStart = 0;
-    srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    srvRange.RegisterSpace = 0;
-    slotRootParameters[ 2 ].InitAsDescriptorTable( 1, &srvRange ); // Bindless resources
+    // Bindless resources
+    D3D12_DESCRIPTOR_RANGE srvRangeBufferHeap{};
+    srvRangeBufferHeap.BaseShaderRegister = 0;
+    srvRangeBufferHeap.NumDescriptors = 128;
+    srvRangeBufferHeap.OffsetInDescriptorsFromTableStart = 0;
+    srvRangeBufferHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    srvRangeBufferHeap.RegisterSpace = 0;
+    slotRootParameters[ 2 ].InitAsDescriptorTable( 1, &srvRangeBufferHeap );
 
-    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( 3, slotRootParameters, 0, nullptr,
+    D3D12_DESCRIPTOR_RANGE srvRangeTexture2DHeap{};
+    srvRangeTexture2DHeap.BaseShaderRegister = 0;
+    srvRangeTexture2DHeap.NumDescriptors = 128;
+    srvRangeTexture2DHeap.OffsetInDescriptorsFromTableStart = 0;
+    srvRangeTexture2DHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    srvRangeTexture2DHeap.RegisterSpace = 1;
+    slotRootParameters[ 3 ].InitAsDescriptorTable( 1, &srvRangeTexture2DHeap );
+
+    D3D12_DESCRIPTOR_RANGE srvRangeTextureCubeHeap{};
+    srvRangeTextureCubeHeap.BaseShaderRegister = 0;
+    srvRangeTextureCubeHeap.NumDescriptors = 128;
+    srvRangeTextureCubeHeap.OffsetInDescriptorsFromTableStart = 0;
+    srvRangeTextureCubeHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    srvRangeTextureCubeHeap.RegisterSpace = 2;
+    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeTextureCubeHeap );
+
+    D3D12_DESCRIPTOR_RANGE srvRangeSamplerHeap{};
+    srvRangeSamplerHeap.BaseShaderRegister = 0;
+    srvRangeSamplerHeap.NumDescriptors = 128;
+    srvRangeSamplerHeap.OffsetInDescriptorsFromTableStart = 0;
+    srvRangeSamplerHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+    srvRangeSamplerHeap.RegisterSpace = 0;
+    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeSamplerHeap );
+
+    CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( _countof(slotRootParameters), slotRootParameters, 0, nullptr,
                                              D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
                                              D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
                                              D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
@@ -183,6 +208,8 @@ void Renderer::renderScene( Scene& scene )
     };
     m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
     m_commandList->SetGraphicsRootDescriptorTable( 2, ResourceManager::it()->getSrvCbvUavDescriptorHeap()->getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 3, ResourceManager::it()->getSrvCbvUavDescriptorHeap()->getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 4, ResourceManager::it()->getSrvCbvUavDescriptorHeap()->getHeap()->GetGPUDescriptorHandleForHeapStart() );
 
     // Transition backbuffer to render target
     CD3DX12_RESOURCE_BARRIER presentToRenderTargetBarrier = CD3DX12_RESOURCE_BARRIER::Transition
@@ -203,6 +230,9 @@ void Renderer::renderScene( Scene& scene )
     context.m_pipelineState.m_rootSignature = m_rootSignature.Get();
     context.m_pipelineState.m_rtvFormats = { { DXGI_FORMAT_R8G8B8A8_UNORM }, 1 };
     context.m_pipelineState.m_dsvFormat = DXGI_FORMAT_D32_FLOAT;
+    CD3DX12_RASTERIZER_DESC rasterizerDesc( CD3DX12_DEFAULT{} );
+    rasterizerDesc.FrontCounterClockwise = true;
+    context.m_pipelineState.m_rasterizer = rasterizerDesc;
     scene.draw( context );
 
     // Transition backbuffer to present

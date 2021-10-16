@@ -9,8 +9,3 @@ TextureSampler::~TextureSampler()
 {
 
 }
-
-void TextureSampler::bind( Renderer::RenderContext& context )
-{
-
-}

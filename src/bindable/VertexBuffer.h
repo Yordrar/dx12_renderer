@@ -5,7 +5,7 @@
 #include <d3dx12.h>
 
 #include <Renderer.h>
-#include <resource/IBindable.h>
+#include <bindable/IBindable.h>
 
 template<typename vertex_t>
 class VertexBuffer : public IBindable

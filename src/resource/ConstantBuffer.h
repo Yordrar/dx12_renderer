@@ -5,20 +5,19 @@
 #include <wrl.h>
 using namespace Microsoft::WRL;
 
-#include <resource/ResourceHandle.h>
+#include <resource/IResource.h>
 
-class ConstantBuffer
+class ConstantBuffer : public IResource
 {
 public:
-	ConstantBuffer( UINT sizeInBytes );
+	ConstantBuffer( void* data, UINT sizeInBytes, LPCWSTR debugName = nullptr );
 	~ConstantBuffer();
 
-	ComPtr<ID3D12Resource> getResource() const { return m_resource; }
-
-	D3D12_GPU_VIRTUAL_ADDRESS getGPUBufferLocation() const { return m_resource->GetGPUVirtualAddress(); }
+	UINT getSizeInBytes() const { return m_sizeInBytes; }
+	UINT getAlignedSizeInBytes() const { return m_alignedSizeInBytes; }
 
 private:
-	ComPtr<ID3D12Resource> m_resource;
-	ResourceHandle m_handle;
+	void* m_data;
 	UINT m_sizeInBytes;
+	UINT m_alignedSizeInBytes;
 };

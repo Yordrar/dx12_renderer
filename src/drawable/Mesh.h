@@ -6,9 +6,9 @@ using namespace Microsoft::WRL;
 
 #include "IDrawable.h"
 
-#include <resource/IBindable.h>
-#include <resource/VertexBuffer.h>
-#include <resource/IndexBuffer.h>
+#include <bindable/IBindable.h>
+#include <bindable/VertexBuffer.h>
+#include <bindable/IndexBuffer.h>
 
 template<class vertex_t>
 class Mesh : public IDrawable

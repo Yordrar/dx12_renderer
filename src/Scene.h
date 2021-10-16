@@ -15,6 +15,9 @@ class Scene
     struct SceneNode
     {
         ~SceneNode();
+
+        void draw( Renderer::RenderContext& context );
+
         IDrawable* m_drawable = nullptr;
         std::vector<SceneNode*> m_children;
     };
@@ -24,6 +27,7 @@ public:
     ~Scene();
 
     SceneNode* addDrawable( IDrawable* drawable );
+    Camera& getCamera() { return m_camera; }
 
     void draw( Renderer::RenderContext& context );
 

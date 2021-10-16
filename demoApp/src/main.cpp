@@ -1,5 +1,6 @@
 // Windows headers
 #include <Windows.h>
+#include <Windowsx.h>
 #include <wrl.h>
 using namespace Microsoft::WRL;
 
@@ -17,19 +18,32 @@ using namespace Microsoft::WRL;
 #include <Renderer.h>
 #include <Scene.h>
 #include <drawable/Mesh.h>
-#include <resource/InputLayout.h>
-#include <resource/VertexShader.h>
-#include <resource/PixelShader.h>
+#include <bindable/InputLayout.h>
+#include <bindable/VertexShader.h>
+#include <bindable/PixelShader.h>
+#include <resource/Texture.h>
 
 struct Vertex
 {
     DirectX::XMFLOAT3 m_position;
+    DirectX::XMFLOAT3 m_normal;
+    DirectX::XMFLOAT2 m_uvs;
+    DirectX::XMFLOAT3 m_tangent;
+    DirectX::XMFLOAT3 m_bitangent;
 };
 
-D3D12_INPUT_ELEMENT_DESC inputLayoutDesc[ 1 ] = {
-    {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+D3D12_INPUT_ELEMENT_DESC inputLayoutDesc[ 5 ] = {
+    {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+    {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+    {"TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+    {"TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+    {"BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 };
 
+Scene* scene = nullptr;
+bool mouse_clicked = false;
+int previous_pos_x = -1;
+int previous_pos_y = -1;
 LRESULT CALLBACK WndProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
     switch ( message )
@@ -47,6 +61,39 @@ LRESULT CALLBACK WndProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam 
         case WM_DESTROY:
             PostQuitMessage( 0 );
             break;
+        case WM_LBUTTONDOWN:
+            mouse_clicked = true;
+            previous_pos_x = GET_X_LPARAM( lParam );
+            previous_pos_y = GET_Y_LPARAM( lParam );
+            break;
+        case WM_LBUTTONUP:
+            mouse_clicked = false;
+            previous_pos_x = -1;
+            previous_pos_y = -1;
+            break;
+        case WM_MOUSEMOVE:
+            if ( mouse_clicked )
+            {
+                int pos_x = GET_X_LPARAM( lParam );
+                int pos_y = GET_Y_LPARAM( lParam );
+
+                scene->getCamera().rotate( ( pos_y - previous_pos_y ) / 3.5f, 0 );
+                scene->getCamera().rotate( 0, ( pos_x - previous_pos_x ) / 3.5f );
+
+                previous_pos_x = pos_x;
+                previous_pos_y = pos_y;
+            }
+            break;
+        case WM_MOUSEWHEEL:
+        {
+            int delta = GET_WHEEL_DELTA_WPARAM( wParam );
+            scene->getCamera().m_cameraData.m_position.m128_f32[ 0 ] *= 1.0f - ( delta / 500.0f );
+            scene->getCamera().m_cameraData.m_position.m128_f32[ 1 ] *= 1.0f - ( delta / 500.0f );
+            scene->getCamera().m_cameraData.m_position.m128_f32[ 2 ] *= 1.0f - ( delta / 500.0f );
+
+            scene->getCamera().move( 0.0f, 0.0f, 0.0f );
+            break;
+        }
         default:
             return DefWindowProcW( hwnd, message, wParam, lParam );
     }
@@ -106,18 +153,18 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     ShowWindow( hWnd, SW_SHOW );
 
     Renderer renderer( hWnd, windowRect );
-    Scene scene;
+    scene = new Scene();
 
     Assimp::Importer importer;
     const aiScene* aiScene = importer.ReadFile( "suzanne.obj",
-                                              aiProcess_CalcTangentSpace |
-                                              aiProcess_Triangulate |
-                                              aiProcess_GenNormals |
-                                              aiProcess_ValidateDataStructure |
-                                              aiProcess_GenUVCoords |
-                                              aiProcess_FixInfacingNormals |
-                                              aiProcess_JoinIdenticalVertices |
-                                              aiProcess_SortByPType );
+                                                aiProcess_CalcTangentSpace |
+                                                aiProcess_Triangulate |
+                                                aiProcess_GenNormals |
+                                                aiProcess_ValidateDataStructure |
+                                                aiProcess_GenUVCoords |
+                                                aiProcess_FixInfacingNormals |
+                                                aiProcess_JoinIdenticalVertices |
+                                                aiProcess_SortByPType );
     aiNode* rootNode = aiScene->mRootNode;
     aiMesh* ai_mesh = aiScene->mMeshes[ rootNode->mChildren[ 0 ]->mMeshes[ 0 ] ];
 
@@ -129,6 +176,21 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         vert.m_position.x = ai_mesh->mVertices[ i ].x;
         vert.m_position.y = ai_mesh->mVertices[ i ].y;
         vert.m_position.z = ai_mesh->mVertices[ i ].z;
+
+        vert.m_normal.x = ai_mesh->mNormals[ i ].x;
+        vert.m_normal.y = ai_mesh->mNormals[ i ].y;
+        vert.m_normal.z = ai_mesh->mNormals[ i ].z;
+
+        vert.m_uvs.x = ai_mesh->mTextureCoords[ 0 ][ i ].x;
+        vert.m_uvs.y = ai_mesh->mTextureCoords[ 0 ][ i ].y;
+
+        vert.m_tangent.x = ai_mesh->mTangents[ i ].x;
+        vert.m_tangent.y = ai_mesh->mTangents[ i ].y;
+        vert.m_tangent.z = ai_mesh->mTangents[ i ].z;
+
+        vert.m_bitangent.x = ai_mesh->mBitangents[ i ].x;
+        vert.m_bitangent.y = ai_mesh->mBitangents[ i ].y;
+        vert.m_bitangent.z = ai_mesh->mBitangents[ i ].z;
 
         vertex_buffer_data[ i ] = vert;
     }
@@ -143,10 +205,11 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     }
 
     Mesh<Vertex>* mesh = new Mesh<Vertex>( vertex_buffer_data, vertices_count, vertex_indices_data, indices_count );
-    mesh->addBindable( new InputLayout( inputLayoutDesc, 1 ) );
+    mesh->addBindable( new InputLayout( inputLayoutDesc, _countof( inputLayoutDesc ) ) );
     mesh->addBindable( new VertexShader( "test_vs.cso" ) );
     mesh->addBindable( new PixelShader( "test_ps.cso" ) );
-    scene.addDrawable( mesh );
+    mesh->addResource( new Texture( "demoTex.png" ) );
+    scene->addDrawable( mesh );
 
     MSG msg = {};
     while ( msg.message != WM_QUIT )
@@ -157,8 +220,10 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             DispatchMessage( &msg );
         }
 
-        renderer.renderScene(scene);
+        renderer.renderScene(*scene);
     }
+    
+    delete scene;
 
     return 0;
 }

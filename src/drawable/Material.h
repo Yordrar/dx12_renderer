@@ -8,8 +8,8 @@
 using namespace Microsoft::WRL;
 
 #include <Renderer.h>
-#include <resource/VertexShader.h>
-#include <resource/PixelShader.h>
+#include <bindable/VertexShader.h>
+#include <bindable/PixelShader.h>
 #include <resource/Texture.h>
 
 class Material

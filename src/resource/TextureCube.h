@@ -3,18 +3,16 @@
 #include <string>
 #include <vector>
 
-#include <resource/IBindable.h>
+#include <resource/IResource.h>
+#include <resource/Texture.h>
 
-class TextureCube : public IBindable
+class TextureCube : public IResource
 {
 public:
-	TextureCube();
+	TextureCube( std::string path );
 	~TextureCube();
 
-	virtual void bind( Renderer::RenderContext& context ) override;
-
 private:
-	std::vector<unsigned char*> textures;
-	UINT m_slot;
+	std::vector<unsigned char*> m_textures;
 };
 

@@ -1,51 +1,43 @@
 #include "TextureCube.h"
 
-TextureCube::TextureCube()
-{/*
+#include <resource/ResourceManager.h>
+#include <resource/stb_image.h>
+
+TextureCube::TextureCube( std::string path )
+{
 	int width, height, nrChannels;
-	textures.push_back(stbi_load((path + "\\px.png").c_str(), &width, &height, &nrChannels, 4));
-	textures.push_back(stbi_load((path + "\\nx.png").c_str(), &width, &height, &nrChannels, 4));
-	textures.push_back(stbi_load((path + "\\py.png").c_str(), &width, &height, &nrChannels, 4));
-	textures.push_back(stbi_load((path + "\\ny.png").c_str(), &width, &height, &nrChannels, 4));
-	textures.push_back(stbi_load((path + "\\pz.png").c_str(), &width, &height, &nrChannels, 4));
-	textures.push_back(stbi_load((path + "\\nz.png").c_str(), &width, &height, &nrChannels, 4));
+	m_textures.push_back(stbi_load((path + "\\px.png").c_str(), &width, &height, &nrChannels, 4));
+	m_textures.push_back(stbi_load((path + "\\nx.png").c_str(), &width, &height, &nrChannels, 4));
+	m_textures.push_back(stbi_load((path + "\\py.png").c_str(), &width, &height, &nrChannels, 4));
+	m_textures.push_back(stbi_load((path + "\\ny.png").c_str(), &width, &height, &nrChannels, 4));
+	m_textures.push_back(stbi_load((path + "\\pz.png").c_str(), &width, &height, &nrChannels, 4));
+	m_textures.push_back(stbi_load((path + "\\nz.png").c_str(), &width, &height, &nrChannels, 4));
+	
+	CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 6, 6, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS );
+	initInternalResources( resourceDesc );
 
-	D3D11_TEXTURE2D_DESC textures_desc = {};
-	textures_desc.Width = width;
-	textures_desc.Height = height;
-	textures_desc.MipLevels = 1;
-	textures_desc.ArraySize = 6;
-	textures_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	textures_desc.SampleDesc = { 1, 0 };
-	textures_desc.Usage = D3D11_USAGE_DEFAULT;
-	textures_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	textures_desc.CPUAccessFlags = 0;
-	textures_desc.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
-
-	D3D11_SUBRESOURCE_DATA subres_data[6];
-	for (int i = 0; i < 6; i++)
+	D3D12_SUBRESOURCE_DATA subresData;
+	for ( int i = 0; i < 6; i++ )
 	{
-		subres_data[i].pSysMem = textures[i];
-		subres_data[i].SysMemPitch = width * 4;
-		subres_data[i].SysMemSlicePitch = 0;
+		subresData.pData = m_textures[ i ];
+		subresData.RowPitch = width * 4;
+		subresData.SlicePitch = 0;
+		m_subresourceData.push_back( subresData );
 	}
 
-	getDevice(gfx)->CreateTexture2D(&textures_desc, subres_data, &cubemap_texture);
+	D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
+	srv.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+	srv.TextureCube.MipLevels = 6;
+	srv.TextureCube.MostDetailedMip = 0;
 
-	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Format = textures_desc.Format;
-	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
-	srvDesc.Texture2D = { 0, 1 };
-
-	getDevice(gfx)->CreateShaderResourceView(cubemap_texture, &srvDesc, &cubemap_srv);*/
+	m_handle = ResourceManager::it()->getSrvCbvUavDescriptorHeap()->addSRV( m_resource, &srv );
 }
 
 TextureCube::~TextureCube()
 {
-
-}
-
-void TextureCube::bind( Renderer::RenderContext& context )
-{
-
+	for ( auto tex : m_textures )
+	{
+		delete tex;
+	}
 }

@@ -38,12 +38,10 @@ add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
 
 target_include_directories(dx12_renderer PUBLIC
 "${CMAKE_SOURCE_DIR}/src"
-"${CMAKE_SOURCE_DIR}/external/assimp/include"
 )
 
 set_property(TARGET dx12_renderer PROPERTY VS_STARTUP_PROJECT dx12_renderer)
 set_property(TARGET dx12_renderer PROPERTY VS_CONFIGURATION_TYPE StaticLibrary)
-
 
 ## Add Demo App dir
 add_subdirectory(demoApp)

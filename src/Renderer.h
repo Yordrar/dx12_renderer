@@ -24,6 +24,7 @@ public:
         CD3DX12_PIPELINE_STATE_STREAM_PS m_pixelShader;
         CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT m_dsvFormat;
         CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS m_rtvFormats;
+        CD3DX12_PIPELINE_STATE_STREAM_RASTERIZER m_rasterizer;
     };
 
     struct RenderContext

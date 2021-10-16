@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <resource/IBindable.h>
+#include <bindable/IBindable.h>
 
 class IndexBuffer : public IBindable
 {

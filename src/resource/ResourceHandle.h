@@ -5,7 +5,7 @@
 class ResourceHandle
 {
 public:
-    ResourceHandle( UINT slot );
+    ResourceHandle( UINT slot = 0 );
 
     UINT getSlot() const { return m_slot; }
 

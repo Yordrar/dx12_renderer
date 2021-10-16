@@ -22,13 +22,13 @@ public:
 
 	void updateCameraBuffers( Renderer::RenderContext& context );
 
-	DirectX::XMMATRIX m_viewProjMatrix;
-	D3D12_SUBRESOURCE_DATA m_subResourceDataViewProjMatrix;
-	DirectX::XMVECTOR m_position;
-	D3D12_SUBRESOURCE_DATA m_subResourceDataPosition;
-
+	struct
+	{
+		DirectX::XMMATRIX m_viewProjMatrix;
+		DirectX::XMVECTOR m_position;
+	} m_cameraData;
+	
 	ConstantBuffer* m_cameraBuffer;
-	ComPtr<ID3D12Resource> m_intermediateUploadBuffer;
 
 	DirectX::XMVECTOR right;
 	DirectX::XMVECTOR up;

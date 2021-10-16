@@ -6,18 +6,19 @@ using namespace Microsoft::WRL;
 
 #include <string>
 
-#include <resource/IBindable.h>
-#include <resource/ResourceHandle.h>
+#include <resource/IResource.h>
 
-class Texture : public IBindable
+class Texture : public IResource
 {
 public:
 	Texture(std::string filename);
 	~Texture();
 
-	virtual void bind( Renderer::RenderContext& context ) override;
+	int getWidth() const { return m_width; }
+	int getHeight() const { return m_height; }
 
 private:
-	ComPtr<ID3D12Resource> m_resource;
-	ResourceHandle m_handle;
+	unsigned char* m_data;
+	int m_width;
+	int m_height;
 };

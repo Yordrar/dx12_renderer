@@ -17,7 +17,10 @@ file(GLOB_RECURSE demoApp_vertex_shaders
 file(GLOB_RECURSE demoApp_pixel_shaders
     "shader/*_ps.hlsl"
 )
-set(demoApp_shader_src_all ${demoApp_vertex_shaders} ${demoApp_pixel_shaders})
+file(GLOB_RECURSE demoApp_include_shaders
+    "shader/*.hlsli"
+)
+set(demoApp_shader_src_all ${demoApp_vertex_shaders} ${demoApp_pixel_shaders} ${demoApp_include_shaders})
 add_executable(demoApp WIN32 ${demoApp_src} ${demoApp_shader_src_all} )
 
 source_group( "Shaders" FILES ${demoApp_shader_src_all} )

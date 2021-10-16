@@ -1,14 +1,12 @@
 #pragma once
 
-#include <resource/IBindable.h>
+#include <resource/IResource.h>
 
-class TextureSampler : public IBindable
+class TextureSampler : public IResource
 {
 public:
 	TextureSampler();
 	~TextureSampler();
-
-	virtual void bind( Renderer::RenderContext& context ) override;
 
 private:
 
