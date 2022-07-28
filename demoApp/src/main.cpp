@@ -23,6 +23,8 @@ using namespace Microsoft::WRL;
 #include <bindable/PixelShader.h>
 #include <resource/Texture.h>
 
+#include <iostream>
+
 struct Vertex
 {
     DirectX::XMFLOAT3 m_position;
@@ -156,7 +158,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     scene = new Scene();
 
     Assimp::Importer importer;
-    const aiScene* aiScene = importer.ReadFile( "suzanne.obj",
+    const aiScene* aiScene = importer.ReadFile( "cerberus.fbx",
                                                 aiProcess_CalcTangentSpace |
                                                 aiProcess_Triangulate |
                                                 aiProcess_GenNormals |
@@ -165,8 +167,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
                                                 aiProcess_FixInfacingNormals |
                                                 aiProcess_JoinIdenticalVertices |
                                                 aiProcess_SortByPType );
-    aiNode* rootNode = aiScene->mRootNode;
-    aiMesh* ai_mesh = aiScene->mMeshes[ rootNode->mChildren[ 0 ]->mMeshes[ 0 ] ];
+    aiMesh* ai_mesh = aiScene->mMeshes[ 0 ];
 
     UINT vertices_count = ai_mesh->mNumVertices;
     Vertex* vertex_buffer_data = new Vertex[ vertices_count ];
@@ -206,8 +207,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     Mesh<Vertex>* mesh = new Mesh<Vertex>( vertex_buffer_data, vertices_count, vertex_indices_data, indices_count );
     mesh->addBindable( new InputLayout( inputLayoutDesc, _countof( inputLayoutDesc ) ) );
-    mesh->addBindable( new VertexShader( "test_vs.cso" ) );
-    mesh->addBindable( new PixelShader( "test_ps.cso" ) );
+    mesh->addBindable( new VertexShader( "shader/test_vs.hlsl" ) );
+    mesh->addBindable( new PixelShader( "shader/test_ps.hlsl" ) );
     mesh->addResource( new Texture( "demoTex.png" ) );
     scene->addDrawable( mesh );
 
