@@ -36,7 +36,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
         DXGI_ADAPTER_DESC1 dxgiAdapterDesc;
         currentAdapter->GetDesc1( &dxgiAdapterDesc );
         if ( ( dxgiAdapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE ) == 0 &&
-             SUCCEEDED( D3D12CreateDevice( currentAdapter.Get(), D3D_FEATURE_LEVEL_11_0, __uuidof( ID3D12Device ), nullptr ) ) &&
+             SUCCEEDED( D3D12CreateDevice( currentAdapter.Get(), D3D_FEATURE_LEVEL_12_1, __uuidof( ID3D12Device ), nullptr ) ) &&
              dxgiAdapterDesc.DedicatedVideoMemory > maxDedicatedVideoMemory )
         {
             selectedAdapter = currentAdapter;
@@ -47,7 +47,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     }
 
     // Create dx12 device
-    D3D12CreateDevice( selectedAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS( &m_device ) );
+    D3D12CreateDevice( selectedAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS( &m_device ) );
 
     // Create fence
     m_fence.reset( new Fence( m_device ) );

@@ -49,6 +49,8 @@ set_target_properties(${assimp_targets} PROPERTIES FOLDER assimp)
 add_custom_command(TARGET demoApp POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/dx12_renderer/external/dxc/bin/x64/dxcompiler.dll $<TARGET_FILE_DIR:demoApp>)
 add_custom_command(TARGET demoApp POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/dx12_renderer/external/dxc/bin/x64/dxil.dll $<TARGET_FILE_DIR:demoApp>)
+add_custom_command(TARGET demoApp POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/dx12_renderer/shader $<TARGET_FILE_DIR:demoApp>/shader)
 add_custom_command(TARGET demoApp POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/demoApp/shader $<TARGET_FILE_DIR:demoApp>/shader)
