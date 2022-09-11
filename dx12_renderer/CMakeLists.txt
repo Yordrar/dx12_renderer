@@ -9,19 +9,21 @@ file(GLOB_RECURSE dx12_renderer_src
     "src/*.h"
     "src/*.cpp"
 )
-add_library(dx12_renderer STATIC ${dx12_renderer_src})
+add_library(dx12_renderer STATIC)
+target_sources(dx12_renderer PRIVATE ${dx12_renderer_src})
 
 add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
 
 target_include_directories(dx12_renderer PUBLIC
-"${CMAKE_SOURCE_DIR}/dx12_renderer/src"
+"${CMAKE_CURRENT_SOURCE_DIR}/src"
+"${CMAKE_CURRENT_SOURCE_DIR}/external/dxc/inc"
 )
 
 set_property(TARGET dx12_renderer PROPERTY VS_CONFIGURATION_TYPE StaticLibrary)
 
-target_link_libraries( dx12_renderer 
+target_link_libraries(dx12_renderer 
     PUBLIC d3d12.lib
     PUBLIC dxgi.lib
     PUBLIC dxguid.lib
-    PUBLIC ${CMAKE_SOURCE_DIR}/dx12_renderer/external/dxc/lib/x64/dxcompiler.lib
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/external/dxc/lib/x64/dxcompiler.lib
 )

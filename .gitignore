@@ -1,4 +1,3 @@
-
 # Created by https://www.toptal.com/developers/gitignore/api/c++,cmake,visualstudio,git
 # Edit at https://www.toptal.com/developers/gitignore?templates=c++,cmake,visualstudio,git
 
@@ -462,3 +461,6 @@ FodyWeavers.xsd
 *.sln
 
 # End of https://www.toptal.com/developers/gitignore/api/c++,cmake,visualstudio,git
+
+[Bb]uild/**
+!dx12_renderer/external/**

@@ -158,7 +158,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     scene = new Scene();
 
     Assimp::Importer importer;
-    const aiScene* aiScene = importer.ReadFile( "cerberus.fbx",
+    const aiScene* aiScene = importer.ReadFile( "resource/suzanne.obj",
                                                 aiProcess_CalcTangentSpace |
                                                 aiProcess_Triangulate |
                                                 aiProcess_GenNormals |
@@ -209,7 +209,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     mesh->addBindable( new InputLayout( inputLayoutDesc, _countof( inputLayoutDesc ) ) );
     mesh->addBindable( new VertexShader( "shader/test_vs.hlsl" ) );
     mesh->addBindable( new PixelShader( "shader/test_ps.hlsl" ) );
-    mesh->addResource( new Texture( "demoTex.png" ) );
+    mesh->addResource( new Texture( "resource/demoTex.jpeg" ) );
     scene->addDrawable( mesh );
 
     MSG msg = {};
