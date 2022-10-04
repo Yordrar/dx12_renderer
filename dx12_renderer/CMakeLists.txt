@@ -16,6 +16,7 @@ add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
 
 target_include_directories(dx12_renderer PUBLIC
 "${CMAKE_CURRENT_SOURCE_DIR}/src"
+"${CMAKE_CURRENT_SOURCE_DIR}/external"
 "${CMAKE_CURRENT_SOURCE_DIR}/external/dxc/inc"
 )
 

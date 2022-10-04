@@ -3,7 +3,6 @@
 #include <d3dx12.h>
 
 #include <resource/ResourceManager.h>
-#include <Scene.h>
 
 ComPtr<ID3D12Device2> Renderer::m_device{ nullptr };
 
@@ -26,7 +25,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
 #endif
     CreateDXGIFactory2( createFactoryFlags, IID_PPV_ARGS( &dxgiFactory ) );
 
-    // Select adapter with greatest amount of mem
+    // Select adapter with greatest amount of memory
     int i = 0;
     ComPtr<IDXGIAdapter1> currentAdapter;
     ComPtr<IDXGIAdapter1> selectedAdapter;
@@ -49,9 +48,6 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     // Create dx12 device
     D3D12CreateDevice( selectedAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS( &m_device ) );
 
-    // Create fence
-    m_fence.reset( new Fence( m_device ) );
-
     // Debug break on error
 #if defined(_DEBUG)
     ComPtr<ID3D12InfoQueue> pInfoQueue;
@@ -63,15 +59,21 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     }
 #endif
 
-    // Create command queue
+    // Create command queues
     D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = {};
     cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     cmdQueueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
     cmdQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     cmdQueueDesc.NodeMask = 0;
-    m_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_commandQueue ) );
+    m_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_graphicsCmdQueue ) );
 
-    // Create swapchain
+    cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+    m_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_computeCmdQueue ) );
+
+    cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+    m_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_copyCmdQueue ) );
+
+    // Create swap chain
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
     swapChainDesc.Width = m_windowRect.right - m_windowRect.left;
     swapChainDesc.Height = m_windowRect.bottom - m_windowRect.top;
@@ -84,7 +86,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
     ComPtr<IDXGISwapChain1> swapChain;
-    dxgiFactory->CreateSwapChainForHwnd( m_commandQueue.Get(), m_hWnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf() );
+    dxgiFactory->CreateSwapChainForHwnd( m_graphicsCmdQueue.Get(), m_hWnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf() );
     swapChain.As( &m_swapChain );
 
 
@@ -179,8 +181,9 @@ Renderer::~Renderer()
 {
 }
 
-void Renderer::renderScene( Scene& scene )
+void Renderer::addRenderPass( RenderPass& renderPass )
 {
+    m_renderPasses.push_back( renderPass );
     m_commandAllocators[ m_currentBackBufferIndex ]->Reset();
     m_commandList->Reset( m_commandAllocators[ m_currentBackBufferIndex ].Get(), nullptr );
 

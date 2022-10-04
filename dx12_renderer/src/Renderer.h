@@ -6,9 +6,9 @@
 #include <wrl.h>
 using namespace Microsoft::WRL;
 
-#include <memory>
+#include <vector>
 
-#include <Fence.h>
+#include <RenderPass.h>
 
 class Scene;
 
@@ -39,24 +39,25 @@ public:
 
     static ComPtr<ID3D12Device2> device() { return m_device; }
 
-    void renderScene(Scene& scene);
+    void addRenderPass(RenderPass& renderPass);
 
     static constexpr UINT sc_numBackBuffers = 3;
 
 private:
-
     HWND m_hWnd;
     RECT m_windowRect;
 
     static ComPtr<ID3D12Device2> m_device;
     ComPtr<IDXGISwapChain4> m_swapChain;
-    ComPtr<ID3D12CommandAllocator> m_commandAllocators[ sc_numBackBuffers ];
-    ComPtr<ID3D12GraphicsCommandList> m_commandList;
-    ComPtr<ID3D12CommandQueue> m_commandQueue;
-    std::unique_ptr<Fence> m_fence;
     ComPtr<ID3D12Resource> m_backBuffers[ sc_numBackBuffers ];
     ComPtr<ID3D12Resource> m_depthBuffers[ sc_numBackBuffers ];
+    ComPtr<ID3D12CommandAllocator> m_commandAllocators[ sc_numBackBuffers ];
     UINT m_currentBackBufferIndex;
-    ComPtr<ID3D12RootSignature> m_rootSignature;
+
+    ComPtr<ID3D12CommandQueue> m_graphicsCmdQueue;
+    ComPtr<ID3D12CommandQueue> m_computeCmdQueue;
+    ComPtr<ID3D12CommandQueue> m_copyCmdQueue;
+
+    std::vector<RenderPass> m_renderPasses;
 };
 

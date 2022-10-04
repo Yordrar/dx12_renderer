@@ -5,35 +5,33 @@
 using namespace Microsoft::WRL;
 
 #include <memory>
+#include <unordered_map>
+#include <type_traits>
 
-#include <resource/ResourceHandle.h>
+#include <Manager.h>
+#include <resource/IResource.h>
 #include <resource/DescriptorHeap.h>
 
-class ResourceManager
+class ResourceManager : Manager<ResourceManager>
 {
+    friend class Manager<ResourceManager>;
 public:
-    static ResourceManager* it() 
-    {
-        if ( !s_instance )
-        {
-            s_instance = new ResourceManager();
-        }
 
-        return s_instance;
-    }
+    template<typename resource_type, typename std::is_base_of<IResource, resource_type>::value, typename... Args, typename std::is_constructible<resource_type, Args...>::value>
+    std::shared_ptr<resource_type> createResource( std::string resourceName, Args&&... args );
 
-    DescriptorHeap* getSrvCbvUavDescriptorHeap() const { return m_descriptorHeapSrvCbvUav.get(); }
-    DescriptorHeap* getSamplerDescriptorHeap() const { return m_descriptorHeapSampler.get(); }
-    DescriptorHeap* getRtvDescriptorHeap() const { return m_descriptorHeapRtv.get(); }
-    DescriptorHeap* getDsvDescriptorHeap() const { return m_descriptorHeapDsv.get(); }
+    template<typename resource_type, typename std::is_base_of<IResource, resource_type>::value>
+    std::shared_ptr<resource_type> getResource( std::string resourceName );
 
 private:
     ResourceManager();
-    static ResourceManager* s_instance;
+    ~ResourceManager() = default;
 
-    std::unique_ptr<DescriptorHeap> m_descriptorHeapSrvCbvUav;
+    using ResourceMap = std::unordered_map< std::string, std::shared_ptr<IResource> >;
+    ResourceMap m_resources;
+
+    std::unique_ptr<DescriptorHeap> m_descriptorHeapCbvSrvUav;
     std::unique_ptr<DescriptorHeap> m_descriptorHeapSampler;
     std::unique_ptr<DescriptorHeap> m_descriptorHeapRtv;
     std::unique_ptr<DescriptorHeap> m_descriptorHeapDsv;
 };
-
