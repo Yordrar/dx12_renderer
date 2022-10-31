@@ -1,0 +1,56 @@
+#include "VertexBuffer.h"
+
+#include <Renderer.h>
+
+VertexBuffer::VertexBuffer( void* vertices, UINT vertexSize, UINT vertexCount )
+	: m_vertices( vertices )
+	, m_vertexSize( vertexSize )
+	, m_vertexCount( vertexCount )
+{
+	Renderer::device()->CreateCommittedResource( &CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_DEFAULT ),
+												 D3D12_HEAP_FLAG_NONE,
+												 &CD3DX12_RESOURCE_DESC::Buffer( vertexCount * vertexSize ),
+												 D3D12_RESOURCE_STATE_COMMON,
+												 nullptr,
+												 IID_PPV_ARGS( m_bufferResource.GetAddressOf() ) );
+
+	Renderer::device()->CreateCommittedResource( &CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_UPLOAD ),
+												 D3D12_HEAP_FLAG_NONE,
+												 &CD3DX12_RESOURCE_DESC::Buffer( vertexCount * vertexSize ),
+												 D3D12_RESOURCE_STATE_GENERIC_READ,
+												 nullptr,
+												 IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
+
+	m_subResourceData = {};
+	m_subResourceData.pData = vertices;
+	m_subResourceData.RowPitch = vertexCount * vertexSize;
+	m_subResourceData.SlicePitch = m_subResourceData.RowPitch;
+
+	m_isDirty = true;
+}
+
+VertexBuffer::~VertexBuffer()
+{
+	delete[] m_vertices;
+}
+
+void VertexBuffer::bind( ComPtr<ID3D12GraphicsCommandList> commandList )
+{
+	if ( m_isDirty )
+	{
+		commandList->ResourceBarrier( 1, &CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
+																				D3D12_RESOURCE_STATE_COMMON,
+																				D3D12_RESOURCE_STATE_COPY_DEST ) );
+		UpdateSubresources<1>( commandList.Get(), m_bufferResource.Get(), m_intermediateUploadBuffer.Get(), 0, 0, 1, &m_subResourceData );
+		commandList->ResourceBarrier( 1, &CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
+																				D3D12_RESOURCE_STATE_COPY_DEST,
+																				D3D12_RESOURCE_STATE_GENERIC_READ ) );
+		m_isDirty = false;
+	}
+
+	D3D12_VERTEX_BUFFER_VIEW view;
+	view.BufferLocation = m_bufferResource->GetGPUVirtualAddress();
+	view.SizeInBytes = m_vertexSize * m_vertexCount;
+	view.StrideInBytes = m_vertexSize;
+	commandList->IASetVertexBuffers( 0, 1, &view );
+}

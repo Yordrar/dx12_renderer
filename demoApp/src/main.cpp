@@ -17,10 +17,10 @@ using namespace Microsoft::WRL;
 
 #include <Renderer.h>
 #include <Scene.h>
-#include <drawable/Mesh.h>
-#include <bindable/InputLayout.h>
-#include <bindable/VertexShader.h>
-#include <bindable/PixelShader.h>
+#include <geometry/Mesh.h>
+#include <geometry/InputLayout.h>
+#include <geometry/VertexShader.h>
+#include <geometry/PixelShader.h>
 #include <resource/Texture.h>
 
 #include <iostream>
@@ -42,7 +42,7 @@ D3D12_INPUT_ELEMENT_DESC inputLayoutDesc[ 5 ] = {
     {"BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 };
 
-Scene* scene = nullptr;
+std::unique_ptr<Scene> scene = nullptr;
 bool mouse_clicked = false;
 int previous_pos_x = -1;
 int previous_pos_y = -1;
@@ -155,7 +155,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     ShowWindow( hWnd, SW_SHOW );
 
     Renderer renderer( hWnd, windowRect );
-    scene = new Scene();
 
     Assimp::Importer importer;
     const aiScene* aiScene = importer.ReadFile( "resource/suzanne.obj",
@@ -205,12 +204,19 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             vertex_indices_data[ i * 3 + j ] = face.mIndices[ j ];
     }
 
-    Mesh<Vertex>* mesh = new Mesh<Vertex>( vertex_buffer_data, vertices_count, vertex_indices_data, indices_count );
-    mesh->addBindable( new InputLayout( inputLayoutDesc, _countof( inputLayoutDesc ) ) );
-    mesh->addBindable( new VertexShader( "shader/test_vs.hlsl" ) );
-    mesh->addBindable( new PixelShader( "shader/test_ps.hlsl" ) );
-    mesh->addResource( new Texture( "resource/demoTex.jpeg" ) );
-    scene->addDrawable( mesh );
+    scene = std::make_unique<Scene>();
+
+    Mesh* mesh = new Mesh( "suzanne", {"depth","main"});
+    mesh->addInputLayoutElement( "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT );
+    mesh->addInputLayoutElement( "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT );
+    mesh->addInputLayoutElement( "TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT );
+    mesh->addInputLayoutElement( "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT );
+    mesh->addInputLayoutElement( "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT );
+    mesh->setVertexBuffer( vertex_buffer_data, sizeof(Vertex), vertices_count );
+    mesh->setIndexBuffer( vertex_indices_data, indices_count );
+    mesh->setShaders( "shader/test_vs.hlsl", "shader/test_ps.hlsl" );
+    mesh->addResource( new Texture("suzanne_demoTex", "resource/demoTex.jpeg", DXGI_FORMAT_R8G8B8A8_UNORM ) );
+    scene->addGeometry( mesh );
 
     MSG msg = {};
     while ( msg.message != WM_QUIT )
@@ -221,10 +227,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             DispatchMessage( &msg );
         }
 
-        renderer.renderScene(*scene);
+        renderer.drawScene(*scene);
     }
-    
-    delete scene;
 
     return 0;
 }

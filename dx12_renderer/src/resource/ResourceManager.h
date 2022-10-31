@@ -9,23 +9,35 @@ using namespace Microsoft::WRL;
 #include <type_traits>
 
 #include <Manager.h>
-#include <resource/IResource.h>
 #include <resource/DescriptorHeap.h>
+#include <resource/IResource.h>
+#include <resource/ConstantBuffer.h>
+#include <resource/Texture.h>
+#include <resource/TextureCube.h>
+#include <resource/TextureSampler.h>
 
-class ResourceManager : Manager<ResourceManager>
+class ResourceManager : public Manager<ResourceManager>
 {
-    friend class Manager<ResourceManager>;
 public:
+    ~ResourceManager() = default;
 
-    template<typename resource_type, typename std::is_base_of<IResource, resource_type>::value, typename... Args, typename std::is_constructible<resource_type, Args...>::value>
-    std::shared_ptr<resource_type> createResource( std::string resourceName, Args&&... args );
+    void createBackbuffer( std::string resourceName, ComPtr<ID3D12Resource> backbuffer );
 
-    template<typename resource_type, typename std::is_base_of<IResource, resource_type>::value>
+    std::shared_ptr<ConstantBuffer> createConstantBuffer( std::string resourceName, void* data, UINT sizeInBytes );
+
+    template<typename... Args, typename std::is_constructible<Texture, Args...>::value>
+    std::shared_ptr<Texture> createTexture( Args&&... args );
+
+    template<typename resource_type>
     std::shared_ptr<resource_type> getResource( std::string resourceName );
+
+    DescriptorHeap const& getCbvSrvUavDescriptorHeap() const { return *m_descriptorHeapCbvSrvUav; }
+    DescriptorHeap const& getSamplerDescriptorHeap() const { return *m_descriptorHeapSampler; }
+    DescriptorHeap const& getRtvUavDescriptorHeap() const { return *m_descriptorHeapRtv; }
+    DescriptorHeap const& getDsvDescriptorHeap() const { return *m_descriptorHeapDsv; }
 
 private:
     ResourceManager();
-    ~ResourceManager() = default;
 
     using ResourceMap = std::unordered_map< std::string, std::shared_ptr<IResource> >;
     ResourceMap m_resources;

@@ -21,6 +21,8 @@ file(GLOB_RECURSE demoApp_src
     "src/*.cpp"
 )
 
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${demoApp_src})
+
 add_executable(demoApp WIN32)
 target_sources(demoApp PRIVATE ${demoApp_src})
 
@@ -52,6 +54,8 @@ add_custom_command(TARGET demoApp POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/dx12_renderer/external/dxc/bin/x64/dxcompiler.dll $<TARGET_FILE_DIR:demoApp>)
 add_custom_command(TARGET demoApp POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/dx12_renderer/external/dxc/bin/x64/dxil.dll $<TARGET_FILE_DIR:demoApp>)
+add_custom_command(TARGET demoApp POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/dx12_renderer/external/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll $<TARGET_FILE_DIR:demoApp>)
 add_custom_command(TARGET demoApp POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/dx12_renderer/shader $<TARGET_FILE_DIR:demoApp>/shader)
 add_custom_command(TARGET demoApp POST_BUILD

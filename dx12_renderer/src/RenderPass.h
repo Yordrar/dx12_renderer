@@ -8,15 +8,29 @@ using namespace Microsoft::WRL;
 #include <vector>
 #include <string>
 
+#include <Renderer.h>
 #include <Scene.h>
 
 class RenderPass
 {
 public:
-    RenderPass( std::string name, std::initializer_list<Scene> scenes );
+    RenderPass( std::string name,
+                std::string techniqueName,
+                std::string renderTargetName,
+                std::string depthStencilTargetName );
     ~RenderPass();
 
+    ID3D12GraphicsCommandList* getCommandList() const { return m_commandList.Get(); }
+
+    void record( Scene& scene );
+
 private:
-    std::vector<Scene> m_scenes;
+    std::string m_name;
+    std::string m_techniqueName;
+    ComPtr<ID3D12GraphicsCommandList> m_commandList;
+    ComPtr<ID3D12CommandAllocator> m_commandAllocators[ Renderer::sc_numBackBuffers ];
+
+    std::shared_ptr<Texture> m_renderTarget;
+    std::shared_ptr<Texture> m_depthStencilTarget;
 };
 

@@ -36,15 +36,15 @@ IndexBuffer::~IndexBuffer()
 	delete[] m_indices;
 }
 
-void IndexBuffer::bind( Renderer::RenderContext& context )
+void IndexBuffer::bind( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
 	if ( m_isDirty )
 	{
-		context.m_commandList->ResourceBarrier( 1, &CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
+		commandList->ResourceBarrier( 1, &CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
 																				D3D12_RESOURCE_STATE_COMMON,
 																				D3D12_RESOURCE_STATE_COPY_DEST ) );
-		UpdateSubresources<1>( context.m_commandList.Get(), m_bufferResource.Get(), m_intermediateUploadBuffer.Get(), 0, 0, 1, &m_subResourceData );
-		context.m_commandList->ResourceBarrier( 1, &CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
+		UpdateSubresources<1>( commandList.Get(), m_bufferResource.Get(), m_intermediateUploadBuffer.Get(), 0, 0, 1, &m_subResourceData );
+		commandList->ResourceBarrier( 1, &CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
 																				D3D12_RESOURCE_STATE_COPY_DEST,
 																				D3D12_RESOURCE_STATE_GENERIC_READ ) );
 		m_isDirty = false;
@@ -54,6 +54,6 @@ void IndexBuffer::bind( Renderer::RenderContext& context )
 	view.BufferLocation = m_bufferResource->GetGPUVirtualAddress();
 	view.SizeInBytes = sizeof( UINT ) * m_indexCount;
 	view.Format = DXGI_FORMAT_R32_UINT;
-	context.m_commandList->IASetIndexBuffer(&view);
-	context.m_commandList->IASetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+	commandList->IASetIndexBuffer(&view);
+	commandList->IASetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 }

@@ -1,9 +1,11 @@
 #include "ConstantBuffer.h"
 
+#include <string>
+
 #include <Renderer.h>
 #include <resource/ResourceManager.h>
 
-ConstantBuffer::ConstantBuffer(void* data, UINT sizeInBytes, LPCWSTR debugName )
+ConstantBuffer::ConstantBuffer( std::string name, void* data, UINT sizeInBytes )
     : m_data(data)
     , m_sizeInBytes( sizeInBytes )
     , m_alignedSizeInBytes( getSizeAligned256( sizeInBytes ) )
@@ -17,16 +19,7 @@ ConstantBuffer::ConstantBuffer(void* data, UINT sizeInBytes, LPCWSTR debugName )
     subresData.SlicePitch = 0;
     m_subresourceData.push_back( subresData );
 
-    if ( debugName )
-    {
-        m_resource->SetName( debugName );
-    }
-
-    D3D12_CONSTANT_BUFFER_VIEW_DESC cbv;
-    cbv.BufferLocation = getGPUVirtualAddress();
-    cbv.SizeInBytes = m_alignedSizeInBytes;
-
-    m_handle = ResourceManager::it()->getSrvCbvUavDescriptorHeap()->addCBV( &cbv );
+    m_resource->SetName( std::wstring(name.begin(), name.end()).c_str() );
 }
 
 ConstantBuffer::~ConstantBuffer()

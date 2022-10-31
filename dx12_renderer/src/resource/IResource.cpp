@@ -6,25 +6,19 @@ IResource::~IResource()
 {
 }
 
-UINT IResource::getSlot()
+void IResource::transitionToState( ComPtr<ID3D12GraphicsCommandList> commandList, D3D12_RESOURCE_STATES newState )
 {
-    return m_handle.getSlot();
-}
-
-void IResource::updateResource( Renderer::RenderContext& context )
-{
-    assert( m_subresourceData.size() > 0 );
-    context.m_commandList->ResourceBarrier( 1, &CD3DX12_RESOURCE_BARRIER::Transition( m_resource.Get(),
-                                                                                        D3D12_RESOURCE_STATE_GENERIC_READ,
-                                                                                        D3D12_RESOURCE_STATE_COPY_DEST ) );
-    UpdateSubresources( context.m_commandList.Get(),
-                        m_resource.Get(),
-                        m_intermediateUploadBuffer.Get(), 0,
-                        0, m_subresourceData.size(),
-                        m_subresourceData.data() );
-    context.m_commandList->ResourceBarrier( 1, &CD3DX12_RESOURCE_BARRIER::Transition( m_resource.Get(),
-                                                                                        D3D12_RESOURCE_STATE_COPY_DEST,
-                                                                                        D3D12_RESOURCE_STATE_GENERIC_READ ) );
+    if ( newState != m_resourceState )
+    {
+        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition
+        (
+            m_resource.Get(),
+            m_resourceState,
+            newState
+        );
+        commandList->ResourceBarrier( 1, &barrier );
+        m_resourceState = newState;
+    }
 }
 
 void IResource::initInternalResources( CD3DX12_RESOURCE_DESC resourceDesc )

@@ -4,17 +4,20 @@ template<typename T>
 class Manager
 {
 protected:
-    Manager() noexcept = default;
+    Manager() = default;
+
+public:
     Manager( const Manager& ) = delete;
+    Manager( Manager&& ) = delete;
 
     virtual ~Manager() = default;
 
     Manager& operator=( const Manager& ) = delete;
+    Manager& operator=( Manager&& ) = delete;
 
-public:
-    static T& it() noexcept( std::is_nothrow_constructible<T>::value )
+    static T& it()
     {
-        static T instance{};
+        static T instance;
         return instance;
     }
 };

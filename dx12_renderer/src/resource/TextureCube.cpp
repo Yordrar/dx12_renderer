@@ -1,7 +1,7 @@
 #include "TextureCube.h"
 
 #include <resource/ResourceManager.h>
-#include <resource/stb_image.h>
+#include <stb_image.h>
 
 TextureCube::TextureCube( std::string path )
 {

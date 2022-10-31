@@ -9,55 +9,42 @@ using namespace Microsoft::WRL;
 #include <vector>
 
 #include <RenderPass.h>
+#include <Fence.h>
 
 class Scene;
 
 class Renderer
 {
 public:
-    struct PipelineStateStream
-    {
-        CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE m_rootSignature;
-        CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT m_inputLayout;
-        CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY m_topologyType;
-        CD3DX12_PIPELINE_STATE_STREAM_VS m_vertexShader;
-        CD3DX12_PIPELINE_STATE_STREAM_PS m_pixelShader;
-        CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT m_dsvFormat;
-        CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS m_rtvFormats;
-        CD3DX12_PIPELINE_STATE_STREAM_RASTERIZER m_rasterizer;
-    };
-
-    struct RenderContext
-    {
-        ComPtr<ID3D12GraphicsCommandList> m_commandList;
-        PipelineStateStream m_pipelineState;
-        ComPtr<ID3D12DescriptorHeap> m_cameraDescriptors;
-    };
-
     Renderer(HWND hWnd, RECT windowRect);
     ~Renderer();
 
     static ComPtr<ID3D12Device2> device() { return m_device; }
 
-    void addRenderPass(RenderPass& renderPass);
+    void addRenderPass( RenderPass& renderPass );
+    void drawScene( Scene& scene );
 
     static constexpr UINT sc_numBackBuffers = 3;
+    static UINT getCurrentFrameIndex() { return s_currentBackBufferIndex; }
+    static RECT getWindowRect() { return s_windowRect; }
+    static ComPtr<ID3D12RootSignature> getRootSignature() { return s_rootSignature; }
 
 private:
     HWND m_hWnd;
-    RECT m_windowRect;
+    static RECT s_windowRect;
 
     static ComPtr<ID3D12Device2> m_device;
+    static UINT s_currentBackBufferIndex;
     ComPtr<IDXGISwapChain4> m_swapChain;
     ComPtr<ID3D12Resource> m_backBuffers[ sc_numBackBuffers ];
     ComPtr<ID3D12Resource> m_depthBuffers[ sc_numBackBuffers ];
-    ComPtr<ID3D12CommandAllocator> m_commandAllocators[ sc_numBackBuffers ];
-    UINT m_currentBackBufferIndex;
 
     ComPtr<ID3D12CommandQueue> m_graphicsCmdQueue;
+    std::unique_ptr<Fence> m_fence;
     ComPtr<ID3D12CommandQueue> m_computeCmdQueue;
     ComPtr<ID3D12CommandQueue> m_copyCmdQueue;
 
     std::vector<RenderPass> m_renderPasses;
+    static ComPtr<ID3D12RootSignature> s_rootSignature;
 };
 

@@ -1,16 +1,13 @@
 #pragma once
 
-#include <d3d12.h>
-#include <d3dx12.h>
-#include <wrl.h>
-using namespace Microsoft::WRL;
+#include <string>
 
 #include <resource/IResource.h>
 
 class ConstantBuffer : public IResource
 {
 public:
-	ConstantBuffer( void* data, UINT sizeInBytes, LPCWSTR debugName = nullptr );
+	ConstantBuffer( std::string name, void* data, UINT sizeInBytes );
 	~ConstantBuffer();
 
 	UINT getSizeInBytes() const { return m_sizeInBytes; }

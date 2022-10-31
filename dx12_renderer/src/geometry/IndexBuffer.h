@@ -1,16 +1,18 @@
 #pragma once
 
+#include <d3d12.h>
+#include <wrl.h>
+using namespace Microsoft::WRL;
+
 #include <vector>
 
-#include <bindable/IBindable.h>
-
-class IndexBuffer : public IBindable
+class IndexBuffer
 {
 public:
 	IndexBuffer( UINT* indices, UINT count );
 	virtual ~IndexBuffer();
 
-	virtual void bind( Renderer::RenderContext& context ) override;
+	void bind( ComPtr<ID3D12GraphicsCommandList> commandList );
 
 	UINT getIndexCount() const { return m_indexCount; }
 

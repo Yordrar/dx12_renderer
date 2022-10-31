@@ -13,7 +13,7 @@ DescriptorHeap::DescriptorHeap( D3D12_DESCRIPTOR_HEAP_DESC heapDesc )
     Renderer::device()->CreateDescriptorHeap( &heapDesc, IID_PPV_ARGS( m_heap.GetAddressOf() ) );
 }
 
-ResourceHandle DescriptorHeap::addSRV( ComPtr<ID3D12Resource> resource, D3D12_SHADER_RESOURCE_VIEW_DESC* srv )
+UINT DescriptorHeap::addSRV( ComPtr<ID3D12Resource> resource, D3D12_SHADER_RESOURCE_VIEW_DESC* srv )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
 
@@ -22,10 +22,10 @@ ResourceHandle DescriptorHeap::addSRV( ComPtr<ID3D12Resource> resource, D3D12_SH
     CD3DX12_CPU_DESCRIPTOR_HANDLE handle( m_heap->GetCPUDescriptorHandleForHeapStart(), slot, m_incrementSize );
     Renderer::device()->CreateShaderResourceView( resource.Get(), srv, handle );
 
-    return ResourceHandle(slot);
+    return slot;
 }
 
-ResourceHandle DescriptorHeap::addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC* cbv )
+UINT DescriptorHeap::addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC* cbv )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
 
@@ -34,10 +34,10 @@ ResourceHandle DescriptorHeap::addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC* cbv )
     CD3DX12_CPU_DESCRIPTOR_HANDLE handle( m_heap->GetCPUDescriptorHandleForHeapStart(), slot, m_incrementSize );
     Renderer::device()->CreateConstantBufferView( cbv, handle );
 
-    return ResourceHandle( slot );
+    return slot;
 }
 
-ResourceHandle DescriptorHeap::addUAV( ComPtr<ID3D12Resource> resource, D3D12_UNORDERED_ACCESS_VIEW_DESC* uav )
+UINT DescriptorHeap::addUAV( ComPtr<ID3D12Resource> resource, D3D12_UNORDERED_ACCESS_VIEW_DESC* uav )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
 
@@ -46,10 +46,10 @@ ResourceHandle DescriptorHeap::addUAV( ComPtr<ID3D12Resource> resource, D3D12_UN
     CD3DX12_CPU_DESCRIPTOR_HANDLE handle( m_heap->GetCPUDescriptorHandleForHeapStart(), slot, m_incrementSize );
     Renderer::device()->CreateUnorderedAccessView( resource.Get(), nullptr, uav, handle );
 
-    return ResourceHandle( slot );
+    return slot;
 }
 
-ResourceHandle DescriptorHeap::addSampler( D3D12_SAMPLER_DESC* samplerDesc )
+UINT DescriptorHeap::addSampler( D3D12_SAMPLER_DESC* samplerDesc )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER );
 
@@ -58,10 +58,10 @@ ResourceHandle DescriptorHeap::addSampler( D3D12_SAMPLER_DESC* samplerDesc )
     CD3DX12_CPU_DESCRIPTOR_HANDLE handle( m_heap->GetCPUDescriptorHandleForHeapStart(), slot, m_incrementSize );
     Renderer::device()->CreateSampler( samplerDesc, handle );
 
-    return ResourceHandle( slot );
+    return slot;
 }
 
-ResourceHandle DescriptorHeap::addRTV( ComPtr<ID3D12Resource> resource, D3D12_RENDER_TARGET_VIEW_DESC* rtv )
+UINT DescriptorHeap::addRTV( ComPtr<ID3D12Resource> resource, D3D12_RENDER_TARGET_VIEW_DESC* rtv )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_RTV );
 
@@ -70,10 +70,10 @@ ResourceHandle DescriptorHeap::addRTV( ComPtr<ID3D12Resource> resource, D3D12_RE
     CD3DX12_CPU_DESCRIPTOR_HANDLE handle( m_heap->GetCPUDescriptorHandleForHeapStart(), slot, m_incrementSize );
     Renderer::device()->CreateRenderTargetView( resource.Get(), rtv, handle );
 
-    return ResourceHandle( slot );
+    return slot;
 }
 
-ResourceHandle DescriptorHeap::addDSV( ComPtr<ID3D12Resource> resource, D3D12_DEPTH_STENCIL_VIEW_DESC* dsv )
+UINT DescriptorHeap::addDSV( ComPtr<ID3D12Resource> resource, D3D12_DEPTH_STENCIL_VIEW_DESC* dsv )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_DSV );
 
@@ -82,7 +82,7 @@ ResourceHandle DescriptorHeap::addDSV( ComPtr<ID3D12Resource> resource, D3D12_DE
     CD3DX12_CPU_DESCRIPTOR_HANDLE handle( m_heap->GetCPUDescriptorHandleForHeapStart(), slot, m_incrementSize );
     Renderer::device()->CreateDepthStencilView( resource.Get(), dsv, handle );
 
-    return ResourceHandle( slot );
+    return slot;
 }
 
 UINT DescriptorHeap::getNextSlot()
