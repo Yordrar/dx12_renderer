@@ -8,8 +8,9 @@ using namespace Microsoft::WRL;
 #include <vector>
 #include <string>
 
-#include <Renderer.h>
+#include <RendererConstants.h>
 #include <Scene.h>
+#include <resource/Texture.h>
 
 class RenderPass
 {
@@ -28,7 +29,7 @@ private:
     std::string m_name;
     std::string m_techniqueName;
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
-    ComPtr<ID3D12CommandAllocator> m_commandAllocators[ Renderer::sc_numBackBuffers ];
+    ComPtr<ID3D12CommandAllocator> m_commandAllocators[ RendererConstants::sc_numBackBuffers ];
 
     std::shared_ptr<Texture> m_renderTarget;
     std::shared_ptr<Texture> m_depthStencilTarget;

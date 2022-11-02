@@ -28,3 +28,8 @@ VSOut main_vs( VSIn vertexData )
     vsOut.m_bitangent = vertexData.m_bitangent;
     return vsOut;
 }
+
+VSOut depth_vs( VSIn vertexData )
+{
+    return main_vs( vertexData );
+}

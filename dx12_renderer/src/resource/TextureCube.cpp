@@ -1,6 +1,5 @@
 #include "TextureCube.h"
 
-#include <resource/ResourceManager.h>
 #include <stb_image.h>
 
 TextureCube::TextureCube( std::string path )
@@ -30,8 +29,6 @@ TextureCube::TextureCube( std::string path )
 	srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
 	srv.TextureCube.MipLevels = 6;
 	srv.TextureCube.MostDetailedMip = 0;
-
-	m_handle = ResourceManager::it()->getSrvCbvUavDescriptorHeap()->addSRV( m_resource, &srv );
 }
 
 TextureCube::~TextureCube()

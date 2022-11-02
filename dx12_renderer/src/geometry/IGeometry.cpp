@@ -5,3 +5,7 @@ IGeometry::IGeometry( std::string name, std::initializer_list<std::string> rende
     , m_renderPassNames( renderPassNames )
 {
 }
+
+IGeometry::~IGeometry()
+{
+}

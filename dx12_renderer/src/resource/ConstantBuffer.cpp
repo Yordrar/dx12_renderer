@@ -3,7 +3,6 @@
 #include <string>
 
 #include <Renderer.h>
-#include <resource/ResourceManager.h>
 
 ConstantBuffer::ConstantBuffer( std::string name, void* data, UINT sizeInBytes )
     : m_data(data)

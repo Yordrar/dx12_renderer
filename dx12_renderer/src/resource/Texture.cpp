@@ -3,8 +3,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <resource/ResourceManager.h>
-
 Texture::Texture( std::string resourceName, std::string filename, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_TEXTURE_LAYOUT layout )
 {
     int width, height, nrChannels;

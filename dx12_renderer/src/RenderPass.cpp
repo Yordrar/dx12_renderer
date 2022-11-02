@@ -14,7 +14,7 @@ RenderPass::RenderPass( std::string name,
     : m_name( name )
     , m_techniqueName( techniqueName )
 {
-    for ( int i = 0; i < Renderer::sc_numBackBuffers; ++i )
+    for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
     {
         Renderer::device()->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_commandAllocators[ i ] ) );
     }
@@ -56,10 +56,10 @@ void RenderPass::record( Scene& scene )
         ResourceManager::it().getSamplerDescriptorHeap().getHeap().Get(),
     };
     m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
+    m_commandList->SetGraphicsRootDescriptorTable( 3, ResourceManager::it().getCbvSrvUavDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetGraphicsRootDescriptorTable( 4, ResourceManager::it().getCbvSrvUavDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetGraphicsRootDescriptorTable( 5, ResourceManager::it().getCbvSrvUavDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 6, ResourceManager::it().getCbvSrvUavDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 7, ResourceManager::it().getSamplerDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 6, ResourceManager::it().getSamplerDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
 
     // Resource barriers
     m_renderTarget->transitionToState( m_commandList, D3D12_RESOURCE_STATE_RENDER_TARGET );
@@ -69,6 +69,8 @@ void RenderPass::record( Scene& scene )
     static FLOAT clearColor[ 4 ] = { 0.4f, 0.6f, 0.9f, 1.0f };
     m_commandList->ClearRenderTargetView( m_renderTarget->getDescriptor(), clearColor, 0, nullptr );
     m_commandList->ClearDepthStencilView( m_depthStencilTarget->getDescriptor(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0.0f, 0, nullptr );
+
+    m_commandList->OMSetRenderTargets( 1, &m_renderTarget->getDescriptor(), false, &m_depthStencilTarget->getDescriptor() );
 
     // Draw geometry
     PSOManager::PipelineStateStream pipelineState;

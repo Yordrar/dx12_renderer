@@ -11,7 +11,6 @@ ResourceManager::ResourceManager()
     heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     heapDesc.NumDescriptors = 1024;
     heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-
     m_descriptorHeapCbvSrvUav = std::make_unique<DescriptorHeap>( heapDesc );
 
     heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
@@ -56,35 +55,6 @@ std::shared_ptr<ConstantBuffer> ResourceManager::createConstantBuffer( std::stri
     m_resources[ resourceName ]->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapCbvSrvUav->getHeap()->GetCPUDescriptorHandleForHeapStart(),
                                                                                m_resources[ resourceName ]->m_descriptorIndex,
                                                                                m_descriptorHeapCbvSrvUav->getIncrementSize() );
-}
 
-template<typename... Args, typename std::is_constructible<Texture, Args...>::value>
-std::shared_ptr<Texture> ResourceManager::createTexture( Args&&... args )
-{
-    std::shared_ptr<Texture> texture = std::make_shared<Texture>( std::forward(args) );
-    m_resources[ resourceName ] = texture;
-
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
-    srvDesc.Format = texture->getFormat();
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = 6;
-    srvDesc.Texture2D.MostDetailedMip = 0;
-    srvDesc.Texture2D.PlaneSlice = 0;
-
-    m_resources[ resourceName ]->m_descriptorIndex = m_descriptorHeapCbvSrvUav->addSRV( texture->getResource(), &srvDesc );
-    m_resources[ resourceName ]->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapCbvSrvUav->getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                                                               m_resources[ resourceName ]->m_descriptorIndex,
-                                                                               m_descriptorHeapCbvSrvUav->getIncrementSize() );
-}
-
-template<typename resource_type>
-std::shared_ptr<resource_type> ResourceManager::getResource( std::string resourceName )
-{
-    ResourceMap::iterator it = m_resources.find( resourceName );
-
-    if ( it != m_resources.end() )
-    {
-        return static_cast<std::shared_ptr<resource_type>>( it->second );
-    }
-    return nullptr;
+    return buffer;
 }

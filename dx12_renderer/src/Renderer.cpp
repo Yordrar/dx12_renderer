@@ -4,7 +4,10 @@
 
 #include <resource/ResourceManager.h>
 
-ComPtr<ID3D12Device2> Renderer::m_device{ nullptr };
+RECT Renderer::s_windowRect;
+ComPtr<ID3D12Device2> Renderer::s_device{ nullptr };
+UINT Renderer::s_currentBackBufferIndex = 0;
+ComPtr<ID3D12RootSignature> Renderer::s_rootSignature{ nullptr };
 
 Renderer::Renderer( HWND hWnd, RECT windowRect )
     : m_hWnd(hWnd)
@@ -45,12 +48,12 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     }
 
     // Create dx12 device
-    D3D12CreateDevice( selectedAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS( &m_device ) );
+    D3D12CreateDevice( selectedAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS( &s_device ) );
 
     // Debug break on error
 #if defined(_DEBUG)
     ComPtr<ID3D12InfoQueue> pInfoQueue;
-    if ( SUCCEEDED( m_device.As( &pInfoQueue ) ) )
+    if ( SUCCEEDED( s_device.As( &pInfoQueue ) ) )
     {
         pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE );
         pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_ERROR, TRUE );
@@ -58,7 +61,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     }
 #endif
 
-    m_fence = std::make_unique<Fence>( m_device );
+    m_fence = std::make_unique<Fence>( s_device );
 
     // Create command queues
     D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = {};
@@ -66,13 +69,13 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     cmdQueueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
     cmdQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     cmdQueueDesc.NodeMask = 0;
-    m_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_graphicsCmdQueue ) );
+    s_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_graphicsCmdQueue ) );
 
     cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-    m_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_computeCmdQueue ) );
+    s_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_computeCmdQueue ) );
 
     cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
-    m_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_copyCmdQueue ) );
+    s_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_copyCmdQueue ) );
 
     // Create swap chain
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
@@ -82,7 +85,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     swapChainDesc.Stereo = FALSE;
     swapChainDesc.SampleDesc = { 1, 0 };
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.BufferCount = sc_numBackBuffers;
+    swapChainDesc.BufferCount = RendererConstants::sc_numBackBuffers;
     swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
     swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
@@ -95,7 +98,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
     optimizedClearValue.DepthStencil = { 1.0f, 0 };
     // Create RTVs for the backbuffers
-    for ( int i = 0; i < sc_numBackBuffers; ++i )
+    for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
     {
         ComPtr<ID3D12Resource> backBuffer;
         m_swapChain->GetBuffer( i, IID_PPV_ARGS( &backBuffer ) );
@@ -104,12 +107,11 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
 
 
     // Create root signature
-    CD3DX12_ROOT_PARAMETER slotRootParameters[ 8 ] = {};
+    CD3DX12_ROOT_PARAMETER slotRootParameters[ 7 ] = {};
 
     slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Camera buffer
-    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Bindless indices
-    slotRootParameters[ 2 ].InitAsConstantBufferView( 2, 0 ); // Material params
-    slotRootParameters[ 3 ].InitAsConstantBufferView( 3, 0 ); // Light buffer
+    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Light buffer
+    slotRootParameters[ 2 ].InitAsConstantBufferView( 2, 0 ); // Bindless indices
 
     // Bindless resources
     D3D12_DESCRIPTOR_RANGE srvRangeBufferHeap{};
@@ -118,7 +120,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeBufferHeap.OffsetInDescriptorsFromTableStart = 0;
     srvRangeBufferHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     srvRangeBufferHeap.RegisterSpace = 0;
-    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeBufferHeap );
+    slotRootParameters[ 3 ].InitAsDescriptorTable( 1, &srvRangeBufferHeap );
 
     D3D12_DESCRIPTOR_RANGE srvRangeTexture2DHeap{};
     srvRangeTexture2DHeap.BaseShaderRegister = 0;
@@ -126,7 +128,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeTexture2DHeap.OffsetInDescriptorsFromTableStart = 0;
     srvRangeTexture2DHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     srvRangeTexture2DHeap.RegisterSpace = 1;
-    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeTexture2DHeap );
+    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeTexture2DHeap );
 
     D3D12_DESCRIPTOR_RANGE srvRangeTextureCubeHeap{};
     srvRangeTextureCubeHeap.BaseShaderRegister = 0;
@@ -134,7 +136,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeTextureCubeHeap.OffsetInDescriptorsFromTableStart = 0;
     srvRangeTextureCubeHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     srvRangeTextureCubeHeap.RegisterSpace = 2;
-    slotRootParameters[ 6 ].InitAsDescriptorTable( 1, &srvRangeTextureCubeHeap );
+    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeTextureCubeHeap );
 
     D3D12_DESCRIPTOR_RANGE srvRangeSamplerHeap{};
     srvRangeSamplerHeap.BaseShaderRegister = 0;
@@ -142,7 +144,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeSamplerHeap.OffsetInDescriptorsFromTableStart = 0;
     srvRangeSamplerHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
     srvRangeSamplerHeap.RegisterSpace = 0;
-    slotRootParameters[ 7 ].InitAsDescriptorTable( 1, &srvRangeSamplerHeap );
+    slotRootParameters[ 6 ].InitAsDescriptorTable( 1, &srvRangeSamplerHeap );
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( _countof(slotRootParameters), slotRootParameters, 0, nullptr,
                                              D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |

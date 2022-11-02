@@ -12,6 +12,7 @@ using namespace Microsoft::WRL;
 
 class PSOManager : public Manager<PSOManager>
 {
+    friend class Manager<PSOManager>;
 public:
     struct PipelineStateStream
     {

@@ -30,12 +30,12 @@ void Mesh::setVertexBuffer( void* vertexData, UINT vertexSize, UINT vertexCount 
     m_vertexBuffer = std::make_unique<VertexBuffer>( vertexData, vertexSize, vertexCount );
 }
 
-void Mesh::setIndexBuffer( void* indexData, UINT indexCount )
+void Mesh::setIndexBuffer( UINT* indexData, UINT indexCount )
 {
     m_indexBuffer = std::make_unique<IndexBuffer>( indexData, indexCount );
 }
 
-void Mesh::setShaders( std::string& vertexShaderFilename, std::string& pixelShaderFilename )
+void Mesh::setShaders( std::string vertexShaderFilename, std::string pixelShaderFilename )
 {
     m_vertexShaderFilename = std::wstring( vertexShaderFilename.begin(), vertexShaderFilename.end() );
     m_pixelShaderFilename = std::wstring( pixelShaderFilename.begin(), pixelShaderFilename.end() );
@@ -44,7 +44,7 @@ void Mesh::setShaders( std::string& vertexShaderFilename, std::string& pixelShad
 void Mesh::addResource( IResource* resource )
 {
     std::unique_ptr<IResource> newResource( resource );
-    m_resources.push_back( newResource );
+    m_resources.push_back( std::move(newResource) );
 }
 
 void Mesh::recordRenderPass( std::string techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
@@ -60,11 +60,14 @@ void Mesh::recordRenderPass( std::string techniqueName, ComPtr<ID3D12GraphicsCom
 
     std::wstring techniqueNameWide = std::wstring( techniqueName.begin(), techniqueName.end() );
     ShaderManager::ShaderParams shaderParams;
+    shaderParams.m_enableDebug = true;
+
     shaderParams.m_filename = m_vertexShaderFilename;
     shaderParams.m_entryPoint = techniqueNameWide + L"_vs";
     shaderParams.m_shaderType = ShaderManager::ShaderType::VertexShader;
-    shaderParams.m_enableDebug = true;
     pipelineState.m_vertexShader = ShaderManager::it().getShader( shaderParams );
+
+    shaderParams.m_filename = m_pixelShaderFilename;
     shaderParams.m_entryPoint = techniqueNameWide + L"_ps";
     shaderParams.m_shaderType = ShaderManager::ShaderType::PixelShader;
     pipelineState.m_pixelShader = ShaderManager::it().getShader( shaderParams );
@@ -75,6 +78,8 @@ void Mesh::recordRenderPass( std::string techniqueName, ComPtr<ID3D12GraphicsCom
 
     m_vertexBuffer->bind( commandList );
     m_indexBuffer->bind( commandList );
+
+    commandList->DrawIndexedInstanced( m_indexBuffer->getIndexCount(), 1, 0, 0, 0 );
 
     PIXEndEvent();
 }

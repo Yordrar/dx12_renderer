@@ -18,6 +18,7 @@ using namespace Microsoft::WRL;
 
 class ResourceManager : public Manager<ResourceManager>
 {
+    friend class Manager<ResourceManager>;
 public:
     ~ResourceManager() = default;
 
@@ -25,8 +26,8 @@ public:
 
     std::shared_ptr<ConstantBuffer> createConstantBuffer( std::string resourceName, void* data, UINT sizeInBytes );
 
-    template<typename... Args, typename std::is_constructible<Texture, Args...>::value>
-    std::shared_ptr<Texture> createTexture( Args&&... args );
+    template<typename... Args>
+    std::shared_ptr<Texture> createTexture( std::string resourceName, Args&&... args );
 
     template<typename resource_type>
     std::shared_ptr<resource_type> getResource( std::string resourceName );
@@ -47,3 +48,36 @@ private:
     std::unique_ptr<DescriptorHeap> m_descriptorHeapRtv;
     std::unique_ptr<DescriptorHeap> m_descriptorHeapDsv;
 };
+
+template<typename resource_type>
+std::shared_ptr<resource_type> ResourceManager::getResource( std::string resourceName )
+{
+    ResourceMap::iterator it = m_resources.find( resourceName );
+
+    if ( it != m_resources.end() )
+    {
+        return std::shared_ptr<resource_type>( static_cast<resource_type*>( it->second.get() ) );
+    }
+    return nullptr;
+}
+
+template<typename... Args>
+std::shared_ptr<Texture> ResourceManager::createTexture( std::string resourceName, Args&&... args )
+{
+    std::shared_ptr<Texture> texture = std::make_shared<Texture>( std::forward( args ) );
+    m_resources[ resourceName ] = texture;
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    srvDesc.Format = texture->getFormat();
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = 6;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    srvDesc.Texture2D.PlaneSlice = 0;
+
+    m_resources[ resourceName ]->m_descriptorIndex = m_descriptorHeapCbvSrvUav->addSRV( texture->getResource(), &srvDesc );
+    m_resources[ resourceName ]->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapCbvSrvUav->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                                               m_resources[ resourceName ]->m_descriptorIndex,
+                                                                               m_descriptorHeapCbvSrvUav->getIncrementSize() );
+
+    return texture;
+}

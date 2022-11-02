@@ -69,8 +69,3 @@ void Camera::rotate( float delta_angles_x, float delta_angles_y )
 
 	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookAtRH( m_cameraData.m_position, lookat, up ) * DirectX::XMMatrixPerspectiveFovRH(fov, aspect_ratio, 0.1f, 500.f));
 }
-
-void Camera::updateCameraBuffers(Renderer::RenderContext& context)
-{
-	m_cameraBuffer->updateResource( context );
-}

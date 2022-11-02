@@ -12,6 +12,7 @@ using namespace Microsoft::WRL;
 
 class ShaderManager : public Manager<ShaderManager>
 {
+    friend class Manager<ShaderManager>;
 public:
     enum class ShaderType
     {
@@ -36,9 +37,10 @@ public:
 private:
     ShaderManager();
 
+    std::string getShaderId( ShaderParams params );
     LPCWSTR shaderTypeToTargetString( ShaderType type );
 
-    using ShaderMap = std::unordered_map< ShaderParams, ComPtr<IDxcBlob> >;
+    using ShaderMap = std::unordered_map< std::string, ComPtr<IDxcBlob> >;
     ShaderMap m_shaders;
     ComPtr<IDxcUtils> m_utils;
     ComPtr<IDxcCompiler3> m_compiler;

@@ -18,10 +18,7 @@ using namespace Microsoft::WRL;
 #include <Renderer.h>
 #include <Scene.h>
 #include <geometry/Mesh.h>
-#include <geometry/InputLayout.h>
-#include <geometry/VertexShader.h>
-#include <geometry/PixelShader.h>
-#include <resource/Texture.h>
+#include <resource/ResourceManager.h>
 
 #include <iostream>
 
@@ -32,14 +29,6 @@ struct Vertex
     DirectX::XMFLOAT2 m_uvs;
     DirectX::XMFLOAT3 m_tangent;
     DirectX::XMFLOAT3 m_bitangent;
-};
-
-D3D12_INPUT_ELEMENT_DESC inputLayoutDesc[ 5 ] = {
-    {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-    {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-    {"TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-    {"TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-    {"BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 };
 
 std::unique_ptr<Scene> scene = nullptr;
@@ -204,7 +193,10 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             vertex_indices_data[ i * 3 + j ] = face.mIndices[ j ];
     }
 
-    scene = std::make_unique<Scene>();
+    ResourceManager::it().createTexture( "mainRenderTarget", windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM );
+    ResourceManager::it().createTexture( "mainDepthStencilTarget", windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM );
+
+    scene = std::make_unique<Scene>( "mainScene" );
 
     Mesh* mesh = new Mesh( "suzanne", {"depth","main"});
     mesh->addInputLayoutElement( "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT );
@@ -215,8 +207,13 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     mesh->setVertexBuffer( vertex_buffer_data, sizeof(Vertex), vertices_count );
     mesh->setIndexBuffer( vertex_indices_data, indices_count );
     mesh->setShaders( "shader/test_vs.hlsl", "shader/test_ps.hlsl" );
-    mesh->addResource( new Texture("suzanne_demoTex", "resource/demoTex.jpeg", DXGI_FORMAT_R8G8B8A8_UNORM ) );
+    mesh->addResource( ResourceManager::it().createTexture( "suzanne_demoTex", "resource/demoTex.jpeg", DXGI_FORMAT_R8G8B8A8_UNORM ).get() );
     scene->addGeometry( mesh );
+
+    RenderPass depthPass( "Depth Prepass", "depth", "", "mainDepthStencilTarget" );
+    RenderPass mainPass( "Main Pass", "main", "mainRenderTarget", "mainDepthStencilTarget" );
+    renderer.addRenderPass( depthPass );
+    renderer.addRenderPass( mainPass );
 
     MSG msg = {};
     while ( msg.message != WM_QUIT )

@@ -1,5 +1,10 @@
 #include "common.hlsli"
 
+cbuffer bindlessIndices : register(b2, space0)
+{
+    uint textureIdx;
+}
+
 struct PSIn
 {
     float4 m_position : SV_POSITION;

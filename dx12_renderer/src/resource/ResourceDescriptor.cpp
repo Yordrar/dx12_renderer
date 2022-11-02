@@ -1,0 +1,2 @@
+#include "ResourceDescriptor.h"
+

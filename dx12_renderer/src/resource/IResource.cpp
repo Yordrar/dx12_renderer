@@ -2,6 +2,8 @@
 
 #include <cassert>
 
+#include <Renderer.h>
+
 IResource::~IResource()
 {
 }

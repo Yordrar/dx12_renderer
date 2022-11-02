@@ -4,9 +4,7 @@
 #include <memory>
 
 #include <Camera.h>
-
-class IGeometry;
-class Texture;
+#include <geometry/IGeometry.h>
 
 class Scene
 {

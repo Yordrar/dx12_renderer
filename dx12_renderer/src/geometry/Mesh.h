@@ -18,8 +18,8 @@ public:
 
     void addInputLayoutElement( std::string semanticName, UINT semanticIndex, DXGI_FORMAT format );
     void setVertexBuffer( void* vertexData, UINT vertexSize, UINT vertexCount );
-    void setIndexBuffer( void* indexData, UINT indexCount );
-    void setShaders( std::string& vertexShaderFilename, std::string& pixelShaderFilename );
+    void setIndexBuffer( UINT* indexData, UINT indexCount );
+    void setShaders( std::string vertexShaderFilename, std::string pixelShaderFilename );
     void addResource( IResource* resource );
 
     void recordRenderPass( std::string techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState ) override;

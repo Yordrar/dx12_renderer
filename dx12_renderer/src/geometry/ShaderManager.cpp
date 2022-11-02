@@ -16,7 +16,7 @@ ShaderManager::ShaderManager()
 
 D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderParams& params )
 {
-    ShaderMap::iterator it = m_shaders.find( params );
+    ShaderMap::iterator it = m_shaders.find( getShaderId( params ) );
 
     if ( it != m_shaders.end() )
     {
@@ -89,9 +89,15 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderParams& params )
         }
     }
 
-    m_shaders[ params ] = compiledBytecodeBlob;
-    CD3DX12_SHADER_BYTECODE shaderBytecode( m_shaders[ params ]->GetBufferPointer(), m_shaders[ params ]->GetBufferSize() );
+    m_shaders[ getShaderId( params ) ] = compiledBytecodeBlob;
+    CD3DX12_SHADER_BYTECODE shaderBytecode( m_shaders[ getShaderId( params ) ]->GetBufferPointer(), m_shaders[ getShaderId( params ) ]->GetBufferSize() );
     return shaderBytecode;
+}
+
+std::string ShaderManager::getShaderId( ShaderParams params )
+{
+    std::wstring s = params.m_filename + L"/" + params.m_entryPoint + L"/" + shaderTypeToTargetString( params.m_shaderType );
+    return std::string( s.begin(), s.end() );
 }
 
 LPCWSTR ShaderManager::shaderTypeToTargetString( ShaderType type )
