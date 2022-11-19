@@ -7,7 +7,7 @@
 DescriptorHeap::DescriptorHeap( D3D12_DESCRIPTOR_HEAP_DESC heapDesc )
     : m_type(heapDesc.Type)
     , m_incrementSize(Renderer::device()->GetDescriptorHandleIncrementSize(heapDesc.Type))
-    , m_lastFreeSlot(0)
+    , m_nextFreeSlot(0)
     , m_numSlots(heapDesc.NumDescriptors)
 {
     Renderer::device()->CreateDescriptorHeap( &heapDesc, IID_PPV_ARGS( m_heap.GetAddressOf() ) );
@@ -91,7 +91,7 @@ UINT DescriptorHeap::getNextSlot()
 
     if ( m_freeSlots.empty() )
     {
-        slot = m_lastFreeSlot++;
+        slot = m_nextFreeSlot++;
     }
     else
     {

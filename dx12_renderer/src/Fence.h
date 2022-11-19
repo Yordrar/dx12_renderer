@@ -16,6 +16,7 @@ public:
 
     uint64_t signal( ComPtr<ID3D12CommandQueue> cmdQueue );
     void waitForValue( uint64_t fenceValue, std::chrono::milliseconds duration = std::chrono::milliseconds::max() );
+    uint64_t getLastSignaledValue() const { return m_fenceValue; }
 
 private:
     ComPtr<ID3D12Fence> m_fence;

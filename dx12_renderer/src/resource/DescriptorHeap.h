@@ -31,7 +31,7 @@ private:
     D3D12_DESCRIPTOR_HEAP_TYPE m_type;
     UINT m_incrementSize;
     std::queue<UINT> m_freeSlots;
-    UINT m_lastFreeSlot;
+    UINT m_nextFreeSlot;
     UINT m_numSlots;
 };
 

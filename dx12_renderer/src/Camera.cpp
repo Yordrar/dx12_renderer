@@ -1,5 +1,7 @@
 #include "Camera.h"
 
+#include <resource/ResourceManager.h>
+
 Camera::Camera( std::string name, DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio)
 	: lookat(lookat)
 	, fov(fov)
@@ -11,12 +13,7 @@ Camera::Camera( std::string name, DirectX::XMVECTOR position, DirectX::XMVECTOR 
 	m_cameraData.m_position = position;
 	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookAtRH( m_cameraData.m_position, lookat, up ) * DirectX::XMMatrixPerspectiveFovRH( fov, aspect_ratio, 0.1f, 500.f ) );
 
-	m_cameraBuffer = new ConstantBuffer( name + "_DataBuffer", &m_cameraData, sizeof(m_cameraData) );
-}
-
-Camera::~Camera()
-{
-	delete m_cameraBuffer;
+	m_cameraBuffer = ResourceManager::it().createConstantBuffer( name + "_buffer", &m_cameraData, sizeof(m_cameraData) );
 }
 
 void Camera::move( float delta_x, float delta_y, float delta_z )
@@ -68,4 +65,11 @@ void Camera::rotate( float delta_angles_x, float delta_angles_y )
 	up.m128_f32[3] = 1;
 
 	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookAtRH( m_cameraData.m_position, lookat, up ) * DirectX::XMMatrixPerspectiveFovRH(fov, aspect_ratio, 0.1f, 500.f));
+}
+
+void Camera::setCameraBufferView( ComPtr<ID3D12GraphicsCommandList> commandList )
+{
+	m_cameraBuffer->setNeedsCopyToGPU( true );
+	m_cameraBuffer->copyDataToGPU( commandList );
+	commandList->SetGraphicsRootConstantBufferView( 0, m_cameraBuffer->getGPUVirtualAddress() );
 }

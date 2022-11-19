@@ -22,15 +22,15 @@ class ResourceManager : public Manager<ResourceManager>
 public:
     ~ResourceManager() = default;
 
+    template<typename resource_type>
+    resource_type* getResource( std::string resourceName );
+
     void createBackbuffer( std::string resourceName, ComPtr<ID3D12Resource> backbuffer );
 
-    std::shared_ptr<ConstantBuffer> createConstantBuffer( std::string resourceName, void* data, UINT sizeInBytes );
+    ConstantBuffer* createConstantBuffer( std::string resourceName, void* data, UINT sizeInBytes );
 
     template<typename... Args>
-    std::shared_ptr<Texture> createTexture( std::string resourceName, Args&&... args );
-
-    template<typename resource_type>
-    std::shared_ptr<resource_type> getResource( std::string resourceName );
+    Texture* createTexture( std::string resourceName, Args&&... args );
 
     DescriptorHeap const& getCbvSrvUavDescriptorHeap() const { return *m_descriptorHeapCbvSrvUav; }
     DescriptorHeap const& getSamplerDescriptorHeap() const { return *m_descriptorHeapSampler; }
@@ -40,7 +40,7 @@ public:
 private:
     ResourceManager();
 
-    using ResourceMap = std::unordered_map< std::string, std::shared_ptr<IResource> >;
+    using ResourceMap = std::unordered_map< std::string, std::unique_ptr<IResource> >;
     ResourceMap m_resources;
 
     std::unique_ptr<DescriptorHeap> m_descriptorHeapCbvSrvUav;
@@ -50,34 +50,64 @@ private:
 };
 
 template<typename resource_type>
-std::shared_ptr<resource_type> ResourceManager::getResource( std::string resourceName )
+inline resource_type* ResourceManager::getResource( std::string resourceName )
 {
     ResourceMap::iterator it = m_resources.find( resourceName );
 
     if ( it != m_resources.end() )
     {
-        return std::shared_ptr<resource_type>( static_cast<resource_type*>( it->second.get() ) );
+        return static_cast<resource_type*>( it->second.get() );
     }
     return nullptr;
 }
 
 template<typename... Args>
-std::shared_ptr<Texture> ResourceManager::createTexture( std::string resourceName, Args&&... args )
+Texture* ResourceManager::createTexture( std::string resourceName, Args&&... args )
 {
-    std::shared_ptr<Texture> texture = std::make_shared<Texture>( std::forward( args ) );
-    m_resources[ resourceName ] = texture;
+    std::unique_ptr<Texture> texture = std::make_unique<Texture>( resourceName, std::forward<Args>( args )... );
 
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
-    srvDesc.Format = texture->getFormat();
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = 6;
-    srvDesc.Texture2D.MostDetailedMip = 0;
-    srvDesc.Texture2D.PlaneSlice = 0;
+    if ( texture->getResource()->GetDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET )
+    {
+        D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+        rtvDesc.Format = texture->getFormat();
+        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+        rtvDesc.Texture2D.MipSlice = 0;
+        rtvDesc.Texture2D.PlaneSlice = 0;
 
-    m_resources[ resourceName ]->m_descriptorIndex = m_descriptorHeapCbvSrvUav->addSRV( texture->getResource(), &srvDesc );
-    m_resources[ resourceName ]->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapCbvSrvUav->getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                                                               m_resources[ resourceName ]->m_descriptorIndex,
-                                                                               m_descriptorHeapCbvSrvUav->getIncrementSize() );
+        texture->m_descriptorIndex = m_descriptorHeapRtv->addRTV( texture->getResource(), &rtvDesc );
+        texture->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapRtv->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                               texture->m_descriptorIndex,
+                                                               m_descriptorHeapRtv->getIncrementSize() );
+    }
+    else if ( texture->getResource()->GetDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL )
+    {
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+        dsvDesc.Format = texture->getFormat();
+        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        dsvDesc.Texture2D.MipSlice = 0;
 
-    return texture;
+        texture->m_descriptorIndex = m_descriptorHeapDsv->addDSV( texture->getResource(), &dsvDesc );
+        texture->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapDsv->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                               texture->m_descriptorIndex,
+                                                               m_descriptorHeapDsv->getIncrementSize() );
+    }
+    else
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Format = texture->getFormat();
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Texture2D.MipLevels = 6;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        srvDesc.Texture2D.PlaneSlice = 0;
+
+        texture->m_descriptorIndex = m_descriptorHeapCbvSrvUav->addSRV( texture->getResource(), &srvDesc );
+        texture->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapCbvSrvUav->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                               texture->m_descriptorIndex,
+                                                               m_descriptorHeapCbvSrvUav->getIncrementSize() );
+    }
+
+    m_resources[ resourceName ] = std::move( texture );
+
+    return getResource<Texture>( resourceName );
 }

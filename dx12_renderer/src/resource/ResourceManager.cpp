@@ -26,35 +26,31 @@ ResourceManager::ResourceManager()
 
 void ResourceManager::createBackbuffer( std::string resourceName, ComPtr<ID3D12Resource> backbuffer )
 {
-    std::shared_ptr<Texture> backbufferTexture = std::make_shared<Texture>( resourceName, backbuffer );
-    m_resources[ resourceName ] = backbufferTexture;
+    std::unique_ptr<Texture> backbufferTexture = std::make_unique<Texture>( resourceName, backbuffer );
 
-    D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
-    rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-    rtvDesc.Texture2D.MipSlice = 0;
-    rtvDesc.Texture2D.PlaneSlice = 0;
+    backbufferTexture->m_descriptorIndex = m_descriptorHeapRtv->addRTV( backbufferTexture->getResource(), nullptr );
+    backbufferTexture->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapRtv->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                                     backbufferTexture->m_descriptorIndex,
+                                                                     m_descriptorHeapRtv->getIncrementSize() );
+    backbufferTexture->m_resourceState = D3D12_RESOURCE_STATE_PRESENT;
 
-    m_resources[ resourceName ]->m_descriptorIndex = m_descriptorHeapRtv->addRTV( backbufferTexture->getResource(), &rtvDesc );
-    m_resources[ resourceName ]->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapRtv->getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                                                               m_resources[ resourceName ]->m_descriptorIndex,
-                                                                               m_descriptorHeapRtv->getIncrementSize() );
-    m_resources[ resourceName ]->m_resourceState = D3D12_RESOURCE_STATE_PRESENT;
+    m_resources[ resourceName ] = std::move( backbufferTexture );
 }
 
-std::shared_ptr<ConstantBuffer> ResourceManager::createConstantBuffer( std::string resourceName, void* data, UINT sizeInBytes )
+ConstantBuffer* ResourceManager::createConstantBuffer( std::string resourceName, void* data, UINT sizeInBytes )
 {
-    std::shared_ptr<ConstantBuffer> buffer = std::make_shared<ConstantBuffer>( resourceName, data, sizeInBytes );
-    m_resources[ resourceName ] = buffer;
+    std::unique_ptr<ConstantBuffer> buffer = std::make_unique<ConstantBuffer>( resourceName, data, sizeInBytes );
 
-    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
     cbvDesc.BufferLocation = buffer->getGPUVirtualAddress();
     cbvDesc.SizeInBytes = buffer->getAlignedSizeInBytes();
 
-    m_resources[ resourceName ]->m_descriptorIndex = m_descriptorHeapCbvSrvUav->addCBV( &cbvDesc );
-    m_resources[ resourceName ]->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapCbvSrvUav->getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                                                               m_resources[ resourceName ]->m_descriptorIndex,
-                                                                               m_descriptorHeapCbvSrvUav->getIncrementSize() );
+    buffer->m_descriptorIndex = m_descriptorHeapCbvSrvUav->addCBV( &cbvDesc );
+    buffer->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapCbvSrvUav->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                          buffer->m_descriptorIndex,
+                                                          m_descriptorHeapCbvSrvUav->getIncrementSize() );
 
-    return buffer;
+    m_resources[ resourceName ] = std::move( buffer );
+
+    return getResource<ConstantBuffer>( resourceName );
 }

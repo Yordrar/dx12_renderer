@@ -23,7 +23,7 @@ VertexBuffer::VertexBuffer( void* vertices, UINT vertexSize, UINT vertexCount )
 
 	m_subResourceData = {};
 	m_subResourceData.pData = vertices;
-	m_subResourceData.RowPitch = vertexCount * vertexSize;
+	m_subResourceData.RowPitch = static_cast<UINT64>( vertexCount ) * static_cast<UINT64>( vertexSize );
 	m_subResourceData.SlicePitch = m_subResourceData.RowPitch;
 
 	m_isDirty = true;

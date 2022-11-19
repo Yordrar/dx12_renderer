@@ -16,5 +16,12 @@ struct PSIn
 
 float4 main_ps( PSIn psIn ) : SV_Target
 {
-    return texture2DResources[textureIdx].Sample(textureSampler, psIn.m_uvs);
+    return float4(1.0f, 0.0f, 0.0f, 1.0f);
+    //return texture2DResources[textureIdx].Sample(textureSampler, psIn.m_uvs);
+}
+
+float4 depth_ps(PSIn psIn) : SV_Target
+{
+    return float4(0.0f, 0.0f, 1.0f, 1.0f);
+    //return texture2DResources[textureIdx].Sample(textureSampler, psIn.m_uvs);
 }

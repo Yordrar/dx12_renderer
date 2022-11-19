@@ -18,6 +18,8 @@ ConstantBuffer::ConstantBuffer( std::string name, void* data, UINT sizeInBytes )
     subresData.SlicePitch = 0;
     m_subresourceData.push_back( subresData );
 
+    m_needsCopyToGPU = true;
+
     m_resource->SetName( std::wstring(name.begin(), name.end()).c_str() );
 }
 

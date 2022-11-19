@@ -28,10 +28,11 @@ public:
 private:
     std::string m_name;
     std::string m_techniqueName;
+    std::string m_renderTargetName;
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     ComPtr<ID3D12CommandAllocator> m_commandAllocators[ RendererConstants::sc_numBackBuffers ];
 
-    std::shared_ptr<Texture> m_renderTarget;
-    std::shared_ptr<Texture> m_depthStencilTarget;
+    Texture* m_renderTarget;
+    Texture* m_depthStencilTarget;
 };
 

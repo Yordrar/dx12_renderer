@@ -9,7 +9,7 @@
 #include <geometry/IGeometry.h>
 
 Scene::Scene( std::string name )
-    : m_camera( Camera( name+"_Camera", DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f), DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f), 90.0f, 16.0f / 9.0f))
+    : m_camera( Camera( name+"_camera", DirectX::XMVectorSet(1.0f, 1.0f, 1.0f, 0.0f), DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f), 90.0f, 16.0f / 9.0f ) )
 {
 
 }
@@ -19,19 +19,21 @@ Scene::~Scene()
 
 }
 
+void Scene::record( std::string techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
+{
+    m_camera.setCameraBufferView( commandList );
+
+    for ( std::shared_ptr<IGeometry>& geometry : m_geometry )
+    {
+        if ( geometry->getTechniqueNames().find( techniqueName ) != geometry->getTechniqueNames().end() )
+        {
+            geometry->record( techniqueName, commandList, pipelineState );
+        }
+    }
+}
+
 void Scene::addGeometry( IGeometry* geometry )
 {
     std::shared_ptr<IGeometry> newGeometry( geometry );
     m_geometry.push_back( newGeometry );
-}
-
-void Scene::getGeometryForTechnique( std::string renderPassName, std::vector< std::shared_ptr<IGeometry> >& outGeometry )
-{
-    for ( std::shared_ptr<IGeometry>& geometry : m_geometry )
-    {
-        if ( geometry->getRenderPassNames().find( renderPassName ) != geometry->getRenderPassNames().end() )
-        {
-            outGeometry.push_back( geometry );
-        }
-    }
 }

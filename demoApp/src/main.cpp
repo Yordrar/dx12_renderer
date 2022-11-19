@@ -193,8 +193,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             vertex_indices_data[ i * 3 + j ] = face.mIndices[ j ];
     }
 
-    ResourceManager::it().createTexture( "mainRenderTarget", windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM );
-    ResourceManager::it().createTexture( "mainDepthStencilTarget", windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM );
+    ResourceManager::it().createTexture( "mainRenderTarget", windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET );
+    ResourceManager::it().createTexture( "mainDepthStencilTarget", windowWidth, windowHeight, DXGI_FORMAT_D32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL );
 
     scene = std::make_unique<Scene>( "mainScene" );
 
@@ -207,13 +207,15 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     mesh->setVertexBuffer( vertex_buffer_data, sizeof(Vertex), vertices_count );
     mesh->setIndexBuffer( vertex_indices_data, indices_count );
     mesh->setShaders( "shader/test_vs.hlsl", "shader/test_ps.hlsl" );
-    mesh->addResource( ResourceManager::it().createTexture( "suzanne_demoTex", "resource/demoTex.jpeg", DXGI_FORMAT_R8G8B8A8_UNORM ).get() );
+    mesh->addResource( ResourceManager::it().createTexture( "suzanne_demoTex", "resource/demoTex.jpeg", DXGI_FORMAT_R8G8B8A8_UNORM ) );
     scene->addGeometry( mesh );
 
     RenderPass depthPass( "Depth Prepass", "depth", "", "mainDepthStencilTarget" );
     RenderPass mainPass( "Main Pass", "main", "mainRenderTarget", "mainDepthStencilTarget" );
+    RenderPass copyToBackbufferPass( "Copy to Backbuffer", "copy", "backbuffer", "" );
     renderer.addRenderPass( depthPass );
     renderer.addRenderPass( mainPass );
+    renderer.addRenderPass( copyToBackbufferPass );
 
     MSG msg = {};
     while ( msg.message != WM_QUIT )

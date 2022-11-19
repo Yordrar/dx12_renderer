@@ -14,8 +14,8 @@ public:
 
     Camera& getCamera() { return m_camera; }
 
+    void record( std::string techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
     void addGeometry( IGeometry* geometry );
-    void getGeometryForTechnique( std::string renderPassName, std::vector< std::shared_ptr<IGeometry> >& outGeometry );
 
 private:
     Camera m_camera;

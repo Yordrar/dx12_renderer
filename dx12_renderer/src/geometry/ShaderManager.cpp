@@ -3,6 +3,9 @@
 #include <d3dx12.h>
 
 #include <regex>
+#include <cstdio>
+#include <locale>
+#include <codecvt>
 
 ShaderManager::ShaderManager()
     : m_utils( nullptr )
@@ -24,7 +27,9 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderParams& params )
         return shaderBytecode;
     }
 
-    std::string filename = std::string( params.m_filename.begin(), params.m_filename.end() );
+    using convert_type = std::codecvt_utf8<wchar_t>;
+    std::wstring_convert<convert_type, wchar_t> converter;
+    std::string filename = converter.to_bytes( params.m_filename );
 
     std::string csoFilename = std::regex_replace( filename, std::regex( "hlsl" ), "cso" );
     std::wstring csoFilenameWideStr = std::wstring( csoFilename.begin(), csoFilename.end() );
@@ -42,10 +47,13 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderParams& params )
     {
         compileArgs.push_back( L"-Zi" );
     }
-    compileArgs.push_back( L"-D" );
-    for ( std::wstring& define : params.m_defines )
+    if ( params.m_defines.size() > 0 )
     {
-        compileArgs.push_back( define.c_str() );
+        compileArgs.push_back( L"-D" );
+        for ( std::wstring& define : params.m_defines )
+        {
+            compileArgs.push_back( define.c_str() );
+        }
     }
     compileArgs.push_back( L"-Fo" );
     compileArgs.push_back( csoFilenameWideStr.c_str() );
@@ -70,7 +78,23 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderParams& params )
         IID_PPV_ARGS( &compilationResult ) // Compiler output status, buffer, and errors.
     );
     ComPtr<IDxcBlob> compiledBytecodeBlob;
-    compilationResult->GetOutput( DXC_OUT_OBJECT, IID_PPV_ARGS( &compiledBytecodeBlob ), nullptr );
+    ComPtr<IDxcBlobUtf16> shaderName = nullptr;
+    compilationResult->GetOutput( DXC_OUT_OBJECT, IID_PPV_ARGS( &compiledBytecodeBlob ), &shaderName );
+   
+    //
+    // Print errors if present.
+    //
+    ComPtr<IDxcBlobUtf8> pErrors = nullptr;
+    compilationResult->GetOutput( DXC_OUT_ERRORS, IID_PPV_ARGS( &pErrors ), nullptr );
+    // Note that d3dcompiler would return null if no errors or warnings are present.
+    // IDxcCompiler3::Compile will always return an error buffer, but its length
+    // will be zero if there are no warnings or errors.
+    if ( pErrors != nullptr && pErrors->GetStringLength() != 0 )
+    {
+        LPCSTR test = pErrors->GetStringPointer();
+        wprintf( L"Warnings and Errors:\n%S\n", pErrors->GetStringPointer() );
+        fflush( stdout );
+    }
 
     // Save pdb.
     ComPtr<IDxcBlob> pdbBlob = nullptr;
@@ -97,7 +121,10 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderParams& params )
 std::string ShaderManager::getShaderId( ShaderParams params )
 {
     std::wstring s = params.m_filename + L"/" + params.m_entryPoint + L"/" + shaderTypeToTargetString( params.m_shaderType );
-    return std::string( s.begin(), s.end() );
+
+    using convert_type = std::codecvt_utf8<wchar_t>;
+    std::wstring_convert<convert_type, wchar_t> converter;
+    return converter.to_bytes( s );
 }
 
 LPCWSTR ShaderManager::shaderTypeToTargetString( ShaderType type )
@@ -110,5 +137,7 @@ LPCWSTR ShaderManager::shaderTypeToTargetString( ShaderType type )
             return L"ps_6_0";
         case ShaderType::ComputeShader:
             return L"cs_6_0";
+        default:
+            return L"";
     }
 }

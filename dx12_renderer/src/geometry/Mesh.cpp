@@ -15,13 +15,14 @@ Mesh::Mesh( std::string name, std::initializer_list<std::string> renderPassNames
 
 void Mesh::addInputLayoutElement( std::string semanticName, UINT semanticIndex, DXGI_FORMAT format )
 {
+    m_semanticNames.push_back( semanticName );
     if ( m_inputLayout.size() == 0 )
     {
-        m_inputLayout.push_back( { semanticName.c_str(), semanticIndex, format, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
+        m_inputLayout.push_back( { m_semanticNames.back().c_str(), semanticIndex, format, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
     }
     else
     {
-        m_inputLayout.push_back( { semanticName.c_str(), semanticIndex, format, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
+        m_inputLayout.push_back( { m_semanticNames.back().c_str(), semanticIndex, format, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
     }
 }
 
@@ -41,15 +42,12 @@ void Mesh::setShaders( std::string vertexShaderFilename, std::string pixelShader
     m_pixelShaderFilename = std::wstring( pixelShaderFilename.begin(), pixelShaderFilename.end() );
 }
 
-void Mesh::addResource( IResource* resource )
+void Mesh::record( std::string techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
 {
-    std::unique_ptr<IResource> newResource( resource );
-    m_resources.push_back( std::move(newResource) );
-}
+    std::string eventString = m_name + "/" + techniqueName;
+    PIXBeginEvent( commandList.Get(), PIX_COLOR_DEFAULT, eventString.c_str() );
 
-void Mesh::recordRenderPass( std::string techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
-{
-    PIXBeginEvent( PIX_COLOR_DEFAULT, m_name.c_str() );
+    IGeometry::record( techniqueName, commandList, pipelineState );
 
     D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;
     inputLayoutDesc.pInputElementDescs = m_inputLayout.data();
@@ -81,5 +79,5 @@ void Mesh::recordRenderPass( std::string techniqueName, ComPtr<ID3D12GraphicsCom
 
     commandList->DrawIndexedInstanced( m_indexBuffer->getIndexCount(), 1, 0, 0, 0 );
 
-    PIXEndEvent();
+    PIXEndEvent( commandList.Get() );
 }

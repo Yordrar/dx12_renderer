@@ -13,6 +13,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     : m_hWnd(hWnd)
 {
     s_currentBackBufferIndex = 0;
+    s_windowRect = windowRect;
 #if defined(_DEBUG)
     ComPtr<ID3D12Debug> debugInterface;
     D3D12GetDebugInterface( IID_PPV_ARGS( &debugInterface ) );
@@ -57,7 +58,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     {
         pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE );
         pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_ERROR, TRUE );
-        pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_WARNING, TRUE );
+        pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_WARNING, FALSE );
     }
 #endif
 
@@ -94,24 +95,19 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     swapChain.As( &m_swapChain );
 
 
-    D3D12_CLEAR_VALUE optimizedClearValue = {};
-    optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
-    optimizedClearValue.DepthStencil = { 1.0f, 0 };
     // Create RTVs for the backbuffers
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
     {
         ComPtr<ID3D12Resource> backBuffer;
         m_swapChain->GetBuffer( i, IID_PPV_ARGS( &backBuffer ) );
-        ResourceManager::it().createBackbuffer( "backbuffer" + i, backBuffer );
+        ResourceManager::it().createBackbuffer( "backbuffer" + std::to_string(i), backBuffer );
     }
 
 
     // Create root signature
-    CD3DX12_ROOT_PARAMETER slotRootParameters[ 7 ] = {};
+    CD3DX12_ROOT_PARAMETER slotRootParameters[ 5 ] = {};
 
     slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Camera buffer
-    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Light buffer
-    slotRootParameters[ 2 ].InitAsConstantBufferView( 2, 0 ); // Bindless indices
 
     // Bindless resources
     D3D12_DESCRIPTOR_RANGE srvRangeBufferHeap{};
@@ -120,7 +116,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeBufferHeap.OffsetInDescriptorsFromTableStart = 0;
     srvRangeBufferHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     srvRangeBufferHeap.RegisterSpace = 0;
-    slotRootParameters[ 3 ].InitAsDescriptorTable( 1, &srvRangeBufferHeap );
+    slotRootParameters[ 1 ].InitAsDescriptorTable( 1, &srvRangeBufferHeap );
 
     D3D12_DESCRIPTOR_RANGE srvRangeTexture2DHeap{};
     srvRangeTexture2DHeap.BaseShaderRegister = 0;
@@ -128,7 +124,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeTexture2DHeap.OffsetInDescriptorsFromTableStart = 0;
     srvRangeTexture2DHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     srvRangeTexture2DHeap.RegisterSpace = 1;
-    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeTexture2DHeap );
+    slotRootParameters[ 2 ].InitAsDescriptorTable( 1, &srvRangeTexture2DHeap );
 
     D3D12_DESCRIPTOR_RANGE srvRangeTextureCubeHeap{};
     srvRangeTextureCubeHeap.BaseShaderRegister = 0;
@@ -136,7 +132,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeTextureCubeHeap.OffsetInDescriptorsFromTableStart = 0;
     srvRangeTextureCubeHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     srvRangeTextureCubeHeap.RegisterSpace = 2;
-    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeTextureCubeHeap );
+    slotRootParameters[ 3 ].InitAsDescriptorTable( 1, &srvRangeTextureCubeHeap );
 
     D3D12_DESCRIPTOR_RANGE srvRangeSamplerHeap{};
     srvRangeSamplerHeap.BaseShaderRegister = 0;
@@ -144,7 +140,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeSamplerHeap.OffsetInDescriptorsFromTableStart = 0;
     srvRangeSamplerHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
     srvRangeSamplerHeap.RegisterSpace = 0;
-    slotRootParameters[ 6 ].InitAsDescriptorTable( 1, &srvRangeSamplerHeap );
+    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeSamplerHeap );
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( _countof(slotRootParameters), slotRootParameters, 0, nullptr,
                                              D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -182,15 +178,12 @@ void Renderer::drawScene( Scene& scene )
         renderPass.record( scene );
         commandLists.push_back( renderPass.getCommandList() );
     }
+
     m_graphicsCmdQueue->ExecuteCommandLists( commandLists.size(), commandLists.data() );
+    m_fence->signal( m_graphicsCmdQueue );
 
-    // Insert fence in command queue
-    uint64_t fenceValue = m_fence->signal( m_graphicsCmdQueue );
+    m_fence->waitForValue( m_fence->getLastSignaledValue() );
 
-    // Present swapchain
     m_swapChain->Present( 1, 0 );
     s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
-
-    // Wait for fence
-    m_fence->waitForValue( fenceValue );
 }
