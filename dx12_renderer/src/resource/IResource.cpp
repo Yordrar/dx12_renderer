@@ -7,7 +7,6 @@
 IResource::IResource()
     : m_resource( nullptr )
     , m_intermediateUploadBuffer( nullptr )
-    , m_needsCopyToGPU( false )
     , m_descriptorIndex( 0 )
     , m_descriptor()
     , m_resourceState( D3D12_RESOURCE_STATE_COMMON )
@@ -35,7 +34,7 @@ void IResource::transitionToState( ComPtr<ID3D12GraphicsCommandList> commandList
 
 void IResource::copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
-    if ( m_subresourceData.size() > 0 && m_needsCopyToGPU )
+    if ( m_subresourceData.size() > 0 )
     {
         transitionToState( commandList, D3D12_RESOURCE_STATE_COPY_DEST );
         UpdateSubresources<1>( commandList.Get(), m_resource.Get(), m_intermediateUploadBuffer.Get(), 0, 0, 1, &m_subresourceData[ 0 ] );
@@ -43,7 +42,7 @@ void IResource::copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )
     }
 }
 
-void IResource::initInternalResources( CD3DX12_RESOURCE_DESC resourceDesc )
+void IResource::initInternalResources( D3D12_RESOURCE_DESC resourceDesc )
 {
     FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
     CD3DX12_CLEAR_VALUE clearValue;

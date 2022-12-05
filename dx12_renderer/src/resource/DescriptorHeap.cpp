@@ -37,6 +37,11 @@ UINT DescriptorHeap::addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC* cbv )
     return slot;
 }
 
+void DescriptorHeap::removeCBV( UINT index )
+{
+    m_freeSlots.push( index );
+}
+
 UINT DescriptorHeap::addUAV( ComPtr<ID3D12Resource> resource, D3D12_UNORDERED_ACCESS_VIEW_DESC* uav )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );

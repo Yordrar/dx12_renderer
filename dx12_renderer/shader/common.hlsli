@@ -4,13 +4,6 @@ cbuffer cameraBuffer : register(b0, space0)
     float4 cameraPosition;
 };
 
-Buffer bufferResources[1024] : register(t0, space0);
-Texture2D texture2DResources[1024] : register(t0, space1);
-TextureCube textureCubeResources[1024] : register(t0, space2);
-
-//SamplerState textureSampler : register(s0, space0)
-//{
-//    Filter = MIN_MAG_MIP_LINEAR;
-//    AddressU = Wrap;
-//    AddressV = Wrap;
-//};
+Texture2D texture2DResources[1024] : register(t0, space0);
+TextureCube textureCubeResources[1024] : register(t0, space1);
+sampler sampler2DResources[1024] : register(s0, space0);

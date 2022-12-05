@@ -1,8 +1,8 @@
 #include "common.hlsli"
 
-cbuffer bindlessIndices : register(b2, space0)
+cbuffer resourceIndices : register(b1, space0)
 {
-    uint textureIdx;
+    float textureIdx;
 }
 
 struct PSIn
@@ -16,12 +16,10 @@ struct PSIn
 
 float4 main_ps( PSIn psIn ) : SV_Target
 {
-    return float4(1.0f, 0.0f, 0.0f, 1.0f);
-    //return texture2DResources[textureIdx].Sample(textureSampler, psIn.m_uvs);
+    return texture2DResources[textureIdx].Sample(sampler2DResources[0], psIn.m_uvs);
 }
 
 float4 depth_ps(PSIn psIn) : SV_Target
 {
-    return float4(0.0f, 0.0f, 1.0f, 1.0f);
-    //return texture2DResources[textureIdx].Sample(textureSampler, psIn.m_uvs);
+    return float4(0.0f, 0.0f, 0.0f, 0.0f);
 }

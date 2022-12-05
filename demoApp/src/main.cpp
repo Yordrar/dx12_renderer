@@ -1,19 +1,12 @@
-// Windows headers
 #include <Windows.h>
 #include <Windowsx.h>
 #include <wrl.h>
 using namespace Microsoft::WRL;
 
-// DirectX 12 headers
-#include <d3d12.h>
-#include <dxgi1_6.h>
 #include <DirectXMath.h>
-// D3D12 extension library
-#include <d3dx12.h>
 
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
+#define TINYOBJLOADER_IMPLEMENTATION 
+#include <tiny_obj_loader.h>
 
 #include <Renderer.h>
 #include <Scene.h>
@@ -145,52 +138,85 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     Renderer renderer( hWnd, windowRect );
 
-    Assimp::Importer importer;
-    const aiScene* aiScene = importer.ReadFile( "resource/suzanne.obj",
-                                                aiProcess_CalcTangentSpace |
-                                                aiProcess_Triangulate |
-                                                aiProcess_GenNormals |
-                                                aiProcess_ValidateDataStructure |
-                                                aiProcess_GenUVCoords |
-                                                aiProcess_FixInfacingNormals |
-                                                aiProcess_JoinIdenticalVertices |
-                                                aiProcess_SortByPType );
-    aiMesh* ai_mesh = aiScene->mMeshes[ 0 ];
+    std::string inputfile = "resource/suzanne.obj";
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
 
-    UINT vertices_count = ai_mesh->mNumVertices;
-    Vertex* vertex_buffer_data = new Vertex[ vertices_count ];
-    for ( unsigned int i = 0; i < ai_mesh->mNumVertices; i++ )
+    std::string warn;
+    std::string err;
+
+    bool ret = tinyobj::LoadObj( &attrib, &shapes, &materials, &warn, &err, inputfile.c_str() );
+
+    if ( !warn.empty() )
     {
-        Vertex vert;
-        vert.m_position.x = ai_mesh->mVertices[ i ].x;
-        vert.m_position.y = ai_mesh->mVertices[ i ].y;
-        vert.m_position.z = ai_mesh->mVertices[ i ].z;
-
-        vert.m_normal.x = ai_mesh->mNormals[ i ].x;
-        vert.m_normal.y = ai_mesh->mNormals[ i ].y;
-        vert.m_normal.z = ai_mesh->mNormals[ i ].z;
-
-        vert.m_uvs.x = ai_mesh->mTextureCoords[ 0 ][ i ].x;
-        vert.m_uvs.y = ai_mesh->mTextureCoords[ 0 ][ i ].y;
-
-        vert.m_tangent.x = ai_mesh->mTangents[ i ].x;
-        vert.m_tangent.y = ai_mesh->mTangents[ i ].y;
-        vert.m_tangent.z = ai_mesh->mTangents[ i ].z;
-
-        vert.m_bitangent.x = ai_mesh->mBitangents[ i ].x;
-        vert.m_bitangent.y = ai_mesh->mBitangents[ i ].y;
-        vert.m_bitangent.z = ai_mesh->mBitangents[ i ].z;
-
-        vertex_buffer_data[ i ] = vert;
+        std::cout << warn << std::endl;
     }
 
-    UINT indices_count = ai_mesh->mNumFaces * 3;
-    UINT* vertex_indices_data = new UINT[ indices_count ];
-    for ( unsigned int i = 0; i < ai_mesh->mNumFaces; i++ )
+    if ( !err.empty() )
     {
-        aiFace face = ai_mesh->mFaces[ i ];
-        for ( unsigned int j = 0; j < face.mNumIndices; j++ )
-            vertex_indices_data[ i * 3 + j ] = face.mIndices[ j ];
+        std::cerr << err << std::endl;
+    }
+
+    if ( !ret )
+    {
+        exit( 1 );
+    }
+
+    std::vector<Vertex> vertexBuffer;
+    std::vector<UINT> indexBuffer;
+    // Loop over shapes
+    for ( size_t shapeIdx = 0; shapeIdx < shapes.size(); shapeIdx++ )
+    {
+        // Loop over faces(polygon)
+        size_t index_offset = 0;
+        for ( size_t faceIdx = 0; faceIdx < shapes[ shapeIdx ].mesh.num_face_vertices.size(); faceIdx++ )
+        {
+            size_t numFaceVertices = size_t( shapes[ shapeIdx ].mesh.num_face_vertices[ faceIdx ] );
+
+            // Loop over vertices in the face.
+            for ( size_t vertexIdx = 0; vertexIdx < numFaceVertices; vertexIdx++ )
+            {
+                Vertex vertex;
+                // access to vertex
+                tinyobj::index_t idx = shapes[ shapeIdx ].mesh.indices[ index_offset + vertexIdx ];
+
+                vertex.m_position.x = attrib.vertices[ 3 * size_t( idx.vertex_index ) + 0 ];
+                vertex.m_position.y = attrib.vertices[ 3 * size_t( idx.vertex_index ) + 1 ];
+                vertex.m_position.z = attrib.vertices[ 3 * size_t( idx.vertex_index ) + 2 ];
+
+                // Check if `normal_index` is zero or positive. negative = no normal data
+                if ( idx.normal_index >= 0 )
+                {
+                    vertex.m_normal.x = attrib.normals[ 3 * size_t( idx.normal_index ) + 0 ];
+                    vertex.m_normal.y = attrib.normals[ 3 * size_t( idx.normal_index ) + 1 ];
+                    vertex.m_normal.z = attrib.normals[ 3 * size_t( idx.normal_index ) + 2 ];
+                }
+
+                // Check if `texcoord_index` is zero or positive. negative = no texcoord data
+                if ( idx.texcoord_index >= 0 )
+                {
+                    vertex.m_uvs.x = attrib.texcoords[ 2 * size_t( idx.texcoord_index ) + 0 ];
+                    vertex.m_uvs.y = attrib.texcoords[ 2 * size_t( idx.texcoord_index ) + 1 ];
+                }
+
+                if ( idx.normal_index >= 0 && idx.texcoord_index >= 0 )
+                {
+                    // Calculate tangent space
+                }
+
+                vertexBuffer.push_back( vertex );
+            }
+            index_offset += numFaceVertices;
+
+            // per-face material
+            shapes[ shapeIdx ].mesh.material_ids[ faceIdx ];
+        }
+
+        for ( auto vertexIdx : shapes[ shapeIdx ].mesh.indices )
+        {
+            indexBuffer.push_back( vertexIdx.vertex_index );
+        }
     }
 
     ResourceManager::it().createTexture( "mainRenderTarget", windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET );
@@ -204,18 +230,20 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     mesh->addInputLayoutElement( "TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT );
     mesh->addInputLayoutElement( "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT );
     mesh->addInputLayoutElement( "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT );
-    mesh->setVertexBuffer( vertex_buffer_data, sizeof(Vertex), vertices_count );
-    mesh->setIndexBuffer( vertex_indices_data, indices_count );
+    mesh->setVertexBuffer( vertexBuffer.data(), sizeof(Vertex), vertexBuffer.size() );
+    mesh->setIndexBuffer( indexBuffer.data(), indexBuffer.size() );
     mesh->setShaders( "shader/test_vs.hlsl", "shader/test_ps.hlsl" );
     mesh->addResource( ResourceManager::it().createTexture( "suzanne_demoTex", "resource/demoTex.jpeg", DXGI_FORMAT_R8G8B8A8_UNORM ) );
     scene->addGeometry( mesh );
 
     RenderPass depthPass( "Depth Prepass", "depth", "", "mainDepthStencilTarget" );
-    RenderPass mainPass( "Main Pass", "main", "mainRenderTarget", "mainDepthStencilTarget" );
-    RenderPass copyToBackbufferPass( "Copy to Backbuffer", "copy", "backbuffer", "" );
+    RenderPass mainPass( "Main Pass", "main", "backbuffer", "mainDepthStencilTarget" );
+    //RenderPass copyToBackbufferPass( "Copy to Backbuffer", "copy", "backbuffer", "" );
     renderer.addRenderPass( depthPass );
     renderer.addRenderPass( mainPass );
-    renderer.addRenderPass( copyToBackbufferPass );
+    //renderer.addRenderPass( copyToBackbufferPass );
+
+    ResourceManager::it().createSampler( "globalSampler" );
 
     MSG msg = {};
     while ( msg.message != WM_QUIT )

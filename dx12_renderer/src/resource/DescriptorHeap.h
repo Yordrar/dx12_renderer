@@ -16,6 +16,7 @@ public:
 
     UINT addSRV( ComPtr<ID3D12Resource> resource, D3D12_SHADER_RESOURCE_VIEW_DESC* srv );
     UINT addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC* cbv );
+    void removeCBV( UINT index );
     UINT addUAV( ComPtr<ID3D12Resource> resource, D3D12_UNORDERED_ACCESS_VIEW_DESC* uav );
 
     UINT addSampler( D3D12_SAMPLER_DESC* samplerDesc );

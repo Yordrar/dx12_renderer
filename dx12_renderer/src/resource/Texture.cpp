@@ -1,5 +1,7 @@
 #include "Texture.h"
 
+#include <d3dx12.h>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
@@ -8,21 +10,19 @@ Texture::Texture( std::string resourceName, std::string filename, DXGI_FORMAT fo
     , m_width( 0 )
     , m_height( 0 )
 {
-    int width, height, nrChannels;
-    m_data = stbi_load( filename.c_str(), &width, &height, &nrChannels, 4 );
+    int width, height, nrChannelsInFile;
+    m_data = stbi_load( filename.c_str(), &width, &height, &nrChannelsInFile, 4 );
     m_width = width;
     m_height = height;
 
     D3D12_SUBRESOURCE_DATA subresData;
     subresData.pData = m_data;
-    subresData.RowPitch = width * nrChannels;
+    subresData.RowPitch = width * 4;
     subresData.SlicePitch = 0;
     m_subresourceData.push_back( subresData );
 
-    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( format, width, height, 1, 6, 1, 0, flags, layout );
+    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( format, width, height, 1, 1, 1, 0, flags, layout );
     initInternalResources( resourceDesc );
-
-    m_needsCopyToGPU = true;
 
     m_resource->SetName( std::wstring( resourceName.begin(), resourceName.end() ).c_str() );
 }
@@ -32,7 +32,7 @@ Texture::Texture( std::string resourceName, UINT width, UINT height, DXGI_FORMAT
     , m_width( width )
     , m_height( height )
 {
-    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( format, width, height, 1, 6, 1, 0, flags, layout );
+    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( format, width, height, 1, 1, 1, 0, flags, layout );
     initInternalResources( resourceDesc );
 
     m_resource->SetName( std::wstring( resourceName.begin(), resourceName.end() ).c_str() );

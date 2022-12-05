@@ -6,6 +6,7 @@
 #include <geometry/VertexBuffer.h>
 #include <geometry/IndexBuffer.h>
 #include <geometry/PSOManager.h>
+#include <resource/ConstantBuffer.h>
 
 class IResource;
 
@@ -26,4 +27,7 @@ protected:
     std::string m_name;
     std::unordered_set<std::string> m_techniqueNames;
     std::vector< IResource* > m_resources;
+    ConstantBuffer* m_bindlessIndices;
+    std::vector<float> m_resourceIndices;
+    bool m_isDirty;
 };

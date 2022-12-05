@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <chrono>
+#include <limits>
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -14,9 +14,13 @@ public:
     Fence( ComPtr<ID3D12Device> device );
     ~Fence();
 
-    uint64_t signal( ComPtr<ID3D12CommandQueue> cmdQueue );
-    void waitForValue( uint64_t fenceValue, std::chrono::milliseconds duration = std::chrono::milliseconds::max() );
+    uint64_t CPUSignal();
+    void CPUWait( uint64_t fenceValue, uint64_t duration = 0xFFFFFFFFFFFFFFFF );
+    uint64_t GPUSignal( ComPtr<ID3D12CommandQueue> commandQueue );
+    void GPUWait( ComPtr<ID3D12CommandQueue> commandQueue, uint64_t fenceValue );
+
     uint64_t getLastSignaledValue() const { return m_fenceValue; }
+    uint64_t getCompletedValue() const { return m_fence->GetCompletedValue(); }
 
 private:
     ComPtr<ID3D12Fence> m_fence;

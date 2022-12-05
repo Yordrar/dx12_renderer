@@ -1,7 +1,6 @@
 #pragma once
 
 #include <d3d12.h>
-#include <d3dx12.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
 using namespace Microsoft::WRL;
@@ -11,6 +10,7 @@ using namespace Microsoft::WRL;
 #include <RendererConstants.h>
 #include <RenderPass.h>
 #include <Fence.h>
+#include <resource/ResourceManager.h>
 
 class Scene;
 
@@ -25,7 +25,8 @@ public:
     void addRenderPass( RenderPass& renderPass );
     void drawScene( Scene& scene );
 
-    static UINT getCurrentFrameIndex() { return s_currentBackBufferIndex; }
+    static Texture* getCurrentBackbuffer() { return ResourceManager::it().getResource<Texture>( "backbuffer" + std::to_string(s_currentBackBufferIndex) ); }
+    static UINT getCurrentBackbufferIndex() { return s_currentBackBufferIndex; }
     static RECT getWindowRect() { return s_windowRect; }
     static ComPtr<ID3D12RootSignature> getRootSignature() { return s_rootSignature; }
 

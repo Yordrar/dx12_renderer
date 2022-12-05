@@ -25,6 +25,8 @@ public:
     template<typename resource_type>
     resource_type* getResource( std::string resourceName );
 
+    void destroyResource( std::string resourceName );
+
     void createBackbuffer( std::string resourceName, ComPtr<ID3D12Resource> backbuffer );
 
     ConstantBuffer* createConstantBuffer( std::string resourceName, void* data, UINT sizeInBytes );
@@ -32,9 +34,11 @@ public:
     template<typename... Args>
     Texture* createTexture( std::string resourceName, Args&&... args );
 
+    void createSampler( std::string resourceName );
+
     DescriptorHeap const& getCbvSrvUavDescriptorHeap() const { return *m_descriptorHeapCbvSrvUav; }
     DescriptorHeap const& getSamplerDescriptorHeap() const { return *m_descriptorHeapSampler; }
-    DescriptorHeap const& getRtvUavDescriptorHeap() const { return *m_descriptorHeapRtv; }
+    DescriptorHeap const& getRtvDescriptorHeap() const { return *m_descriptorHeapRtv; }
     DescriptorHeap const& getDsvDescriptorHeap() const { return *m_descriptorHeapDsv; }
 
 private:
@@ -97,7 +101,7 @@ Texture* ResourceManager::createTexture( std::string resourceName, Args&&... arg
         srvDesc.Format = texture->getFormat();
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Texture2D.MipLevels = 6;
+        srvDesc.Texture2D.MipLevels = 1;
         srvDesc.Texture2D.MostDetailedMip = 0;
         srvDesc.Texture2D.PlaneSlice = 0;
 

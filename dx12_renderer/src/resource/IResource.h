@@ -1,7 +1,6 @@
 #pragma once
 
 #include <d3d12.h>
-#include <d3dx12.h>
 #include <wrl.h>
 using namespace Microsoft::WRL;
 
@@ -21,17 +20,15 @@ public:
 	D3D12_GPU_VIRTUAL_ADDRESS getGPUVirtualAddress() const { return m_resource->GetGPUVirtualAddress(); }
 
 	void transitionToState( ComPtr<ID3D12GraphicsCommandList> commandList, D3D12_RESOURCE_STATES newState );
-	void setNeedsCopyToGPU( bool needsCopy ) { m_needsCopyToGPU = needsCopy; }
 	void copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList );
 
 protected:
-	void initInternalResources( CD3DX12_RESOURCE_DESC resourceDesc );
+	void initInternalResources( D3D12_RESOURCE_DESC resourceDesc );
 	UINT getSizeAligned256( UINT sizeInBytes );
 
 	ComPtr<ID3D12Resource> m_resource;
 	ComPtr<ID3D12Resource> m_intermediateUploadBuffer;
 	std::vector<D3D12_SUBRESOURCE_DATA> m_subresourceData;
-	bool m_needsCopyToGPU;
 
 	UINT m_descriptorIndex;
 	D3D12_CPU_DESCRIPTOR_HANDLE m_descriptor;

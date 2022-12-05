@@ -12,18 +12,30 @@ Fence::~Fence()
 
 }
 
-uint64_t Fence::signal( ComPtr<ID3D12CommandQueue> cmdQueue )
+uint64_t Fence::CPUSignal()
 {
-    cmdQueue->Signal( m_fence.Get(), ++m_fenceValue );
+    m_fence->Signal( ++m_fenceValue );
 
     return m_fenceValue;
 }
 
-void Fence::waitForValue( uint64_t fenceValue, std::chrono::milliseconds duration )
+void Fence::CPUWait( uint64_t fenceValue, uint64_t duration )
 {
     if ( m_fence->GetCompletedValue() < fenceValue )
     {
         m_fence->SetEventOnCompletion( fenceValue, m_fenceEvent );
-        WaitForSingleObject( m_fenceEvent, static_cast<DWORD>( duration.count() ) );
+        WaitForSingleObject( m_fenceEvent, static_cast<DWORD>( duration ) );
     }
+}
+
+uint64_t Fence::GPUSignal( ComPtr<ID3D12CommandQueue> commandQueue )
+{
+    commandQueue->Signal( m_fence.Get(), ++m_fenceValue );
+
+    return m_fenceValue;
+}
+
+void Fence::GPUWait( ComPtr<ID3D12CommandQueue> commandQueue, uint64_t fenceValue )
+{
+    commandQueue->Wait( m_fence.Get(), fenceValue );
 }

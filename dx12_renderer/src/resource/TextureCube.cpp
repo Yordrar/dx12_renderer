@@ -1,5 +1,7 @@
 #include "TextureCube.h"
 
+#include <d3dx12.h>
+
 #include <stb_image.h>
 
 TextureCube::TextureCube( std::string path )

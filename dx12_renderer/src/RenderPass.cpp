@@ -41,7 +41,7 @@ RenderPass::~RenderPass()
 void RenderPass::record( Scene& scene )
 {
     // Reset command list and allocator
-    ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentFrameIndex() ];
+    ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentBackbufferIndex() ];
     currentCommandAllocator->Reset();
     m_commandList->Reset( currentCommandAllocator.Get(), nullptr );
 
@@ -54,14 +54,15 @@ void RenderPass::record( Scene& scene )
     // Set root signature
     m_commandList->SetGraphicsRootSignature( Renderer::getRootSignature().Get() );
 
-    // Descriptor heaps
+    // Set descriptor heaps
     ID3D12DescriptorHeap* descriptorHeaps[] =
     {
         ResourceManager::it().getCbvSrvUavDescriptorHeap().getHeap().Get(),
         ResourceManager::it().getSamplerDescriptorHeap().getHeap().Get(),
     };
     m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
-    m_commandList->SetGraphicsRootDescriptorTable( 1, ResourceManager::it().getCbvSrvUavDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+
+    // Set descriptor tables in root signature
     m_commandList->SetGraphicsRootDescriptorTable( 2, ResourceManager::it().getCbvSrvUavDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetGraphicsRootDescriptorTable( 3, ResourceManager::it().getCbvSrvUavDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetGraphicsRootDescriptorTable( 4, ResourceManager::it().getSamplerDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
@@ -70,21 +71,18 @@ void RenderPass::record( Scene& scene )
     static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
     D3D12_CPU_DESCRIPTOR_HANDLE* renderTargetDescriptor = nullptr;
     D3D12_CPU_DESCRIPTOR_HANDLE* depthStencilTargetDescriptor = nullptr;
-    Texture* currentBackbuffer = nullptr;
+    if ( m_renderTargetName == "backbuffer" )
+    {
+        m_renderTarget = Renderer::getCurrentBackbuffer();
+    }
+
     if ( m_renderTarget )
     {
         m_renderTarget->transitionToState( m_commandList, D3D12_RESOURCE_STATE_RENDER_TARGET );
         m_commandList->ClearRenderTargetView( m_renderTarget->getDescriptor(), clearColor, 0, nullptr );
         renderTargetDescriptor = &m_renderTarget->getDescriptor();
     }
-    else if ( m_renderTargetName == "backbuffer" )
-    {
-        std::string currentBackbufferName = "backbuffer" + std::to_string( Renderer::getCurrentFrameIndex() );
-        currentBackbuffer = ResourceManager::it().getResource<Texture>( currentBackbufferName );
-        currentBackbuffer->transitionToState( m_commandList, D3D12_RESOURCE_STATE_RENDER_TARGET );
-        m_commandList->ClearRenderTargetView( currentBackbuffer->getDescriptor(), clearColor, 0, nullptr );
-        renderTargetDescriptor = &currentBackbuffer->getDescriptor();
-    }
+
     if ( m_depthStencilTarget )
     {
         m_depthStencilTarget->transitionToState( m_commandList, D3D12_RESOURCE_STATE_DEPTH_WRITE );
@@ -93,9 +91,10 @@ void RenderPass::record( Scene& scene )
     }
     m_commandList->OMSetRenderTargets( renderTargetDescriptor ? 1 : 0, renderTargetDescriptor, false, depthStencilTargetDescriptor );
 
-    // Draw geometry
+    // Set initial pipeline state
     PSOManager::PipelineStateStream pipelineState;
     CD3DX12_RASTERIZER_DESC rasterizerDesc( CD3DX12_DEFAULT{} );
+    rasterizerDesc.FrontCounterClockwise = true;
     pipelineState.m_rasterizer = rasterizerDesc;
 
     std::vector<DXGI_FORMAT> rtFormats;
@@ -113,15 +112,12 @@ void RenderPass::record( Scene& scene )
 
     pipelineState.m_rootSignature = Renderer::getRootSignature().Get();
 
+    // Record scene
     scene.record( m_techniqueName, m_commandList, pipelineState );
 
     if ( m_renderTarget )
     {
         m_renderTarget->transitionToState( m_commandList, D3D12_RESOURCE_STATE_PRESENT );
-    }
-    else if ( currentBackbuffer )
-    {
-        currentBackbuffer->transitionToState( m_commandList, D3D12_RESOURCE_STATE_PRESENT );
     }
 
     PIXEndEvent( m_commandList.Get() );

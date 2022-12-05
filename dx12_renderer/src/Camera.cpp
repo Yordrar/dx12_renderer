@@ -69,7 +69,6 @@ void Camera::rotate( float delta_angles_x, float delta_angles_y )
 
 void Camera::setCameraBufferView( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
-	m_cameraBuffer->setNeedsCopyToGPU( true );
 	m_cameraBuffer->copyDataToGPU( commandList );
 	commandList->SetGraphicsRootConstantBufferView( 0, m_cameraBuffer->getGPUVirtualAddress() );
 }

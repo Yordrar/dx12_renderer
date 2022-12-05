@@ -108,38 +108,30 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     CD3DX12_ROOT_PARAMETER slotRootParameters[ 5 ] = {};
 
     slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Camera buffer
-
-    // Bindless resources
-    D3D12_DESCRIPTOR_RANGE srvRangeBufferHeap{};
-    srvRangeBufferHeap.BaseShaderRegister = 0;
-    srvRangeBufferHeap.NumDescriptors = 1024;
-    srvRangeBufferHeap.OffsetInDescriptorsFromTableStart = 0;
-    srvRangeBufferHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    srvRangeBufferHeap.RegisterSpace = 0;
-    slotRootParameters[ 1 ].InitAsDescriptorTable( 1, &srvRangeBufferHeap );
+    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Resource indices buffer
 
     D3D12_DESCRIPTOR_RANGE srvRangeTexture2DHeap{};
     srvRangeTexture2DHeap.BaseShaderRegister = 0;
+    srvRangeTexture2DHeap.RegisterSpace = 0;
     srvRangeTexture2DHeap.NumDescriptors = 1024;
     srvRangeTexture2DHeap.OffsetInDescriptorsFromTableStart = 0;
     srvRangeTexture2DHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    srvRangeTexture2DHeap.RegisterSpace = 1;
     slotRootParameters[ 2 ].InitAsDescriptorTable( 1, &srvRangeTexture2DHeap );
 
     D3D12_DESCRIPTOR_RANGE srvRangeTextureCubeHeap{};
     srvRangeTextureCubeHeap.BaseShaderRegister = 0;
+    srvRangeTextureCubeHeap.RegisterSpace = 1;
     srvRangeTextureCubeHeap.NumDescriptors = 1024;
     srvRangeTextureCubeHeap.OffsetInDescriptorsFromTableStart = 0;
     srvRangeTextureCubeHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    srvRangeTextureCubeHeap.RegisterSpace = 2;
     slotRootParameters[ 3 ].InitAsDescriptorTable( 1, &srvRangeTextureCubeHeap );
 
     D3D12_DESCRIPTOR_RANGE srvRangeSamplerHeap{};
     srvRangeSamplerHeap.BaseShaderRegister = 0;
+    srvRangeSamplerHeap.RegisterSpace = 0;
     srvRangeSamplerHeap.NumDescriptors = 1024;
     srvRangeSamplerHeap.OffsetInDescriptorsFromTableStart = 0;
     srvRangeSamplerHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-    srvRangeSamplerHeap.RegisterSpace = 0;
     slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeSamplerHeap );
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( _countof(slotRootParameters), slotRootParameters, 0, nullptr,
@@ -178,12 +170,10 @@ void Renderer::drawScene( Scene& scene )
         renderPass.record( scene );
         commandLists.push_back( renderPass.getCommandList() );
     }
-
     m_graphicsCmdQueue->ExecuteCommandLists( commandLists.size(), commandLists.data() );
-    m_fence->signal( m_graphicsCmdQueue );
+    m_fence->GPUSignal( m_graphicsCmdQueue );
 
-    m_fence->waitForValue( m_fence->getLastSignaledValue() );
-
+    m_fence->CPUWait( m_fence->getLastSignaledValue() );
     m_swapChain->Present( 1, 0 );
     s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
