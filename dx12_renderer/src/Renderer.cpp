@@ -100,7 +100,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     {
         ComPtr<ID3D12Resource> backBuffer;
         m_swapChain->GetBuffer( i, IID_PPV_ARGS( &backBuffer ) );
-        ResourceManager::it().createBackbuffer( "backbuffer" + std::to_string(i), backBuffer );
+        ResourceManager::it().createBackbuffer( L"backbuffer" + std::to_wstring(i), backBuffer );
     }
 
 

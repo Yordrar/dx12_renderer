@@ -2,7 +2,7 @@
 
 #include <resource/ResourceManager.h>
 
-Camera::Camera( std::string name, DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio)
+Camera::Camera( std::wstring name, DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio)
 	: lookat(lookat)
 	, fov(fov)
 	, aspect_ratio(aspect_ratio)
@@ -11,9 +11,9 @@ Camera::Camera( std::string name, DirectX::XMVECTOR position, DirectX::XMVECTOR 
 	right = DirectX::XMVectorSet( 1, 0, 0, 0 );
 	
 	m_cameraData.m_position = position;
-	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookAtRH( m_cameraData.m_position, lookat, up ) * DirectX::XMMatrixPerspectiveFovRH( fov, aspect_ratio, 0.1f, 500.f ) );
+	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookAtRH( m_cameraData.m_position, lookat, up ) * DirectX::XMMatrixPerspectiveFovRH( fov, aspect_ratio, 0.1f, 1000.f ) );
 
-	m_cameraBuffer = ResourceManager::it().createConstantBuffer( name + "_buffer", &m_cameraData, sizeof(m_cameraData) );
+	m_cameraBuffer = ResourceManager::it().createConstantBuffer( name + L"_buffer", &m_cameraData, sizeof(m_cameraData) );
 }
 
 void Camera::move( float delta_x, float delta_y, float delta_z )

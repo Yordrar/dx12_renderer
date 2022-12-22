@@ -5,7 +5,7 @@
 
 #include <pix3.h>
 
-Mesh::Mesh( std::string name, std::initializer_list<std::string> renderPassNames )
+Mesh::Mesh( std::wstring name, std::initializer_list<std::wstring> renderPassNames )
     : IGeometry( name, renderPassNames )
     , m_vertexBuffer( nullptr )
     , m_indexBuffer( nullptr )
@@ -36,18 +36,20 @@ void Mesh::setIndexBuffer( UINT* indexData, UINT indexCount )
     m_indexBuffer = std::make_unique<IndexBuffer>( indexData, indexCount );
 }
 
-void Mesh::setShaders( std::string vertexShaderFilename, std::string pixelShaderFilename )
+void Mesh::setShaders( std::wstring vertexShaderFilename, std::wstring pixelShaderFilename )
 {
     m_vertexShaderFilename = std::wstring( vertexShaderFilename.begin(), vertexShaderFilename.end() );
     m_pixelShaderFilename = std::wstring( pixelShaderFilename.begin(), pixelShaderFilename.end() );
 }
 
-void Mesh::record( std::string techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
+void Mesh::record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
 {
-    std::string eventString = m_name + "/" + techniqueName;
+    std::wstring eventString = m_name + L"/" + techniqueName;
     PIXBeginEvent( commandList.Get(), PIX_COLOR_DEFAULT, eventString.c_str() );
 
     IGeometry::record( techniqueName, commandList, pipelineState );
+
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;
     inputLayoutDesc.pInputElementDescs = m_inputLayout.data();
@@ -56,28 +58,33 @@ void Mesh::record( std::string techniqueName, ComPtr<ID3D12GraphicsCommandList> 
 
     pipelineState.m_topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
-    std::wstring techniqueNameWide = std::wstring( techniqueName.begin(), techniqueName.end() );
     ShaderManager::ShaderParams shaderParams;
     shaderParams.m_enableDebug = true;
 
     shaderParams.m_filename = m_vertexShaderFilename;
-    shaderParams.m_entryPoint = techniqueNameWide + L"_vs";
+    shaderParams.m_entryPoint = techniqueName + L"_vs";
     shaderParams.m_shaderType = ShaderManager::ShaderType::VertexShader;
     pipelineState.m_vertexShader = ShaderManager::it().getShader( shaderParams );
 
     shaderParams.m_filename = m_pixelShaderFilename;
-    shaderParams.m_entryPoint = techniqueNameWide + L"_ps";
+    shaderParams.m_entryPoint = techniqueName + L"_ps";
     shaderParams.m_shaderType = ShaderManager::ShaderType::PixelShader;
     pipelineState.m_pixelShader = ShaderManager::it().getShader( shaderParams );
 
-    std::string PSOName = m_name + "/" + techniqueName;
-    std::wstring PSONameWide = std::wstring( PSOName.begin(), PSOName.end() );
-    commandList->SetPipelineState( PSOManager::it().getPSO( PSONameWide, pipelineState ).Get() );
+    std::wstring PSOName = techniqueName + L"/" + m_vertexShaderFilename + L"/" + m_pixelShaderFilename + L"/" + std::to_wstring(pipelineState.m_topologyType);
+    commandList->SetPipelineState( PSOManager::it().getPSO( PSOName, pipelineState ).Get() );
 
     m_vertexBuffer->bind( commandList );
-    m_indexBuffer->bind( commandList );
 
-    commandList->DrawIndexedInstanced( m_indexBuffer->getIndexCount(), 1, 0, 0, 0 );
+    if( m_indexBuffer )
+    {
+        m_indexBuffer->bind(commandList);
+        commandList->DrawIndexedInstanced(m_indexBuffer->getIndexCount(), 1, 0, 0, 0);
+    }
+    else
+    {
+        commandList->DrawInstanced(m_vertexBuffer->getVertexCount(), 1, 0, 0);
+    }
 
     PIXEndEvent( commandList.Get() );
 }

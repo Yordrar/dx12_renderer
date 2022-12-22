@@ -9,12 +9,12 @@
 class Scene
 {
 public:
-    Scene( std::string name );
+    Scene( std::wstring name );
     ~Scene();
 
     Camera& getCamera() { return m_camera; }
 
-    void record( std::string techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
+    void record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
     void addGeometry( IGeometry* geometry );
 
 private:

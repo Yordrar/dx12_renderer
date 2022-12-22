@@ -23,18 +23,18 @@ public:
     ~ResourceManager() = default;
 
     template<typename resource_type>
-    resource_type* getResource( std::string resourceName );
+    resource_type* getResource( std::wstring resourceName );
 
-    void destroyResource( std::string resourceName );
+    void destroyResource( std::wstring resourceName );
 
-    void createBackbuffer( std::string resourceName, ComPtr<ID3D12Resource> backbuffer );
+    void createBackbuffer( std::wstring resourceName, ComPtr<ID3D12Resource> backbuffer );
 
-    ConstantBuffer* createConstantBuffer( std::string resourceName, void* data, UINT sizeInBytes );
+    ConstantBuffer* createConstantBuffer( std::wstring resourceName, void* data, UINT sizeInBytes );
 
     template<typename... Args>
-    Texture* createTexture( std::string resourceName, Args&&... args );
+    Texture* createTexture( std::wstring resourceName, Args&&... args );
 
-    void createSampler( std::string resourceName );
+    void createSampler( std::wstring resourceName );
 
     DescriptorHeap const& getCbvSrvUavDescriptorHeap() const { return *m_descriptorHeapCbvSrvUav; }
     DescriptorHeap const& getSamplerDescriptorHeap() const { return *m_descriptorHeapSampler; }
@@ -44,7 +44,7 @@ public:
 private:
     ResourceManager();
 
-    using ResourceMap = std::unordered_map< std::string, std::unique_ptr<IResource> >;
+    using ResourceMap = std::unordered_map< std::wstring, std::unique_ptr<IResource> >;
     ResourceMap m_resources;
 
     std::unique_ptr<DescriptorHeap> m_descriptorHeapCbvSrvUav;
@@ -54,7 +54,7 @@ private:
 };
 
 template<typename resource_type>
-inline resource_type* ResourceManager::getResource( std::string resourceName )
+inline resource_type* ResourceManager::getResource( std::wstring resourceName )
 {
     ResourceMap::iterator it = m_resources.find( resourceName );
 
@@ -66,7 +66,7 @@ inline resource_type* ResourceManager::getResource( std::string resourceName )
 }
 
 template<typename... Args>
-Texture* ResourceManager::createTexture( std::string resourceName, Args&&... args )
+Texture* ResourceManager::createTexture( std::wstring resourceName, Args&&... args )
 {
     std::unique_ptr<Texture> texture = std::make_unique<Texture>( resourceName, std::forward<Args>( args )... );
 

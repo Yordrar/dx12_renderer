@@ -55,5 +55,4 @@ void IndexBuffer::bind( ComPtr<ID3D12GraphicsCommandList> commandList )
 	view.SizeInBytes = sizeof( UINT ) * m_indexCount;
 	view.Format = DXGI_FORMAT_R32_UINT;
 	commandList->IASetIndexBuffer(&view);
-	commandList->IASetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 }

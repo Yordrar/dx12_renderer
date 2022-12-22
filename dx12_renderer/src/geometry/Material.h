@@ -6,9 +6,9 @@
 class Material
 {
 public:
-    Material( std::initializer_list<std::string> resourceNames );
+    Material( std::initializer_list<std::wstring> resourceNames );
     ~Material();
 
 private:
-    std::vector<std::string> m_resourceNames;
+    std::vector<std::wstring> m_resourceNames;
 };

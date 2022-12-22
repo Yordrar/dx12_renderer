@@ -11,9 +11,9 @@ using namespace Microsoft::WRL;
 class Texture : public IResource
 {
 public:
-	Texture( std::string resourceName, std::string filename, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE, D3D12_TEXTURE_LAYOUT layout = D3D12_TEXTURE_LAYOUT_UNKNOWN );
-	Texture( std::string resourceName, UINT width, UINT height, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE, D3D12_TEXTURE_LAYOUT layout = D3D12_TEXTURE_LAYOUT_UNKNOWN );
-	Texture( std::string resourceName, ComPtr<ID3D12Resource> resource );
+	Texture( std::wstring resourceName, std::string filename, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE, D3D12_TEXTURE_LAYOUT layout = D3D12_TEXTURE_LAYOUT_UNKNOWN );
+	Texture( std::wstring resourceName, UINT width, UINT height, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE, D3D12_TEXTURE_LAYOUT layout = D3D12_TEXTURE_LAYOUT_UNKNOWN );
+	Texture( std::wstring resourceName, ComPtr<ID3D12Resource> resource );
 	~Texture();
 
 	int getWidth() const { return m_width; }

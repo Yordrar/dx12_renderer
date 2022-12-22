@@ -13,19 +13,19 @@ class IResource;
 class IGeometry
 {
 public:
-    IGeometry( std::string name, std::initializer_list<std::string> techniqueNames );
+    IGeometry( std::wstring name, std::initializer_list<std::wstring> techniqueNames );
     virtual ~IGeometry() = 0;
 
-    virtual void record( std::string techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
+    virtual void record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
 
     void addResource( IResource* resource );
 
-    std::string getName() const { return m_name; }
-    std::unordered_set<std::string> const& getTechniqueNames() const { return m_techniqueNames; }
+    std::wstring getName() const { return m_name; }
+    std::unordered_set<std::wstring> const& getTechniqueNames() const { return m_techniqueNames; }
 
 protected:
-    std::string m_name;
-    std::unordered_set<std::string> m_techniqueNames;
+    std::wstring m_name;
+    std::unordered_set<std::wstring> m_techniqueNames;
     std::vector< IResource* > m_resources;
     ConstantBuffer* m_bindlessIndices;
     std::vector<float> m_resourceIndices;

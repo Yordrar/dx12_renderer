@@ -7,7 +7,7 @@
 class Camera
 {
 public:
-	Camera( std::string name, DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio );
+	Camera( std::wstring name, DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio );
 	~Camera() = default;
 
 	void move( float delta_x, float delta_y, float delta_z );

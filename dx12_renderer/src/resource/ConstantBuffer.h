@@ -7,7 +7,7 @@
 class ConstantBuffer : public IResource
 {
 public:
-	ConstantBuffer( std::string name, void* data, UINT sizeInBytes );
+	ConstantBuffer( std::wstring name, void* data, UINT sizeInBytes );
 	~ConstantBuffer();
 
 	UINT getSizeInBytes() const { return m_sizeInBytes; }

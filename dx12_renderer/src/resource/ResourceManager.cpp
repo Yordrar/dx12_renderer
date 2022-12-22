@@ -24,7 +24,7 @@ ResourceManager::ResourceManager()
     m_descriptorHeapDsv = std::make_unique<DescriptorHeap>( heapDesc );
 }
 
-void ResourceManager::destroyResource( std::string resourceName )
+void ResourceManager::destroyResource( std::wstring resourceName )
 {
     IResource* resource = getResource<IResource>( resourceName );
     if ( resource )
@@ -34,7 +34,7 @@ void ResourceManager::destroyResource( std::string resourceName )
     }
 }
 
-void ResourceManager::createBackbuffer( std::string resourceName, ComPtr<ID3D12Resource> backbuffer )
+void ResourceManager::createBackbuffer( std::wstring resourceName, ComPtr<ID3D12Resource> backbuffer )
 {
     std::unique_ptr<Texture> backbufferTexture = std::make_unique<Texture>( resourceName, backbuffer );
 
@@ -47,7 +47,7 @@ void ResourceManager::createBackbuffer( std::string resourceName, ComPtr<ID3D12R
     m_resources[ resourceName ] = std::move( backbufferTexture );
 }
 
-ConstantBuffer* ResourceManager::createConstantBuffer( std::string resourceName, void* data, UINT sizeInBytes )
+ConstantBuffer* ResourceManager::createConstantBuffer( std::wstring resourceName, void* data, UINT sizeInBytes )
 {
     std::unique_ptr<ConstantBuffer> buffer = std::make_unique<ConstantBuffer>( resourceName, data, sizeInBytes );
 
@@ -65,7 +65,7 @@ ConstantBuffer* ResourceManager::createConstantBuffer( std::string resourceName,
     return getResource<ConstantBuffer>( resourceName );
 }
 
-void ResourceManager::createSampler( std::string resourceName )
+void ResourceManager::createSampler( std::wstring resourceName )
 {
     D3D12_SAMPLER_DESC samplerDesc = {};
     samplerDesc.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;

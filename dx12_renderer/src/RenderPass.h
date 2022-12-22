@@ -15,10 +15,10 @@ using namespace Microsoft::WRL;
 class RenderPass
 {
 public:
-    RenderPass( std::string name,
-                std::string techniqueName,
-                std::string renderTargetName,
-                std::string depthStencilTargetName );
+    RenderPass( std::wstring name,
+                std::wstring techniqueName,
+                std::wstring renderTargetName,
+                std::wstring depthStencilTargetName );
     ~RenderPass();
 
     ID3D12GraphicsCommandList* getCommandList() const { return m_commandList.Get(); }
@@ -26,9 +26,9 @@ public:
     void record( Scene& scene );
 
 private:
-    std::string m_name;
-    std::string m_techniqueName;
-    std::string m_renderTargetName;
+    std::wstring m_name;
+    std::wstring m_techniqueName;
+    std::wstring m_renderTargetName;
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     ComPtr<ID3D12CommandAllocator> m_commandAllocators[ RendererConstants::sc_numBackBuffers ];
 

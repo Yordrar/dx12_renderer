@@ -7,10 +7,10 @@
 #include <geometry/PSOManager.h>
 #include <geometry/IGeometry.h>
 
-RenderPass::RenderPass( std::string name,
-                        std::string techniqueName,
-                        std::string renderTargetName,
-                        std::string depthStencilTargetName )
+RenderPass::RenderPass( std::wstring name,
+                        std::wstring techniqueName,
+                        std::wstring renderTargetName,
+                        std::wstring depthStencilTargetName )
     : m_name( name )
     , m_techniqueName( techniqueName )
     , m_renderTargetName( renderTargetName )
@@ -25,7 +25,7 @@ RenderPass::RenderPass( std::string name,
 
     HRESULT result = Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_commandList ) );
     m_commandList->Close();
-    std::string commandListName = name + "_commandList";
+    std::wstring commandListName = name + L"_commandList";
     m_commandList->SetName( std::wstring( commandListName.begin(), commandListName.end() ).c_str() );
 
     m_renderTarget = ResourceManager::it().getResource<Texture>( renderTargetName );
@@ -71,7 +71,7 @@ void RenderPass::record( Scene& scene )
     static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
     D3D12_CPU_DESCRIPTOR_HANDLE* renderTargetDescriptor = nullptr;
     D3D12_CPU_DESCRIPTOR_HANDLE* depthStencilTargetDescriptor = nullptr;
-    if ( m_renderTargetName == "backbuffer" )
+    if ( m_renderTargetName == L"backbuffer" )
     {
         m_renderTarget = Renderer::getCurrentBackbuffer();
     }

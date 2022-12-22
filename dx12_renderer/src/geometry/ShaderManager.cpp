@@ -29,13 +29,13 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderParams& params )
 
     using convert_type = std::codecvt_utf8<wchar_t>;
     std::wstring_convert<convert_type, wchar_t> converter;
-    std::string filename = converter.to_bytes( params.m_filename );
+    std::string filename = converter.to_bytes(params.m_filename);
 
-    std::string csoFilename = std::regex_replace( filename, std::regex( "hlsl" ), "cso" );
-    std::wstring csoFilenameWideStr = std::wstring( csoFilename.begin(), csoFilename.end() );
+    std::string csoFilename = std::regex_replace(filename, std::regex("hlsl"), "cso");
+    std::wstring csoFilenameWideStr = std::wstring(csoFilename.begin(), csoFilename.end());
 
-    std::string pdbFilename = std::regex_replace( filename, std::regex( "hlsl" ), "pdb" );
-    std::wstring pdbFilenameWideStr = std::wstring( pdbFilename.begin(), pdbFilename.end() );
+    std::string pdbFilename = std::regex_replace(filename, std::regex("hlsl"), "pdb");
+    std::wstring pdbFilenameWideStr = std::wstring(pdbFilename.begin(), pdbFilename.end());
 
     std::vector<LPCWSTR> compileArgs;
     compileArgs.push_back( params.m_filename.c_str() );
@@ -120,11 +120,11 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderParams& params )
 
 std::string ShaderManager::getShaderId( ShaderParams params )
 {
-    std::wstring s = params.m_filename + L"/" + params.m_entryPoint + L"/" + shaderTypeToTargetString( params.m_shaderType );
+    std::wstring s = params.m_filename + L"/" + params.m_entryPoint + L"/" + shaderTypeToTargetString(params.m_shaderType);
 
     using convert_type = std::codecvt_utf8<wchar_t>;
     std::wstring_convert<convert_type, wchar_t> converter;
-    return converter.to_bytes( s );
+    return converter.to_bytes(s);
 }
 
 LPCWSTR ShaderManager::shaderTypeToTargetString( ShaderType type )

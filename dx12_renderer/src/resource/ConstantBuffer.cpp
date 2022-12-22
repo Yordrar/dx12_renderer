@@ -5,7 +5,7 @@
 
 #include <Renderer.h>
 
-ConstantBuffer::ConstantBuffer( std::string name, void* data, UINT sizeInBytes )
+ConstantBuffer::ConstantBuffer( std::wstring name, void* data, UINT sizeInBytes )
     : m_data(data)
     , m_sizeInBytes( sizeInBytes )
     , m_alignedSizeInBytes( getSizeAligned256( sizeInBytes ) )

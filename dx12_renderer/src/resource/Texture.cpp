@@ -5,7 +5,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-Texture::Texture( std::string resourceName, std::string filename, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_TEXTURE_LAYOUT layout )
+Texture::Texture( std::wstring resourceName, std::string filename, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_TEXTURE_LAYOUT layout )
     : m_data( nullptr )
     , m_width( 0 )
     , m_height( 0 )
@@ -27,7 +27,7 @@ Texture::Texture( std::string resourceName, std::string filename, DXGI_FORMAT fo
     m_resource->SetName( std::wstring( resourceName.begin(), resourceName.end() ).c_str() );
 }
 
-Texture::Texture( std::string resourceName, UINT width, UINT height, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_TEXTURE_LAYOUT layout )
+Texture::Texture( std::wstring resourceName, UINT width, UINT height, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_TEXTURE_LAYOUT layout )
     : m_data( nullptr )
     , m_width( width )
     , m_height( height )
@@ -38,7 +38,7 @@ Texture::Texture( std::string resourceName, UINT width, UINT height, DXGI_FORMAT
     m_resource->SetName( std::wstring( resourceName.begin(), resourceName.end() ).c_str() );
 }
 
-Texture::Texture( std::string resourceName, ComPtr<ID3D12Resource> resource )
+Texture::Texture( std::wstring resourceName, ComPtr<ID3D12Resource> resource )
     : m_data( nullptr )
     , m_width( 0 )
     , m_height( 0 )

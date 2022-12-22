@@ -464,3 +464,4 @@ FodyWeavers.xsd
 
 [Bb]uild/**
 !dx12_renderer/external/**
+!demoApp/resource/**

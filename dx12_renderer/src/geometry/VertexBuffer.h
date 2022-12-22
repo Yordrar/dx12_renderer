@@ -12,6 +12,8 @@ public:
 
 	void bind( ComPtr<ID3D12GraphicsCommandList> commandList );
 
+	UINT getVertexCount() const { return m_vertexCount; }
+
 private:
 	void* m_vertices;
 	UINT m_vertexSize;

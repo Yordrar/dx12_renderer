@@ -14,6 +14,7 @@ using namespace Microsoft::WRL;
 #include <resource/ResourceManager.h>
 
 #include <iostream>
+#include <string>
 
 struct Vertex
 {
@@ -138,7 +139,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     Renderer renderer( hWnd, windowRect );
 
-    std::string inputfile = "resource/suzanne.obj";
+    std::string inputfile = "resource/sponza/sponza.obj";
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
@@ -163,11 +164,25 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         exit( 1 );
     }
 
-    std::vector<Vertex> vertexBuffer;
-    std::vector<UINT> indexBuffer;
+    scene = std::make_unique<Scene>(L"mainScene");
+    ResourceManager::it().createTexture(L"suzanne_demoTex", "resource/demoTex.jpeg", DXGI_FORMAT_R8G8B8A8_UNORM);
+
+    std::vector<Vertex>* vertexBuffers = new std::vector<Vertex>[shapes.size()];
     // Loop over shapes
     for ( size_t shapeIdx = 0; shapeIdx < shapes.size(); shapeIdx++ )
     {
+        std::wstring shapeName = std::wstring(shapes[shapeIdx].name.begin(), shapes[shapeIdx].name.end());
+        Mesh* mesh = new Mesh(shapeName, { L"depth", L"main" });
+        mesh->addInputLayoutElement("POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT);
+        mesh->addInputLayoutElement("NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT);
+        mesh->addInputLayoutElement("TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT);
+        mesh->addInputLayoutElement("TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
+        mesh->addInputLayoutElement("BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
+        mesh->setShaders(L"shader/test_vs.hlsl", L"shader/test_ps.hlsl");
+        mesh->addResource(ResourceManager::it().getResource<Texture>(L"suzanne_demoTex"));
+
+        std::vector<Vertex>& vertexBuffer = vertexBuffers[shapeIdx];
+
         // Loop over faces(polygon)
         size_t index_offset = 0;
         for ( size_t faceIdx = 0; faceIdx < shapes[ shapeIdx ].mesh.num_face_vertices.size(); faceIdx++ )
@@ -213,37 +228,22 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             shapes[ shapeIdx ].mesh.material_ids[ faceIdx ];
         }
 
-        for ( auto vertexIdx : shapes[ shapeIdx ].mesh.indices )
-        {
-            indexBuffer.push_back( vertexIdx.vertex_index );
-        }
+        mesh->setVertexBuffer(vertexBuffer.data(), sizeof(Vertex), vertexBuffer.size());
+
+        scene->addGeometry(mesh);
     }
 
-    ResourceManager::it().createTexture( "mainRenderTarget", windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET );
-    ResourceManager::it().createTexture( "mainDepthStencilTarget", windowWidth, windowHeight, DXGI_FORMAT_D32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL );
+    ResourceManager::it().createTexture( L"mainRenderTarget", windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET );
+    ResourceManager::it().createTexture( L"mainDepthStencilTarget", windowWidth, windowHeight, DXGI_FORMAT_D32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL );
 
-    scene = std::make_unique<Scene>( "mainScene" );
-
-    Mesh* mesh = new Mesh( "suzanne", {"depth","main"});
-    mesh->addInputLayoutElement( "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT );
-    mesh->addInputLayoutElement( "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT );
-    mesh->addInputLayoutElement( "TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT );
-    mesh->addInputLayoutElement( "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT );
-    mesh->addInputLayoutElement( "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT );
-    mesh->setVertexBuffer( vertexBuffer.data(), sizeof(Vertex), vertexBuffer.size() );
-    mesh->setIndexBuffer( indexBuffer.data(), indexBuffer.size() );
-    mesh->setShaders( "shader/test_vs.hlsl", "shader/test_ps.hlsl" );
-    mesh->addResource( ResourceManager::it().createTexture( "suzanne_demoTex", "resource/demoTex.jpeg", DXGI_FORMAT_R8G8B8A8_UNORM ) );
-    scene->addGeometry( mesh );
-
-    RenderPass depthPass( "Depth Prepass", "depth", "", "mainDepthStencilTarget" );
-    RenderPass mainPass( "Main Pass", "main", "backbuffer", "mainDepthStencilTarget" );
-    //RenderPass copyToBackbufferPass( "Copy to Backbuffer", "copy", "backbuffer", "" );
+    RenderPass depthPass(L"Depth Prepass", L"depth", L"", L"mainDepthStencilTarget");
+    RenderPass mainPass(L"Main Pass", L"main", L"backbuffer", L"mainDepthStencilTarget");
+    //RenderPass copyToBackbufferPass( L"Copy to Backbuffer", L"copy", L"backbuffer", L"" );
     renderer.addRenderPass( depthPass );
     renderer.addRenderPass( mainPass );
     //renderer.addRenderPass( copyToBackbufferPass );
 
-    ResourceManager::it().createSampler( "globalSampler" );
+    ResourceManager::it().createSampler(L"globalSampler");
 
     MSG msg = {};
     while ( msg.message != WM_QUIT )
