@@ -17,7 +17,7 @@ ShaderManager::ShaderManager()
     m_utils->CreateDefaultIncludeHandler( &m_includeHandler );
 }
 
-D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderParams& params )
+D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& params )
 {
     ShaderMap::iterator it = m_shaders.find( getShaderId( params ) );
 
@@ -118,7 +118,7 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderParams& params )
     return shaderBytecode;
 }
 
-std::string ShaderManager::getShaderId( ShaderParams params )
+std::string ShaderManager::getShaderId( ShaderDesc params )
 {
     std::wstring s = params.m_filename + L"/" + params.m_entryPoint + L"/" + shaderTypeToTargetString(params.m_shaderType);
 

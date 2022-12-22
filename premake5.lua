@@ -12,6 +12,7 @@ filter "Debug"
 	symbols "on"
 	targetdir "build/bin/debug"
 	debugdir "build/bin/debug"
+	defines "_DEBUG"
 
 filter "Release"
 	runtime "Release"

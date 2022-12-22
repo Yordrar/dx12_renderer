@@ -21,7 +21,7 @@ public:
         ComputeShader
     };
 
-    struct ShaderParams
+    struct ShaderDesc
     {
         std::wstring m_filename;
         std::wstring m_entryPoint;
@@ -32,12 +32,12 @@ public:
 
     ~ShaderManager() = default;
 
-    D3D12_SHADER_BYTECODE getShader( ShaderParams& params );
+    D3D12_SHADER_BYTECODE getShader( ShaderDesc& params );
 
 private:
     ShaderManager();
 
-    std::string getShaderId( ShaderParams params );
+    std::string getShaderId( ShaderDesc params );
     LPCWSTR shaderTypeToTargetString( ShaderType type );
 
     using ShaderMap = std::unordered_map< std::string, ComPtr<IDxcBlob> >;

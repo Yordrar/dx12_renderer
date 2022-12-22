@@ -48,31 +48,34 @@ void Mesh::record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList>
     PIXBeginEvent( commandList.Get(), PIX_COLOR_DEFAULT, eventString.c_str() );
 
     IGeometry::record( techniqueName, commandList, pipelineState );
+    pipelineState.m_topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;
-    inputLayoutDesc.pInputElementDescs = m_inputLayout.data();
-    inputLayoutDesc.NumElements = m_inputLayout.size();
-    pipelineState.m_inputLayout = inputLayoutDesc;
-
-    pipelineState.m_topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-
-    ShaderManager::ShaderParams shaderParams;
-    shaderParams.m_enableDebug = true;
-
-    shaderParams.m_filename = m_vertexShaderFilename;
-    shaderParams.m_entryPoint = techniqueName + L"_vs";
-    shaderParams.m_shaderType = ShaderManager::ShaderType::VertexShader;
-    pipelineState.m_vertexShader = ShaderManager::it().getShader( shaderParams );
-
-    shaderParams.m_filename = m_pixelShaderFilename;
-    shaderParams.m_entryPoint = techniqueName + L"_ps";
-    shaderParams.m_shaderType = ShaderManager::ShaderType::PixelShader;
-    pipelineState.m_pixelShader = ShaderManager::it().getShader( shaderParams );
-
     std::wstring PSOName = techniqueName + L"/" + m_vertexShaderFilename + L"/" + m_pixelShaderFilename + L"/" + std::to_wstring(pipelineState.m_topologyType);
-    commandList->SetPipelineState( PSOManager::it().getPSO( PSOName, pipelineState ).Get() );
+    if (m_psoCache.find(PSOName) == m_psoCache.end())
+    {
+        D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;
+        inputLayoutDesc.pInputElementDescs = m_inputLayout.data();
+        inputLayoutDesc.NumElements = m_inputLayout.size();
+        pipelineState.m_inputLayout = inputLayoutDesc;
+
+        ShaderManager::ShaderDesc shaderDesc;
+        shaderDesc.m_enableDebug = true;
+
+        shaderDesc.m_filename = m_vertexShaderFilename;
+        shaderDesc.m_entryPoint = techniqueName + L"_vs";
+        shaderDesc.m_shaderType = ShaderManager::ShaderType::VertexShader;
+        pipelineState.m_vertexShader = ShaderManager::it().getShader(shaderDesc);
+
+        shaderDesc.m_filename = m_pixelShaderFilename;
+        shaderDesc.m_entryPoint = techniqueName + L"_ps";
+        shaderDesc.m_shaderType = ShaderManager::ShaderType::PixelShader;
+        pipelineState.m_pixelShader = ShaderManager::it().getShader(shaderDesc);
+
+        m_psoCache[PSOName] = PSOManager::it().getPSO(PSOName, pipelineState).Get();
+    }
+    commandList->SetPipelineState(m_psoCache[PSOName]);
 
     m_vertexBuffer->bind( commandList );
 
