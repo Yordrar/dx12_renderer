@@ -3,6 +3,7 @@ workspace "dx12_renderer"
 	system "Windows"
     architecture "x86_64"
 	language "C++"
+	cppdialect "C++17"
 	location "build"
 	startproject "demoApp"
 	staticruntime "on"
@@ -26,8 +27,7 @@ project "dx12_renderer"
 	libdirs { "dx12_renderer/external/dxc/lib/x64", "dx12_renderer/external/WinPixEventRuntime/bin/x64" }
 	links { "d3d12", "dxgi", "dxguid", "dxcompiler", "WinPixEventRuntime" }
 	defines { "NOMINMAX", "WIN32_LEAN_AND_MEAN" }
-	includedirs 
-	{ 
+	includedirs { 
 		"dx12_renderer/src",
 		"dx12_renderer/external",
 		"dx12_renderer/external/dxc/inc",
@@ -45,7 +45,11 @@ project "demoApp"
 	files { "demoApp/src/**.h", "demoApp/src/**.cpp" }
 	libdirs "demoApp/external/"
 	links { "dx12_renderer" }
-	includedirs { "demoApp/src", "demoApp/external", "dx12_renderer/src" }
+	includedirs { 
+		"demoApp/src", 
+		"demoApp/external", 
+		"dx12_renderer/src"
+	}
 	prebuildcommands {
 		"{COPYDIR} " .. _WORKING_DIR .. "/demoApp/shader %{cfg.buildtarget.directory}shader",
 		"{COPYDIR} " .. _WORKING_DIR .. "/demoApp/resource %{cfg.buildtarget.directory}resource",

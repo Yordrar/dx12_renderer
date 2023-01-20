@@ -8,6 +8,9 @@ using namespace Microsoft::WRL;
 #define TINYOBJLOADER_IMPLEMENTATION 
 #include <tiny_obj_loader.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include <Renderer.h>
 #include <Scene.h>
 #include <geometry/Mesh.h>
@@ -165,7 +168,16 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     }
 
     scene = std::make_unique<Scene>(L"mainScene");
-    ResourceManager::it().createTexture(L"suzanne_demoTex", "resource/demoTex.jpeg", DXGI_FORMAT_R8G8B8A8_UNORM);
+
+    int width, height, nrChannelsInFile;
+    uint8_t* data = stbi_load( "resource/demoTex.jpeg", &width, &height, &nrChannelsInFile, 4 );
+    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 1, 1, 0 );
+
+    D3D12_SUBRESOURCE_DATA subresData;
+    subresData.pData = data;
+    subresData.RowPitch = width * 4;
+    subresData.SlicePitch = 0;
+    ResourceManager::it().createResource(L"demoTex", resourceDesc, subresData);
 
     std::vector<Vertex>* vertexBuffers = new std::vector<Vertex>[shapes.size()];
     // Loop over shapes
@@ -179,7 +191,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         mesh->addInputLayoutElement("TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
         mesh->addInputLayoutElement("BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
         mesh->setShaders(L"shader/test_vs.hlsl", L"shader/test_ps.hlsl");
-        mesh->addResource(ResourceManager::it().getResource<Texture>(L"suzanne_demoTex"));
+        mesh->addResource(ResourceManager::it().getResource(L"demoTex"));
 
         std::vector<Vertex>& vertexBuffer = vertexBuffers[shapeIdx];
 
@@ -233,8 +245,9 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         scene->addGeometry(mesh);
     }
 
-    ResourceManager::it().createTexture( L"mainRenderTarget", windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET );
-    ResourceManager::it().createTexture( L"mainDepthStencilTarget", windowWidth, windowHeight, DXGI_FORMAT_D32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL );
+    ;
+    ResourceManager::it().createResource( L"mainRenderTarget", (D3D12_RESOURCE_DESC)CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) );
+    ResourceManager::it().createResource( L"mainDepthStencilTarget", (D3D12_RESOURCE_DESC)CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) );
 
     RenderPass depthPass(L"Depth Prepass", L"depth", L"", L"mainDepthStencilTarget");
     RenderPass mainPass(L"Main Pass", L"main", L"backbuffer", L"mainDepthStencilTarget");

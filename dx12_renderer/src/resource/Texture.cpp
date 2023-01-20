@@ -2,8 +2,7 @@
 
 #include <d3dx12.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include <resource/Resource.h>
 
 Texture::Texture( std::wstring resourceName, std::string filename, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_TEXTURE_LAYOUT layout )
     : m_data( nullptr )
@@ -15,16 +14,16 @@ Texture::Texture( std::wstring resourceName, std::string filename, DXGI_FORMAT f
     m_width = width;
     m_height = height;
 
+    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( format, width, height, 1, 1, 1, 0, flags, layout );
+
     D3D12_SUBRESOURCE_DATA subresData;
     subresData.pData = m_data;
     subresData.RowPitch = width * 4;
     subresData.SlicePitch = 0;
-    m_subresourceData.push_back( subresData );
 
-    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( format, width, height, 1, 1, 1, 0, flags, layout );
-    initInternalResources( resourceDesc );
+    m_resource = std::make_unique<Resource>( resourceDesc, subresData );
 
-    m_resource->SetName( std::wstring( resourceName.begin(), resourceName.end() ).c_str() );
+    m_resource->setDebugName( resourceName );
 }
 
 Texture::Texture( std::wstring resourceName, UINT width, UINT height, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_TEXTURE_LAYOUT layout )
@@ -33,9 +32,15 @@ Texture::Texture( std::wstring resourceName, UINT width, UINT height, DXGI_FORMA
     , m_height( height )
 {
     CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( format, width, height, 1, 1, 1, 0, flags, layout );
-    initInternalResources( resourceDesc );
 
-    m_resource->SetName( std::wstring( resourceName.begin(), resourceName.end() ).c_str() );
+    D3D12_SUBRESOURCE_DATA subresData;
+    subresData.pData = m_data;
+    subresData.RowPitch = width * 4;
+    subresData.SlicePitch = 0;
+
+    m_resource = std::make_unique<Resource>( resourceDesc, subresData );
+
+    m_resource->setDebugName( resourceName );
 }
 
 Texture::Texture( std::wstring resourceName, ComPtr<ID3D12Resource> resource )
@@ -43,8 +48,9 @@ Texture::Texture( std::wstring resourceName, ComPtr<ID3D12Resource> resource )
     , m_width( 0 )
     , m_height( 0 )
 {
-    m_resource = resource;
-    m_resource->SetName( std::wstring( resourceName.begin(), resourceName.end() ).c_str() );
+    m_resource = std::make_unique<Resource>( resource );
+
+    m_resource->setDebugName( resourceName );
 }
 
 Texture::~Texture()

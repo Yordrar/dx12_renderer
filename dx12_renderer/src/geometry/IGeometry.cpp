@@ -23,7 +23,7 @@ void IGeometry::record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommand
     {
         m_isDirty = false;
 
-        for ( IResource* resource : m_resources )
+        for ( Resource* resource : m_resources )
         {
             resource->copyDataToGPU( commandList );
         }
@@ -35,7 +35,7 @@ void IGeometry::record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommand
     commandList->SetGraphicsRootConstantBufferView( 1, m_bindlessIndices->getGPUVirtualAddress() );
 }
 
-void IGeometry::addResource( IResource* resource )
+void IGeometry::addResource( Resource* resource )
 {
     m_isDirty = true;
     m_resources.push_back( resource );

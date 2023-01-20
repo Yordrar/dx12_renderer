@@ -8,7 +8,7 @@
 #include <geometry/PSOManager.h>
 #include <resource/ConstantBuffer.h>
 
-class IResource;
+class Resource;
 
 class IGeometry
 {
@@ -18,7 +18,7 @@ public:
 
     virtual void record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
 
-    void addResource( IResource* resource );
+    void addResource( Resource* resource );
 
     std::wstring getName() const { return m_name; }
     std::unordered_set<std::wstring> const& getTechniqueNames() const { return m_techniqueNames; }
@@ -26,7 +26,7 @@ public:
 protected:
     std::wstring m_name;
     std::unordered_set<std::wstring> m_techniqueNames;
-    std::vector< IResource* > m_resources;
+    std::vector< Resource* > m_resources;
     ConstantBuffer* m_bindlessIndices;
     std::vector<float> m_resourceIndices;
     bool m_isDirty;

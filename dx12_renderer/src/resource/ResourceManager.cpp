@@ -1,8 +1,9 @@
 #include "ResourceManager.h"
 
 #include <Renderer.h>
+#include <resource/Resource.h>
 #include <resource/DescriptorHeap.h>
-#include <resource/ConstantBuffer.h>
+#include <resource/Descriptor.h>
 #include <resource/Texture.h>
 
 ResourceManager::ResourceManager()
@@ -24,45 +25,89 @@ ResourceManager::ResourceManager()
     m_descriptorHeapDsv = std::make_unique<DescriptorHeap>( heapDesc );
 }
 
+Resource* ResourceManager::createResource( std::wstring resourceName, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData )
+{
+    std::unique_ptr<Resource> newResource = std::make_unique<Resource>( resourceName, resourceDesc, subresourceData );
+
+    if ( newResource->getResourceDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET )
+    {
+        D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+        rtvDesc.Format = newResource->getResourceDesc().Format;
+        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+        rtvDesc.Texture2D.MipSlice = 0;
+        rtvDesc.Texture2D.PlaneSlice = 0;
+
+        UINT descriptorIndex = m_descriptorHeapRtv->addRTV( newResource->getResource(), &rtvDesc );
+        newResource->m_rtv = std::move( std::make_unique<Descriptor>( m_descriptorHeapRtv->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                                      descriptorIndex,
+                                                                      m_descriptorHeapRtv->getIncrementSize() ) );
+    }
+    else if ( newResource->getResourceDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL )
+    {
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+        dsvDesc.Format = newResource->getResourceDesc().Format;
+        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        dsvDesc.Texture2D.MipSlice = 0;
+
+        UINT descriptorIndex = m_descriptorHeapDsv->addDSV( newResource->getResource(), &dsvDesc );
+        newResource->m_dsv = std::move( std::make_unique<Descriptor>( m_descriptorHeapDsv->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                                      descriptorIndex,
+                                                                      m_descriptorHeapDsv->getIncrementSize() ) );
+    }
+    else if ( newResource->getResourceDesc().Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D )
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Format = newResource->getResourceDesc().Format;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Texture2D.MipLevels = 1;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        srvDesc.Texture2D.PlaneSlice = 0;
+
+        UINT descriptorIndex = m_descriptorHeapCbvSrvUav->addSRV( newResource->getResource(), &srvDesc );
+        newResource->m_srv = std::move( std::make_unique<Descriptor>( m_descriptorHeapCbvSrvUav->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                                      descriptorIndex,
+                                                                      m_descriptorHeapCbvSrvUav->getIncrementSize() ) );
+    }
+    else if ( newResource->getResourceDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER )
+    {
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+        cbvDesc.BufferLocation = newResource->getGPUVirtualAddress();
+        cbvDesc.SizeInBytes = newResource->getResource()->GetDesc().Width;
+
+        UINT descriptorIndex = m_descriptorHeapCbvSrvUav->addCBV( &cbvDesc );
+        newResource->m_cbv = std::move( std::make_unique<Descriptor>( m_descriptorHeapCbvSrvUav->getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                                      descriptorIndex,
+                                                                      m_descriptorHeapCbvSrvUav->getIncrementSize() ) );
+    }
+
+    m_resources[ resourceName ] = std::move( newResource );
+
+    return m_resources[ resourceName ].get();
+}
+
 void ResourceManager::destroyResource( std::wstring resourceName )
 {
-    IResource* resource = getResource<IResource>( resourceName );
+    Resource* resource = getResource( resourceName );
     if ( resource )
     {
-        m_descriptorHeapCbvSrvUav->removeCBV( resource->m_descriptorIndex );
+        if ( resource->m_cbv )
+        {
+            m_descriptorHeapCbvSrvUav->removeCBV( resource->m_cbv->getDescriptorIndex() );
+        }
         m_resources.erase( resourceName );
     }
 }
 
-void ResourceManager::createBackbuffer( std::wstring resourceName, ComPtr<ID3D12Resource> backbuffer )
+Resource* ResourceManager::getResource( std::wstring resourceName )
 {
-    std::unique_ptr<Texture> backbufferTexture = std::make_unique<Texture>( resourceName, backbuffer );
+    ResourceMap::iterator it = m_resources.find( resourceName );
 
-    backbufferTexture->m_descriptorIndex = m_descriptorHeapRtv->addRTV( backbufferTexture->getResource(), nullptr );
-    backbufferTexture->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapRtv->getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                                                     backbufferTexture->m_descriptorIndex,
-                                                                     m_descriptorHeapRtv->getIncrementSize() );
-    backbufferTexture->m_resourceState = D3D12_RESOURCE_STATE_PRESENT;
-
-    m_resources[ resourceName ] = std::move( backbufferTexture );
-}
-
-ConstantBuffer* ResourceManager::createConstantBuffer( std::wstring resourceName, void* data, UINT sizeInBytes )
-{
-    std::unique_ptr<ConstantBuffer> buffer = std::make_unique<ConstantBuffer>( resourceName, data, sizeInBytes );
-
-    D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-    cbvDesc.BufferLocation = buffer->getGPUVirtualAddress();
-    cbvDesc.SizeInBytes = buffer->getAlignedSizeInBytes();
-
-    buffer->m_descriptorIndex = m_descriptorHeapCbvSrvUav->addCBV( &cbvDesc );
-    buffer->m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( m_descriptorHeapCbvSrvUav->getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                                          buffer->m_descriptorIndex,
-                                                          m_descriptorHeapCbvSrvUav->getIncrementSize() );
-
-    m_resources[ resourceName ] = std::move( buffer );
-
-    return getResource<ConstantBuffer>( resourceName );
+    if ( it != m_resources.end() )
+    {
+        return it->second.get();
+    }
+    return nullptr;
 }
 
 void ResourceManager::createSampler( std::wstring resourceName )

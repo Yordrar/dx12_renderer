@@ -1,8 +1,6 @@
 #pragma once
 
-#include <resource/IResource.h>
-
-class TextureSampler : public IResource
+class TextureSampler
 {
 public:
 	TextureSampler();
