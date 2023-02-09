@@ -7,28 +7,35 @@ using namespace Microsoft::WRL;
 
 #include <optional>
 
-class Descriptor;
+#include <resource/Descriptor.h>
 
 class Resource
 {
 	friend class ResourceManager;
 public:
-	Resource( D3D12_RESOURCE_DESC& resourceDesc );
-	Resource( D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData );
-	Resource( ComPtr<ID3D12Resource> resource );
+	Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc );
+	Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData );
+	Resource( std::wstring& name, ComPtr<ID3D12Resource> resource );
 	~Resource();
+
+	static UINT getSizeAligned256( UINT sizeInBytes ) { return ( sizeInBytes + 255 ) & ~255; }
 
 	ComPtr<ID3D12Resource> getResource() const { return m_resource; }
 	D3D12_RESOURCE_DESC getResourceDesc() const {return m_resource->GetDesc(); }
 	D3D12_GPU_VIRTUAL_ADDRESS getGPUVirtualAddress() const { return m_resource->GetGPUVirtualAddress(); }
+	void setNeedsCopyToGPU( bool needsCopy ) { m_needsCopyToGPU = needsCopy; }
+	bool getNeedsCopyToGPU() const { return m_needsCopyToGPU; }
+	Descriptor const* getShaderResourceView() const { return m_srv.get(); }
+	Descriptor const* getConstantBufferView() const { return m_cbv.get(); }
+	Descriptor const* getUniformAccessView() const { return m_uav.get(); }
+	Descriptor const* getRenderTargetView() const { return m_rtv.get(); }
+	Descriptor const* getDepthStencilView() const { return m_dsv.get(); }
 
-	std::optional<CD3DX12_RESOURCE_BARRIER> getTransitionBarrier( ComPtr<ID3D12GraphicsCommandList> commandList, D3D12_RESOURCE_STATES newState );
+	std::optional<CD3DX12_RESOURCE_BARRIER> getTransitionBarrier( D3D12_RESOURCE_STATES newState );
 	void copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList );
 	void setDebugName( std::wstring& debugName );
 
 protected:
-	UINT getSizeAligned256( UINT sizeInBytes );
-
 	ComPtr<ID3D12Resource> m_resource;
 	ComPtr<ID3D12Resource> m_intermediateUploadBuffer;
 	D3D12_SUBRESOURCE_DATA m_subresourceData;

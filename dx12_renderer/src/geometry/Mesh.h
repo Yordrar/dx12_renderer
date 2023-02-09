@@ -10,7 +10,6 @@
 
 #include <geometry/IGeometry.h>
 #include <geometry/PSOManager.h>
-#include <resource/IResource.h>
 
 class Mesh : public IGeometry
 {

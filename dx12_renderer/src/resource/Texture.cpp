@@ -9,8 +9,7 @@ Texture::Texture( std::wstring resourceName, std::string filename, DXGI_FORMAT f
     , m_width( 0 )
     , m_height( 0 )
 {
-    int width, height, nrChannelsInFile;
-    m_data = stbi_load( filename.c_str(), &width, &height, &nrChannelsInFile, 4 );
+    int width = 0, height = 0;
     m_width = width;
     m_height = height;
 
@@ -21,7 +20,7 @@ Texture::Texture( std::wstring resourceName, std::string filename, DXGI_FORMAT f
     subresData.RowPitch = width * 4;
     subresData.SlicePitch = 0;
 
-    m_resource = std::make_unique<Resource>( resourceDesc, subresData );
+    m_resource = std::make_unique<Resource>( resourceName, resourceDesc, subresData );
 
     m_resource->setDebugName( resourceName );
 }
@@ -38,7 +37,7 @@ Texture::Texture( std::wstring resourceName, UINT width, UINT height, DXGI_FORMA
     subresData.RowPitch = width * 4;
     subresData.SlicePitch = 0;
 
-    m_resource = std::make_unique<Resource>( resourceDesc, subresData );
+    m_resource = std::make_unique<Resource>( resourceName, resourceDesc, subresData );
 
     m_resource->setDebugName( resourceName );
 }
@@ -48,7 +47,7 @@ Texture::Texture( std::wstring resourceName, ComPtr<ID3D12Resource> resource )
     , m_width( 0 )
     , m_height( 0 )
 {
-    m_resource = std::make_unique<Resource>( resource );
+    m_resource = std::make_unique<Resource>( resourceName, resource );
 
     m_resource->setDebugName( resourceName );
 }

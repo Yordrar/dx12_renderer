@@ -10,7 +10,7 @@ using namespace Microsoft::WRL;
 
 #include <RendererConstants.h>
 #include <Scene.h>
-#include <resource/Texture.h>
+#include <resource/Resource.h>
 
 class RenderPass
 {
@@ -32,7 +32,7 @@ private:
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     ComPtr<ID3D12CommandAllocator> m_commandAllocators[ RendererConstants::sc_numBackBuffers ];
 
-    Texture* m_renderTarget;
-    Texture* m_depthStencilTarget;
+    Resource* m_renderTarget;
+    Resource* m_depthStencilTarget;
 };
 

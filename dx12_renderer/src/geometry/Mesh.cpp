@@ -52,12 +52,12 @@ void Mesh::record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList>
 
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    std::wstring PSOName = techniqueName + L"/" + m_vertexShaderFilename + L"/" + m_pixelShaderFilename + L"/" + std::to_wstring(pipelineState.m_topologyType);
+    std::wstring PSOName = techniqueName + L"/" + m_vertexShaderFilename + L"/" + m_pixelShaderFilename + L"/topology:" + std::to_wstring(pipelineState.m_topologyType);
     if (m_psoCache.find(PSOName) == m_psoCache.end())
     {
         D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;
         inputLayoutDesc.pInputElementDescs = m_inputLayout.data();
-        inputLayoutDesc.NumElements = m_inputLayout.size();
+        inputLayoutDesc.NumElements = static_cast<UINT>( m_inputLayout.size() );
         pipelineState.m_inputLayout = inputLayoutDesc;
 
         ShaderManager::ShaderDesc shaderDesc;

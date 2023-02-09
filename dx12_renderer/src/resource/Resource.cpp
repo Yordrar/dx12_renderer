@@ -4,7 +4,7 @@
 
 #include <Renderer.h>
 
-Resource::Resource( D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData )
+Resource::Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData )
     : m_resource( nullptr )
     , m_intermediateUploadBuffer( nullptr )
     , m_subresourceData( subresourceData )
@@ -14,6 +14,7 @@ Resource::Resource( D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& s
     , m_rtv( nullptr )
     , m_dsv( nullptr )
     , m_resourceState( D3D12_RESOURCE_STATE_GENERIC_READ )
+    , m_needsCopyToGPU( subresourceData.pData != nullptr )
 {
     FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
     CD3DX12_CLEAR_VALUE clearValue;
@@ -26,7 +27,7 @@ Resource::Resource( D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& s
     }
     else if ( resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL )
     {
-        clearValue = CD3DX12_CLEAR_VALUE( resourceDesc.Format, 1.0f, 0.0f );
+        clearValue = CD3DX12_CLEAR_VALUE( resourceDesc.Format, 1.0f, 0 );
         clearValuePtr = &clearValue;
     }
 
@@ -45,22 +46,26 @@ Resource::Resource( D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& s
                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
                                                  nullptr,
                                                  IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
+    setDebugName( name );
 }
 
-Resource::Resource( D3D12_RESOURCE_DESC& resourceDesc )
-    : Resource(resourceDesc, D3D12_SUBRESOURCE_DATA{nullptr, 0, 0})
+Resource::Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc )
+    : Resource(name, resourceDesc, D3D12_SUBRESOURCE_DATA{nullptr, 0, 0})
 {
+    m_needsCopyToGPU = false;
 }
 
-Resource::Resource( ComPtr<ID3D12Resource> resource )
+Resource::Resource( std::wstring& name, ComPtr<ID3D12Resource> resource )
     : m_resource( resource )
     , m_intermediateUploadBuffer( nullptr )
+    , m_subresourceData( D3D12_SUBRESOURCE_DATA{ nullptr, 0, 0 } )
     , m_srv( nullptr )
     , m_cbv( nullptr )
     , m_uav( nullptr )
     , m_rtv( nullptr )
     , m_dsv( nullptr )
-    , m_resourceState( D3D12_RESOURCE_STATE_GENERIC_READ )
+    , m_resourceState( D3D12_RESOURCE_STATE_COMMON )
+    , m_needsCopyToGPU( false )
 {
 
     CD3DX12_HEAP_PROPERTIES uploadHeapProperties = CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_UPLOAD );
@@ -70,10 +75,7 @@ Resource::Resource( ComPtr<ID3D12Resource> resource )
                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
                                                  nullptr,
                                                  IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
-
-    m_subresourceData.pData = nullptr;
-    m_subresourceData.RowPitch = 0;
-    m_subresourceData.SlicePitch = 0;
+    setDebugName( name );
 }
 
 Resource::~Resource()
@@ -81,18 +83,19 @@ Resource::~Resource()
 
 }
 
-std::optional<CD3DX12_RESOURCE_BARRIER> Resource::getTransitionBarrier( ComPtr<ID3D12GraphicsCommandList> commandList, D3D12_RESOURCE_STATES newState )
+std::optional<CD3DX12_RESOURCE_BARRIER> Resource::getTransitionBarrier( D3D12_RESOURCE_STATES newState )
 {
     if ( newState != m_resourceState )
     {
-        m_resourceState = newState;
-
         CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition
         (
             m_resource.Get(),
             m_resourceState,
             newState
         );
+
+        m_resourceState = newState;
+
         return std::optional<CD3DX12_RESOURCE_BARRIER>( barrier );
     }
 
@@ -104,14 +107,10 @@ void Resource::copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )
     assert( m_resourceState == D3D12_RESOURCE_STATE_COPY_DEST );
     assert( m_subresourceData.pData );
     UpdateSubresources<1>( commandList.Get(), m_resource.Get(), m_intermediateUploadBuffer.Get(), 0, 0, 1, &m_subresourceData );
+    m_needsCopyToGPU = false;
 }
 
 void Resource::setDebugName( std::wstring& debugName )
 {
     m_resource->SetName( debugName.c_str() );
-}
-
-UINT Resource::getSizeAligned256( UINT sizeInBytes )
-{
-    return ( sizeInBytes + 255 ) & ~255;
 }

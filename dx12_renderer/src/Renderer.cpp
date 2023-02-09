@@ -100,7 +100,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     {
         ComPtr<ID3D12Resource> backBuffer;
         m_swapChain->GetBuffer( i, IID_PPV_ARGS( &backBuffer ) );
-        ResourceManager::it().createBackbuffer( L"backbuffer" + std::to_wstring(i), backBuffer );
+        ResourceManager::it().createResource( L"backbuffer" + std::to_wstring(i), backBuffer );
     }
 
 
@@ -170,7 +170,7 @@ void Renderer::drawScene( Scene& scene )
         renderPass.record( scene );
         commandLists.push_back( renderPass.getCommandList() );
     }
-    m_graphicsCmdQueue->ExecuteCommandLists( commandLists.size(), commandLists.data() );
+    m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>( commandLists.size() ), commandLists.data() );
     m_fence->GPUSignal( m_graphicsCmdQueue );
 
     m_fence->CPUWait( m_fence->getLastSignaledValue() );

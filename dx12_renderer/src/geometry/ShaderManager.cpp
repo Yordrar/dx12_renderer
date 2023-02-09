@@ -1,11 +1,31 @@
 #include "ShaderManager.h"
 
+#include <Windows.h>
+
 #include <d3dx12.h>
 
 #include <regex>
 #include <cstdio>
-#include <locale>
-#include <codecvt>
+
+// Convert a wide Unicode string to an UTF8 string
+std::string utf8_encode( const std::wstring& wstr )
+{
+    if ( wstr.empty() ) return std::string();
+    int size_needed = WideCharToMultiByte( CP_UTF8, 0, &wstr[ 0 ], (int)wstr.size(), NULL, 0, NULL, NULL );
+    std::string strTo( size_needed, 0 );
+    WideCharToMultiByte( CP_UTF8, 0, &wstr[ 0 ], (int)wstr.size(), &strTo[ 0 ], size_needed, NULL, NULL );
+    return strTo;
+}
+
+// Convert an UTF8 string to a wide Unicode String
+std::wstring utf8_decode( const std::string& str )
+{
+    if ( str.empty() ) return std::wstring();
+    int size_needed = MultiByteToWideChar( CP_UTF8, 0, &str[ 0 ], (int)str.size(), NULL, 0 );
+    std::wstring wstrTo( size_needed, 0 );
+    MultiByteToWideChar( CP_UTF8, 0, &str[ 0 ], (int)str.size(), &wstrTo[ 0 ], size_needed );
+    return wstrTo;
+}
 
 ShaderManager::ShaderManager()
     : m_utils( nullptr )
@@ -27,9 +47,7 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& params )
         return shaderBytecode;
     }
 
-    using convert_type = std::codecvt_utf8<wchar_t>;
-    std::wstring_convert<convert_type, wchar_t> converter;
-    std::string filename = converter.to_bytes(params.m_filename);
+    std::string filename = utf8_encode(params.m_filename);
 
     std::string csoFilename = std::regex_replace(filename, std::regex("hlsl"), "cso");
     std::wstring csoFilenameWideStr = std::wstring(csoFilename.begin(), csoFilename.end());
@@ -73,7 +91,7 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& params )
     m_compiler->Compile(
         &sourceBuffer,                     // Source buffer.
         compileArgs.data(),                // Array of pointers to arguments.
-        compileArgs.size(),                // Number of arguments.
+        static_cast<UINT32>( compileArgs.size() ),                // Number of arguments.
         m_includeHandler.Get(),            // User-provided interface to handle #include directives (optional).
         IID_PPV_ARGS( &compilationResult ) // Compiler output status, buffer, and errors.
     );
@@ -81,9 +99,7 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& params )
     ComPtr<IDxcBlobUtf16> shaderName = nullptr;
     compilationResult->GetOutput( DXC_OUT_OBJECT, IID_PPV_ARGS( &compiledBytecodeBlob ), &shaderName );
    
-    //
-    // Print errors if present.
-    //
+    // Print errors if present
     ComPtr<IDxcBlobUtf8> pErrors = nullptr;
     compilationResult->GetOutput( DXC_OUT_ERRORS, IID_PPV_ARGS( &pErrors ), nullptr );
     // Note that d3dcompiler would return null if no errors or warnings are present.
@@ -91,9 +107,7 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& params )
     // will be zero if there are no warnings or errors.
     if ( pErrors != nullptr && pErrors->GetStringLength() != 0 )
     {
-        LPCSTR test = pErrors->GetStringPointer();
-        wprintf( L"Warnings and Errors:\n%S\n", pErrors->GetStringPointer() );
-        fflush( stdout );
+        OutputDebugStringA( pErrors->GetStringPointer() );
     }
 
     // Save pdb.
@@ -122,9 +136,7 @@ std::string ShaderManager::getShaderId( ShaderDesc params )
 {
     std::wstring s = params.m_filename + L"/" + params.m_entryPoint + L"/" + shaderTypeToTargetString(params.m_shaderType);
 
-    using convert_type = std::codecvt_utf8<wchar_t>;
-    std::wstring_convert<convert_type, wchar_t> converter;
-    return converter.to_bytes(s);
+    return utf8_encode(s);
 }
 
 LPCWSTR ShaderManager::shaderTypeToTargetString( ShaderType type )

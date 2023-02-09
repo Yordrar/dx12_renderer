@@ -2,7 +2,7 @@
 
 cbuffer resourceIndices : register(b1, space0)
 {
-    float textureIdx;
+    uint textureIdx;
 }
 
 struct PSIn
@@ -16,10 +16,11 @@ struct PSIn
 
 float4 main_ps( PSIn psIn ) : SV_Target
 {
-    return texture2DResources[textureIdx].Sample(sampler2DResources[0], psIn.m_uvs);
+    uint idx = textureIdx;
+    float4 col = texture2DResources[idx].Sample(sampler2DResources[0], psIn.m_uvs);
+    return col;
 }
 
-float4 depth_ps(PSIn psIn) : SV_Target
+void depth_ps(PSIn psIn)
 {
-    return float4(0.0f, 0.0f, 0.0f, 0.0f);
 }

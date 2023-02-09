@@ -6,9 +6,9 @@
 #include <geometry/VertexBuffer.h>
 #include <geometry/IndexBuffer.h>
 #include <geometry/PSOManager.h>
-#include <resource/ConstantBuffer.h>
 
 class Resource;
+class Descriptor;
 
 class IGeometry
 {
@@ -18,16 +18,14 @@ public:
 
     virtual void record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
 
-    void addResource( Resource* resource );
+    void addResourceView( Descriptor const& resourceView );
 
-    std::wstring getName() const { return m_name; }
+    std::wstring const& getName() const { return m_name; }
     std::unordered_set<std::wstring> const& getTechniqueNames() const { return m_techniqueNames; }
 
 protected:
     std::wstring m_name;
     std::unordered_set<std::wstring> m_techniqueNames;
-    std::vector< Resource* > m_resources;
-    ConstantBuffer* m_bindlessIndices;
-    std::vector<float> m_resourceIndices;
-    bool m_isDirty;
+    Resource* m_bindlessIndices;
+    std::vector<UINT> m_resourceIndices;
 };

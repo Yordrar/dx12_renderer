@@ -21,18 +21,23 @@ public:
 
     Resource* getResource( std::wstring resourceName );
 
-    Resource* createResource( std::wstring resourceName, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData );
+    Resource* createResource( std::wstring resourceName, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA subresourceData = {nullptr, 0, 0} );
+    Resource* createResource( std::wstring resourceName, ComPtr<ID3D12Resource> resource );
     void destroyResource( std::wstring resourceName );
 
     void createSampler( std::wstring resourceName );
 
-    DescriptorHeap const& getCbvSrvUavDescriptorHeap() const { return *m_descriptorHeapCbvSrvUav; }
-    DescriptorHeap const& getSamplerDescriptorHeap() const { return *m_descriptorHeapSampler; }
-    DescriptorHeap const& getRtvDescriptorHeap() const { return *m_descriptorHeapRtv; }
-    DescriptorHeap const& getDsvDescriptorHeap() const { return *m_descriptorHeapDsv; }
+    void copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> commandList );
+
+    DescriptorHeap& getCbvSrvUavDescriptorHeap() const { return *m_descriptorHeapCbvSrvUav; }
+    DescriptorHeap& getSamplerDescriptorHeap() const { return *m_descriptorHeapSampler; }
+    DescriptorHeap& getRtvDescriptorHeap() const { return *m_descriptorHeapRtv; }
+    DescriptorHeap& getDsvDescriptorHeap() const { return *m_descriptorHeapDsv; }
 
 private:
     ResourceManager();
+
+    void createDescriptorsForResource( Resource& resource );
 
     using ResourceMap = std::unordered_map< std::wstring, std::unique_ptr<Resource> >;
     ResourceMap m_resources;

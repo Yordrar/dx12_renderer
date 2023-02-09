@@ -11,6 +11,8 @@ public:
 	operator D3D12_CPU_DESCRIPTOR_HANDLE() const { return m_descriptor; }
 	UINT getDescriptorIndex() const { return m_descriptorIndex; }
 
+	D3D12_CPU_DESCRIPTOR_HANDLE getView() const { return m_descriptor; }
+
 private:
 	D3D12_CPU_DESCRIPTOR_HANDLE m_descriptor;
 	UINT m_descriptorIndex;

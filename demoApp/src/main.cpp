@@ -15,6 +15,7 @@ using namespace Microsoft::WRL;
 #include <Scene.h>
 #include <geometry/Mesh.h>
 #include <resource/ResourceManager.h>
+#include <resource/Descriptor.h>
 
 #include <iostream>
 #include <string>
@@ -177,6 +178,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     subresData.pData = data;
     subresData.RowPitch = width * 4;
     subresData.SlicePitch = 0;
+
     ResourceManager::it().createResource(L"demoTex", resourceDesc, subresData);
 
     std::vector<Vertex>* vertexBuffers = new std::vector<Vertex>[shapes.size()];
@@ -191,7 +193,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         mesh->addInputLayoutElement("TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
         mesh->addInputLayoutElement("BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
         mesh->setShaders(L"shader/test_vs.hlsl", L"shader/test_ps.hlsl");
-        mesh->addResource(ResourceManager::it().getResource(L"demoTex"));
+        mesh->addResourceView(*ResourceManager::it().getResource(L"demoTex")->getShaderResourceView());
 
         std::vector<Vertex>& vertexBuffer = vertexBuffers[shapeIdx];
 
@@ -237,17 +239,17 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             index_offset += numFaceVertices;
 
             // per-face material
-            shapes[ shapeIdx ].mesh.material_ids[ faceIdx ];
+            //shapes[ shapeIdx ].mesh.material_ids[ faceIdx ];
         }
 
-        mesh->setVertexBuffer(vertexBuffer.data(), sizeof(Vertex), vertexBuffer.size());
+        mesh->setVertexBuffer(vertexBuffer.data(), sizeof(Vertex), static_cast<UINT>( vertexBuffer.size() ));
 
         scene->addGeometry(mesh);
     }
 
-    ;
-    ResourceManager::it().createResource( L"mainRenderTarget", (D3D12_RESOURCE_DESC)CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) );
-    ResourceManager::it().createResource( L"mainDepthStencilTarget", (D3D12_RESOURCE_DESC)CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) );
+
+    ResourceManager::it().createResource( L"mainRenderTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) );
+    ResourceManager::it().createResource( L"mainDepthStencilTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) );
 
     RenderPass depthPass(L"Depth Prepass", L"depth", L"", L"mainDepthStencilTarget");
     RenderPass mainPass(L"Main Pass", L"main", L"backbuffer", L"mainDepthStencilTarget");

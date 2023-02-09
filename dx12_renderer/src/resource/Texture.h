@@ -5,8 +5,9 @@
 using namespace Microsoft::WRL;
 
 #include <string>
+#include <memory>
 
-class Resource;
+#include <resource/Resource.h>
 
 class Texture
 {
@@ -20,7 +21,7 @@ public:
 
 	int getWidth() const { return m_width; }
 	int getHeight() const { return m_height; }
-	DXGI_FORMAT getFormat() const { return m_resource->GetDesc().Format; }
+	DXGI_FORMAT getFormat() const { return m_resource->getResourceDesc().Format; }
 
 private:
 	std::unique_ptr<Resource> m_resource;

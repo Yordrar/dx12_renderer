@@ -2,7 +2,9 @@
 
 #include <directxmath.h>
 
-#include <resource/ConstantBuffer.h>
+#include <resource/Resource.h>
+
+#include <string>
 
 class Camera
 {
@@ -15,7 +17,7 @@ public:
 
 	void setCameraBufferView( ComPtr<ID3D12GraphicsCommandList> commandList );
 
-	ConstantBuffer const* getCameraBuffer() const { return m_cameraBuffer; }
+	Resource const* getCameraBuffer() const { return m_cameraBuffer; }
 
 	struct
 	{
@@ -23,7 +25,7 @@ public:
 		DirectX::XMVECTOR m_position;
 	} m_cameraData;
 	
-	ConstantBuffer* m_cameraBuffer;
+	Resource* m_cameraBuffer;
 
 	DirectX::XMVECTOR right;
 	DirectX::XMVECTOR up;

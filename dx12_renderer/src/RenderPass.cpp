@@ -4,6 +4,7 @@
 
 #include <Renderer.h>
 #include <resource/ResourceManager.h>
+#include <resource/Descriptor.h>
 #include <geometry/PSOManager.h>
 #include <geometry/IGeometry.h>
 
@@ -28,9 +29,16 @@ RenderPass::RenderPass( std::wstring name,
     std::wstring commandListName = name + L"_commandList";
     m_commandList->SetName( std::wstring( commandListName.begin(), commandListName.end() ).c_str() );
 
-    m_renderTarget = ResourceManager::it().getResource<Texture>( renderTargetName );
+    if ( renderTargetName == L"backbuffer" )
+    {
+        m_renderTarget = Renderer::getCurrentBackbuffer();
+    }
+    else
+    {
+        m_renderTarget = ResourceManager::it().getResource( renderTargetName );
+    }
 
-    m_depthStencilTarget = ResourceManager::it().getResource<Texture>( depthStencilTargetName );
+    m_depthStencilTarget = ResourceManager::it().getResource( depthStencilTargetName );
 }
 
 RenderPass::~RenderPass()
@@ -45,11 +53,13 @@ void RenderPass::record( Scene& scene )
     currentCommandAllocator->Reset();
     m_commandList->Reset( currentCommandAllocator.Get(), nullptr );
 
+    ResourceManager::it().copyResourcesToGPU( m_commandList );
+
     PIXBeginEvent( m_commandList.Get(), PIX_COLOR_DEFAULT, m_name.c_str() );
 
     // Set viewport
     m_commandList->RSSetViewports( 1, &CD3DX12_VIEWPORT( 0.0f, 0.0f, static_cast<float>( Renderer::getWindowRect().right - Renderer::getWindowRect().left ), static_cast<float>( Renderer::getWindowRect().bottom - Renderer::getWindowRect().top ) ) );
-    m_commandList->RSSetScissorRects( 1, &CD3DX12_RECT( 0, 0, static_cast<float>( Renderer::getWindowRect().right - Renderer::getWindowRect().left ), static_cast<float>( Renderer::getWindowRect().bottom - Renderer::getWindowRect().top ) ) );
+    m_commandList->RSSetScissorRects( 1, &CD3DX12_RECT( 0, 0, Renderer::getWindowRect().right - Renderer::getWindowRect().left, Renderer::getWindowRect().bottom - Renderer::getWindowRect().top ) );
 
     // Set root signature
     m_commandList->SetGraphicsRootSignature( Renderer::getRootSignature().Get() );
@@ -69,27 +79,49 @@ void RenderPass::record( Scene& scene )
 
     // Clear and set render targets
     static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    D3D12_CPU_DESCRIPTOR_HANDLE* renderTargetDescriptor = nullptr;
-    D3D12_CPU_DESCRIPTOR_HANDLE* depthStencilTargetDescriptor = nullptr;
     if ( m_renderTargetName == L"backbuffer" )
     {
         m_renderTarget = Renderer::getCurrentBackbuffer();
     }
 
+    std::vector<CD3DX12_RESOURCE_BARRIER> barriers;
     if ( m_renderTarget )
     {
-        m_renderTarget->transitionToState( m_commandList, D3D12_RESOURCE_STATE_RENDER_TARGET );
-        m_commandList->ClearRenderTargetView( m_renderTarget->getDescriptor(), clearColor, 0, nullptr );
-        renderTargetDescriptor = &m_renderTarget->getDescriptor();
+        std::optional<CD3DX12_RESOURCE_BARRIER> renderTargetBarrier = m_renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_RENDER_TARGET );
+        if ( renderTargetBarrier.has_value() )
+        {
+            barriers.push_back( renderTargetBarrier.value() );
+        }
     }
-
     if ( m_depthStencilTarget )
     {
-        m_depthStencilTarget->transitionToState( m_commandList, D3D12_RESOURCE_STATE_DEPTH_WRITE );
-        m_commandList->ClearDepthStencilView( m_depthStencilTarget->getDescriptor(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0.0f, 0, nullptr );
-        depthStencilTargetDescriptor = &m_depthStencilTarget->getDescriptor();
+        std::optional<CD3DX12_RESOURCE_BARRIER> depthStencilBarrier = m_depthStencilTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_DEPTH_WRITE );
+        if ( depthStencilBarrier.has_value() )
+        {
+            barriers.push_back( depthStencilBarrier.value() );
+        }
     }
-    m_commandList->OMSetRenderTargets( renderTargetDescriptor ? 1 : 0, renderTargetDescriptor, false, depthStencilTargetDescriptor );
+    if ( barriers.size() > 0 )
+    {
+        m_commandList->ResourceBarrier( static_cast<UINT>( barriers.size() ), barriers.data() );
+    }
+    if ( m_renderTarget )
+    {
+        m_commandList->ClearRenderTargetView( m_renderTarget->getRenderTargetView()->getView(), clearColor, 0, nullptr );
+    }
+    if ( m_depthStencilTarget )
+    {
+        m_commandList->ClearDepthStencilView( m_depthStencilTarget->getDepthStencilView()->getView(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr );
+    }
+
+    if ( m_renderTarget )
+    {
+        m_commandList->OMSetRenderTargets( 1, &m_renderTarget->getRenderTargetView()->getView(), false, &m_depthStencilTarget->getDepthStencilView()->getView() );
+    }
+    else
+    {
+        m_commandList->OMSetRenderTargets( 0, nullptr, false, &m_depthStencilTarget->getDepthStencilView()->getView() );
+    }
 
     // Set initial pipeline state
     PSOManager::PipelineStateStream pipelineState;
@@ -98,7 +130,7 @@ void RenderPass::record( Scene& scene )
     pipelineState.m_rasterizer = rasterizerDesc;
 
     std::vector<DXGI_FORMAT> rtFormats;
-    m_renderTarget ? rtFormats.push_back( m_renderTarget->getFormat() ) : rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
+    m_renderTarget ? rtFormats.push_back( m_renderTarget->getResourceDesc().Format ) : rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
     rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
     rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
     rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
@@ -108,7 +140,7 @@ void RenderPass::record( Scene& scene )
     rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
     pipelineState.m_rtFormats = CD3DX12_RT_FORMAT_ARRAY( rtFormats.data(), m_renderTarget ? 1 : 0 );
 
-    pipelineState.m_dsFormat = m_depthStencilTarget ? m_depthStencilTarget->getFormat() : DXGI_FORMAT_UNKNOWN;
+    pipelineState.m_dsFormat = m_depthStencilTarget ? m_depthStencilTarget->getResourceDesc().Format : DXGI_FORMAT_UNKNOWN;
 
     pipelineState.m_rootSignature = Renderer::getRootSignature().Get();
 
@@ -117,7 +149,11 @@ void RenderPass::record( Scene& scene )
 
     if ( m_renderTarget )
     {
-        m_renderTarget->transitionToState( m_commandList, D3D12_RESOURCE_STATE_PRESENT );
+        std::optional<CD3DX12_RESOURCE_BARRIER> renderTargetBarrier = m_renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
+        if ( renderTargetBarrier.has_value() )
+        {
+            m_commandList->ResourceBarrier( 1, &renderTargetBarrier.value() );
+        }
     }
 
     PIXEndEvent( m_commandList.Get() );
