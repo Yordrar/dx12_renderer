@@ -11,6 +11,7 @@ using namespace Microsoft::WRL;
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <Utils.h>
 #include <Renderer.h>
 #include <Scene.h>
 #include <geometry/Mesh.h>
@@ -144,6 +145,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     Renderer renderer( hWnd, windowRect );
 
     std::string inputfile = "resource/sponza/sponza.obj";
+    std::string mtlDir = "resource/sponza/";
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
@@ -151,16 +153,16 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     std::string warn;
     std::string err;
 
-    bool ret = tinyobj::LoadObj( &attrib, &shapes, &materials, &warn, &err, inputfile.c_str() );
+    bool ret = tinyobj::LoadObj( &attrib, &shapes, &materials, &warn, &err, inputfile.c_str(), mtlDir.c_str(), true );
 
     if ( !warn.empty() )
     {
-        std::cout << warn << std::endl;
+        OutputDebugStringA( warn.c_str() );
     }
 
     if ( !err.empty() )
     {
-        std::cerr << err << std::endl;
+        OutputDebugStringA( err.c_str() );
     }
 
     if ( !ret )
@@ -169,6 +171,20 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     }
 
     scene = std::make_unique<Scene>(L"mainScene");
+
+    for ( tinyobj::material_t const& material : materials )
+    {
+        int width, height, nrChannelsInFile;
+        uint8_t* data = stbi_load( (mtlDir + material.diffuse_texname).c_str(), &width, &height, &nrChannelsInFile, 4 );
+        CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 1, 1, 0 );
+
+        D3D12_SUBRESOURCE_DATA subresData;
+        subresData.pData = data;
+        subresData.RowPitch = width * 4;
+        subresData.SlicePitch = 0;
+
+        ResourceManager::it().createResource( utf8_decode( material.diffuse_texname.c_str() ), resourceDesc, subresData);
+    }
 
     int width, height, nrChannelsInFile;
     uint8_t* data = stbi_load( "resource/demoTex.jpeg", &width, &height, &nrChannelsInFile, 4 );
@@ -193,7 +209,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         mesh->addInputLayoutElement("TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
         mesh->addInputLayoutElement("BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
         mesh->setShaders(L"shader/test_vs.hlsl", L"shader/test_ps.hlsl");
-        mesh->addResourceView(*ResourceManager::it().getResource(L"demoTex")->getShaderResourceView());
 
         std::vector<Vertex>& vertexBuffer = vertexBuffers[shapeIdx];
 
@@ -239,7 +254,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             index_offset += numFaceVertices;
 
             // per-face material
-            //shapes[ shapeIdx ].mesh.material_ids[ faceIdx ];
+
+            mesh->addResourceView( *ResourceManager::it().getResource( utf8_decode( materials[ shapes[ shapeIdx ].mesh.material_ids[ faceIdx ] ].diffuse_texname ) )->getShaderResourceView() );
         }
 
         mesh->setVertexBuffer(vertexBuffer.data(), sizeof(Vertex), static_cast<UINT>( vertexBuffer.size() ));
@@ -254,7 +270,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     RenderPass depthPass(L"Depth Prepass", L"depth", L"", L"mainDepthStencilTarget");
     RenderPass mainPass(L"Main Pass", L"main", L"backbuffer", L"mainDepthStencilTarget");
     //RenderPass copyToBackbufferPass( L"Copy to Backbuffer", L"copy", L"backbuffer", L"" );
-    renderer.addRenderPass( depthPass );
+    //renderer.addRenderPass( depthPass );
     renderer.addRenderPass( mainPass );
     //renderer.addRenderPass( copyToBackbufferPass );
 

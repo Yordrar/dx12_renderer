@@ -21,15 +21,15 @@ public:
 	static UINT getSizeAligned256( UINT sizeInBytes ) { return ( sizeInBytes + 255 ) & ~255; }
 
 	ComPtr<ID3D12Resource> getResource() const { return m_resource; }
-	D3D12_RESOURCE_DESC getResourceDesc() const {return m_resource->GetDesc(); }
+	D3D12_RESOURCE_DESC getResourceDesc() const { return m_resource->GetDesc(); }
 	D3D12_GPU_VIRTUAL_ADDRESS getGPUVirtualAddress() const { return m_resource->GetGPUVirtualAddress(); }
 	void setNeedsCopyToGPU( bool needsCopy ) { m_needsCopyToGPU = needsCopy; }
 	bool getNeedsCopyToGPU() const { return m_needsCopyToGPU; }
-	Descriptor const* getShaderResourceView() const { return m_srv.get(); }
-	Descriptor const* getConstantBufferView() const { return m_cbv.get(); }
-	Descriptor const* getUniformAccessView() const { return m_uav.get(); }
-	Descriptor const* getRenderTargetView() const { return m_rtv.get(); }
-	Descriptor const* getDepthStencilView() const { return m_dsv.get(); }
+	Descriptor const* getShaderResourceView();
+	Descriptor const* getConstantBufferView();
+	Descriptor const* getUniformAccessView();
+	Descriptor const* getRenderTargetView();
+	Descriptor const* getDepthStencilView();
 
 	std::optional<CD3DX12_RESOURCE_BARRIER> getTransitionBarrier( D3D12_RESOURCE_STATES newState );
 	void copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList );

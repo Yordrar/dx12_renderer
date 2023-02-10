@@ -10,7 +10,6 @@ using namespace Microsoft::WRL;
 #include <RendererConstants.h>
 #include <RenderPass.h>
 #include <Fence.h>
-#include <resource/ResourceManager.h>
 
 class Scene;
 
@@ -25,7 +24,6 @@ public:
     void addRenderPass( RenderPass& renderPass );
     void drawScene( Scene& scene );
 
-    static Resource* getCurrentBackbuffer() { return ResourceManager::it().getResource( L"backbuffer" + std::to_wstring(s_currentBackBufferIndex) ); }
     static UINT getCurrentBackbufferIndex() { return s_currentBackBufferIndex; }
     static RECT getWindowRect() { return s_windowRect; }
     static ComPtr<ID3D12RootSignature> getRootSignature() { return s_rootSignature; }

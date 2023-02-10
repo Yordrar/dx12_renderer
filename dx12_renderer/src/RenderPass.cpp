@@ -31,7 +31,7 @@ RenderPass::RenderPass( std::wstring name,
 
     if ( renderTargetName == L"backbuffer" )
     {
-        m_renderTarget = Renderer::getCurrentBackbuffer();
+        m_renderTarget = ResourceManager::it().getCurrentBackbufferResource();
     }
     else
     {
@@ -67,21 +67,21 @@ void RenderPass::record( Scene& scene )
     // Set descriptor heaps
     ID3D12DescriptorHeap* descriptorHeaps[] =
     {
-        ResourceManager::it().getCbvSrvUavDescriptorHeap().getHeap().Get(),
-        ResourceManager::it().getSamplerDescriptorHeap().getHeap().Get(),
+        DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap().Get(),
+        DescriptorHeap::getDescriptorHeapSampler().getHeap().Get(),
     };
     m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
 
     // Set descriptor tables in root signature
-    m_commandList->SetGraphicsRootDescriptorTable( 2, ResourceManager::it().getCbvSrvUavDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 3, ResourceManager::it().getCbvSrvUavDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 4, ResourceManager::it().getSamplerDescriptorHeap().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 2, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 3, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 4, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
 
     // Clear and set render targets
     static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
     if ( m_renderTargetName == L"backbuffer" )
     {
-        m_renderTarget = Renderer::getCurrentBackbuffer();
+        m_renderTarget = ResourceManager::it().getCurrentBackbufferResource();
     }
 
     std::vector<CD3DX12_RESOURCE_BARRIER> barriers;

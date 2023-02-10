@@ -1,8 +1,11 @@
 #include "Resource.h"
 
 #include <cassert>
+#include <memory>
 
 #include <Renderer.h>
+#include <resource/Descriptor.h>
+#include <resource/DescriptorHeap.h>
 
 Resource::Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData )
     : m_resource( nullptr )
@@ -80,7 +83,110 @@ Resource::Resource( std::wstring& name, ComPtr<ID3D12Resource> resource )
 
 Resource::~Resource()
 {
+    if ( m_cbv )
+    {
+        DescriptorHeap::getDescriptorHeapCbvSrvUav().removeDescriptor( *m_cbv );
+    }
 
+    if ( m_srv )
+    {
+        DescriptorHeap::getDescriptorHeapCbvSrvUav().removeDescriptor( *m_srv );
+    }
+
+    if ( m_uav )
+    {
+        DescriptorHeap::getDescriptorHeapCbvSrvUav().removeDescriptor( *m_uav );
+    }
+
+    if ( m_rtv )
+    {
+        DescriptorHeap::getDescriptorHeapRtv().removeDescriptor( *m_rtv );
+    }
+
+    if ( m_dsv )
+    {
+        DescriptorHeap::getDescriptorHeapDsv().removeDescriptor( *m_dsv );
+    }
+}
+
+Descriptor const* Resource::getShaderResourceView()
+{
+    if ( !m_srv )
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Format = getResourceDesc().Format;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Texture2D.MipLevels = 1;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        srvDesc.Texture2D.PlaneSlice = 0;
+
+        UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addSRV( getResource(), &srvDesc );
+        m_srv = std::move( std::make_unique<Descriptor>( DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                         descriptorIndex,
+                                                         DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() ) );
+    }
+
+    return m_srv.get();
+}
+
+Descriptor const* Resource::getConstantBufferView()
+{
+    if ( !m_cbv && ( getResourceDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER ) )
+    {
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+        cbvDesc.BufferLocation = getGPUVirtualAddress();
+        cbvDesc.SizeInBytes = static_cast<UINT>( getResourceDesc().Width );
+
+        UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addCBV( &cbvDesc );
+        m_cbv = std::move( std::make_unique<Descriptor>( DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                         descriptorIndex,
+                                                         DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() ) );
+    }
+
+    return m_cbv.get();
+}
+
+Descriptor const* Resource::getUniformAccessView()
+{
+    return nullptr;
+}
+
+Descriptor const* Resource::getRenderTargetView()
+{
+    if ( !m_rtv && ( getResourceDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) )
+    {
+        D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+        rtvDesc.Format = getResourceDesc().Format;
+        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+        rtvDesc.Texture2D.MipSlice = 0;
+        rtvDesc.Texture2D.PlaneSlice = 0;
+
+        UINT descriptorIndex = DescriptorHeap::getDescriptorHeapRtv().addRTV( getResource(), &rtvDesc );
+        m_rtv = std::move( std::make_unique<Descriptor>( DescriptorHeap::getDescriptorHeapRtv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                         descriptorIndex,
+                                                         DescriptorHeap::getDescriptorHeapRtv().getIncrementSize() ) );
+    }
+
+    return m_rtv.get();
+}
+
+Descriptor const* Resource::getDepthStencilView()
+{
+    if ( !m_dsv && ( getResourceDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) )
+    {
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+        dsvDesc.Format = getResourceDesc().Format;
+        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        dsvDesc.Texture2D.MipSlice = 0;
+
+        UINT descriptorIndex = DescriptorHeap::getDescriptorHeapDsv().addDSV( getResource(), &dsvDesc );
+        m_dsv = std::move( std::make_unique<Descriptor>( DescriptorHeap::getDescriptorHeapDsv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                         descriptorIndex,
+                                                         DescriptorHeap::getDescriptorHeapDsv().getIncrementSize() ) );
+    }
+
+    return m_dsv.get();
 }
 
 std::optional<CD3DX12_RESOURCE_BARRIER> Resource::getTransitionBarrier( D3D12_RESOURCE_STATES newState )
