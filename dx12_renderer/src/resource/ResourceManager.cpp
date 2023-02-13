@@ -1,5 +1,7 @@
 #include "ResourceManager.h"
 
+#include <pix3.h>
+
 #include <Renderer.h>
 #include <resource/Resource.h>
 #include <resource/DescriptorHeap.h>
@@ -12,6 +14,11 @@ ResourceManager::ResourceManager()
 
 Resource* ResourceManager::createResource( std::wstring resourceName, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA subresourceData )
 {
+    if ( resourceName == L"" )
+    {
+        return nullptr;
+    }
+
     // For constant buffers, size has to be aligned to 256
     if ( resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER )
     {
@@ -27,6 +34,8 @@ Resource* ResourceManager::createResource( std::wstring resourceName, D3D12_RESO
 
 Resource* ResourceManager::createResource( std::wstring resourceName, ComPtr<ID3D12Resource> resource )
 {
+    assert( resourceName != L"" );
+
     std::unique_ptr<Resource> newResource = std::make_unique<Resource>( resourceName, resource );
 
     m_resources[ resourceName ] = std::move( newResource );
@@ -68,6 +77,8 @@ void ResourceManager::createSampler( std::wstring resourceName )
 
 void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
+    PIXScopedEvent( commandList.Get(), PIX_COLOR_DEFAULT, "Copy resources to GPU" );
+
     std::vector<CD3DX12_RESOURCE_BARRIER> barriers;
     std::vector<Resource*> resourcesToCopy;
     for ( ResourceMap::value_type& resource_pair : m_resources )

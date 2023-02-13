@@ -20,6 +20,7 @@ public:
 
 	static UINT getSizeAligned256( UINT sizeInBytes ) { return ( sizeInBytes + 255 ) & ~255; }
 
+	std::wstring const& getName() const { return m_name; }
 	ComPtr<ID3D12Resource> getResource() const { return m_resource; }
 	D3D12_RESOURCE_DESC getResourceDesc() const { return m_resource->GetDesc(); }
 	D3D12_GPU_VIRTUAL_ADDRESS getGPUVirtualAddress() const { return m_resource->GetGPUVirtualAddress(); }
@@ -36,6 +37,8 @@ public:
 	void setDebugName( std::wstring& debugName );
 
 protected:
+	std::wstring m_name;
+
 	ComPtr<ID3D12Resource> m_resource;
 	ComPtr<ID3D12Resource> m_intermediateUploadBuffer;
 	D3D12_SUBRESOURCE_DATA m_subresourceData;

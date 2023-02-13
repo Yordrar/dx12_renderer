@@ -1,5 +1,7 @@
 #include "Fence.h"
 
+#include <pix3.h>
+
 Fence::Fence( ComPtr<ID3D12Device> device )
 {
     device->CreateFence( 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &m_fence ) );
@@ -25,6 +27,7 @@ void Fence::CPUWait( uint64_t fenceValue, uint64_t duration )
     {
         m_fence->SetEventOnCompletion( fenceValue, m_fenceEvent );
         WaitForSingleObject( m_fenceEvent, static_cast<DWORD>( duration ) );
+        PIXNotifyWakeFromFenceSignal( m_fenceEvent );
     }
 }
 

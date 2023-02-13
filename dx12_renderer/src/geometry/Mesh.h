@@ -6,7 +6,6 @@
 #include <string>
 #include <memory>
 #include <list>
-#include <unordered_map>
 
 #include <geometry/IGeometry.h>
 #include <geometry/PSOManager.h>
@@ -31,5 +30,4 @@ private:
     std::unique_ptr<IndexBuffer> m_indexBuffer;
     std::wstring m_vertexShaderFilename;
     std::wstring m_pixelShaderFilename;
-    std::unordered_map<std::wstring, ID3D12PipelineState*> m_psoCache;
 };

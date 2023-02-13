@@ -17,9 +17,9 @@ ShaderManager::ShaderManager()
     m_utils->CreateDefaultIncludeHandler( &m_includeHandler );
 }
 
-D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& params )
+D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& shaderDesc )
 {
-    ShaderMap::iterator it = m_shaders.find( getShaderId( params ) );
+    ShaderMap::iterator it = m_shaders.find( shaderDesc );
 
     if ( it != m_shaders.end() )
     {
@@ -27,7 +27,7 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& params )
         return shaderBytecode;
     }
 
-    std::string filename = utf8_encode(params.m_filename);
+    std::string filename = WideStrToStr(shaderDesc.m_filename);
 
     std::string csoFilename = std::regex_replace(filename, std::regex("hlsl"), "cso");
     std::wstring csoFilenameWideStr = std::wstring(csoFilename.begin(), csoFilename.end());
@@ -36,19 +36,19 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& params )
     std::wstring pdbFilenameWideStr = std::wstring(pdbFilename.begin(), pdbFilename.end());
 
     std::vector<LPCWSTR> compileArgs;
-    compileArgs.push_back( params.m_filename.c_str() );
+    compileArgs.push_back( shaderDesc.m_filename.c_str() );
     compileArgs.push_back( L"-E" );
-    compileArgs.push_back( params.m_entryPoint.c_str() );
+    compileArgs.push_back( shaderDesc.m_entryPoint.c_str() );
     compileArgs.push_back( L"-T" );
-    compileArgs.push_back( shaderTypeToTargetString( params.m_shaderType ) );
-    if ( params.m_enableDebug )
+    compileArgs.push_back( shaderTypeToTargetString( shaderDesc.m_shaderType ) );
+    if ( shaderDesc.m_enableDebug )
     {
         compileArgs.push_back( L"-Zi" );
     }
-    if ( params.m_defines.size() > 0 )
+    if ( shaderDesc.m_defines.size() > 0 )
     {
         compileArgs.push_back( L"-D" );
-        for ( std::wstring& define : params.m_defines )
+        for ( std::wstring& define : shaderDesc.m_defines )
         {
             compileArgs.push_back( define.c_str() );
         }
@@ -60,7 +60,7 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& params )
 
     // Open source file.
     ComPtr<IDxcBlobEncoding> sourceBlob = nullptr;
-    m_utils->LoadFile( params.m_filename.c_str(), nullptr, &sourceBlob );
+    m_utils->LoadFile( shaderDesc.m_filename.c_str(), nullptr, &sourceBlob );
     DxcBuffer sourceBuffer;
     sourceBuffer.Ptr = sourceBlob->GetBufferPointer();
     sourceBuffer.Size = sourceBlob->GetBufferSize();
@@ -107,16 +107,9 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& params )
         }
     }
 
-    m_shaders[ getShaderId( params ) ] = compiledBytecodeBlob;
-    CD3DX12_SHADER_BYTECODE shaderBytecode( m_shaders[ getShaderId( params ) ]->GetBufferPointer(), m_shaders[ getShaderId( params ) ]->GetBufferSize() );
+    m_shaders[ shaderDesc ] = compiledBytecodeBlob;
+    CD3DX12_SHADER_BYTECODE shaderBytecode( m_shaders[ shaderDesc ]->GetBufferPointer(), m_shaders[ shaderDesc ]->GetBufferSize() );
     return shaderBytecode;
-}
-
-std::string ShaderManager::getShaderId( ShaderDesc params )
-{
-    std::wstring s = params.m_filename + L"/" + params.m_entryPoint + L"/" + shaderTypeToTargetString(params.m_shaderType);
-
-    return utf8_encode(s);
 }
 
 LPCWSTR ShaderManager::shaderTypeToTargetString( ShaderType type )

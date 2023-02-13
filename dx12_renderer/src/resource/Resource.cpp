@@ -8,7 +8,8 @@
 #include <resource/DescriptorHeap.h>
 
 Resource::Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData )
-    : m_resource( nullptr )
+    : m_name( name )
+    , m_resource( nullptr )
     , m_intermediateUploadBuffer( nullptr )
     , m_subresourceData( subresourceData )
     , m_srv( nullptr )
@@ -59,7 +60,8 @@ Resource::Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc )
 }
 
 Resource::Resource( std::wstring& name, ComPtr<ID3D12Resource> resource )
-    : m_resource( resource )
+    : m_name( name )
+    , m_resource( resource )
     , m_intermediateUploadBuffer( nullptr )
     , m_subresourceData( D3D12_SUBRESOURCE_DATA{ nullptr, 0, 0 } )
     , m_srv( nullptr )

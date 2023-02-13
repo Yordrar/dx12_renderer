@@ -14,6 +14,7 @@ struct PSIn
     float3 m_bitangent : BITANGENT;
 };
 
+[earlydepthstencil]
 float4 main_ps( PSIn psIn ) : SV_Target
 {
     uint idx = textureIdx;

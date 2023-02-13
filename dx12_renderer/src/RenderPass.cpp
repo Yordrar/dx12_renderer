@@ -27,7 +27,7 @@ RenderPass::RenderPass( std::wstring name,
     HRESULT result = Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_commandList ) );
     m_commandList->Close();
     std::wstring commandListName = name + L"_commandList";
-    m_commandList->SetName( std::wstring( commandListName.begin(), commandListName.end() ).c_str() );
+    m_commandList->SetName( commandListName.c_str() );
 
     if ( renderTargetName == L"backbuffer" )
     {
@@ -127,7 +127,7 @@ void RenderPass::record( Scene& scene )
     PSOManager::PipelineStateStream pipelineState;
     CD3DX12_RASTERIZER_DESC rasterizerDesc( CD3DX12_DEFAULT{} );
     rasterizerDesc.FrontCounterClockwise = true;
-    pipelineState.m_rasterizer = rasterizerDesc;
+    pipelineState.m_rasterizerState = rasterizerDesc;
 
     std::vector<DXGI_FORMAT> rtFormats;
     m_renderTarget ? rtFormats.push_back( m_renderTarget->getResourceDesc().Format ) : rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
@@ -147,7 +147,7 @@ void RenderPass::record( Scene& scene )
     // Record scene
     scene.record( m_techniqueName, m_commandList, pipelineState );
 
-    if ( m_renderTarget )
+    if ( m_renderTarget && m_renderTarget->getName().rfind( L"backbuffer", 0 ) == 0 )
     {
         std::optional<CD3DX12_RESOURCE_BARRIER> renderTargetBarrier = m_renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
         if ( renderTargetBarrier.has_value() )

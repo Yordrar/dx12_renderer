@@ -2,6 +2,9 @@
 
 #include <d3dx12.h>
 
+#include <chrono>
+#include <string>
+
 #include <resource/ResourceManager.h>
 
 RECT Renderer::s_windowRect;
@@ -164,6 +167,8 @@ void Renderer::addRenderPass( RenderPass& renderPass )
 
 void Renderer::drawScene( Scene& scene )
 {
+    auto start = std::chrono::high_resolution_clock::now();
+
     std::vector< ID3D12CommandList* > commandLists;
     for ( RenderPass& renderPass : m_renderPasses )
     {
@@ -174,6 +179,10 @@ void Renderer::drawScene( Scene& scene )
     m_fence->GPUSignal( m_graphicsCmdQueue );
 
     m_fence->CPUWait( m_fence->getLastSignaledValue() );
-    m_swapChain->Present( 1, 0 );
+    m_swapChain->Present( 0, 0 );
     s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( end - start );
+    OutputDebugStringA( std::string( "CPU time: " + std::to_string( elapsed.count() ) + "ms\n" ).c_str() );
 }

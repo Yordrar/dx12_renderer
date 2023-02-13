@@ -52,30 +52,25 @@ void Mesh::record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList>
 
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    std::wstring PSOName = techniqueName + L"/" + m_vertexShaderFilename + L"/" + m_pixelShaderFilename + L"/topology:" + std::to_wstring(pipelineState.m_topologyType);
-    if (m_psoCache.find(PSOName) == m_psoCache.end())
-    {
-        D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;
-        inputLayoutDesc.pInputElementDescs = m_inputLayout.data();
-        inputLayoutDesc.NumElements = static_cast<UINT>( m_inputLayout.size() );
-        pipelineState.m_inputLayout = inputLayoutDesc;
+    D3D12_INPUT_LAYOUT_DESC inputLayoutDesc;
+    inputLayoutDesc.pInputElementDescs = m_inputLayout.data();
+    inputLayoutDesc.NumElements = static_cast<UINT>( m_inputLayout.size() );
+    pipelineState.m_inputLayout = inputLayoutDesc;
 
-        ShaderManager::ShaderDesc shaderDesc;
-        shaderDesc.m_enableDebug = true;
+    ShaderManager::ShaderDesc shaderDesc;
+    shaderDesc.m_enableDebug = true;
 
-        shaderDesc.m_filename = m_vertexShaderFilename;
-        shaderDesc.m_entryPoint = techniqueName + L"_vs";
-        shaderDesc.m_shaderType = ShaderManager::ShaderType::VertexShader;
-        pipelineState.m_vertexShader = ShaderManager::it().getShader(shaderDesc);
+    shaderDesc.m_filename = m_vertexShaderFilename;
+    shaderDesc.m_entryPoint = techniqueName + L"_vs";
+    shaderDesc.m_shaderType = ShaderManager::ShaderType::VertexShader;
+    pipelineState.m_vertexShader = ShaderManager::it().getShader(shaderDesc);
 
-        shaderDesc.m_filename = m_pixelShaderFilename;
-        shaderDesc.m_entryPoint = techniqueName + L"_ps";
-        shaderDesc.m_shaderType = ShaderManager::ShaderType::PixelShader;
-        pipelineState.m_pixelShader = ShaderManager::it().getShader(shaderDesc);
+    shaderDesc.m_filename = m_pixelShaderFilename;
+    shaderDesc.m_entryPoint = techniqueName + L"_ps";
+    shaderDesc.m_shaderType = ShaderManager::ShaderType::PixelShader;
+    pipelineState.m_pixelShader = ShaderManager::it().getShader(shaderDesc);
 
-        m_psoCache[PSOName] = PSOManager::it().getPSO(PSOName, pipelineState).Get();
-    }
-    commandList->SetPipelineState(m_psoCache[PSOName]);
+    commandList->SetPipelineState( PSOManager::it().getPSO( pipelineState ).Get() );
 
     m_vertexBuffer->bind( commandList );
 

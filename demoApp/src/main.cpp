@@ -183,19 +183,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         subresData.RowPitch = width * 4;
         subresData.SlicePitch = 0;
 
-        ResourceManager::it().createResource( utf8_decode( material.diffuse_texname.c_str() ), resourceDesc, subresData);
+        ResourceManager::it().createResource( StrToWideStr( material.diffuse_texname.c_str() ), resourceDesc, subresData);
     }
-
-    int width, height, nrChannelsInFile;
-    uint8_t* data = stbi_load( "resource/demoTex.jpeg", &width, &height, &nrChannelsInFile, 4 );
-    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 1, 1, 0 );
-
-    D3D12_SUBRESOURCE_DATA subresData;
-    subresData.pData = data;
-    subresData.RowPitch = width * 4;
-    subresData.SlicePitch = 0;
-
-    ResourceManager::it().createResource(L"demoTex", resourceDesc, subresData);
 
     std::vector<Vertex>* vertexBuffers = new std::vector<Vertex>[shapes.size()];
     // Loop over shapes
@@ -255,7 +244,10 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
             // per-face material
 
-            mesh->addResourceView( *ResourceManager::it().getResource( utf8_decode( materials[ shapes[ shapeIdx ].mesh.material_ids[ faceIdx ] ].diffuse_texname ) )->getShaderResourceView() );
+            if ( materials[ shapes[ shapeIdx ].mesh.material_ids[ faceIdx ] ].diffuse_texname != "" )
+            {
+                mesh->addResourceView( *ResourceManager::it().getResource( StrToWideStr( materials[ shapes[ shapeIdx ].mesh.material_ids[ faceIdx ] ].diffuse_texname ) )->getShaderResourceView() );
+            }
         }
 
         mesh->setVertexBuffer(vertexBuffer.data(), sizeof(Vertex), static_cast<UINT>( vertexBuffer.size() ));
@@ -270,7 +262,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     RenderPass depthPass(L"Depth Prepass", L"depth", L"", L"mainDepthStencilTarget");
     RenderPass mainPass(L"Main Pass", L"main", L"backbuffer", L"mainDepthStencilTarget");
     //RenderPass copyToBackbufferPass( L"Copy to Backbuffer", L"copy", L"backbuffer", L"" );
-    //renderer.addRenderPass( depthPass );
+    renderer.addRenderPass( depthPass );
     renderer.addRenderPass( mainPass );
     //renderer.addRenderPass( copyToBackbufferPass );
 
