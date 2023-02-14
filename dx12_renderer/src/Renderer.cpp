@@ -103,7 +103,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     {
         ComPtr<ID3D12Resource> backBuffer;
         m_swapChain->GetBuffer( i, IID_PPV_ARGS( &backBuffer ) );
-        ResourceManager::it().createResource( L"backbuffer" + std::to_wstring(i), backBuffer );
+        ResourceManager::it().createResource( std::wstring(L"backbuffer" + std::to_wstring(i)).c_str(), backBuffer );
     }
 
 
@@ -170,6 +170,7 @@ void Renderer::drawScene( Scene& scene )
     auto start = std::chrono::high_resolution_clock::now();
 
     std::vector< ID3D12CommandList* > commandLists;
+    commandLists.reserve( m_renderPasses.size() );
     for ( RenderPass& renderPass : m_renderPasses )
     {
         renderPass.record( scene );

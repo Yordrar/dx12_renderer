@@ -20,9 +20,9 @@ Texture::Texture( std::wstring resourceName, std::string filename, DXGI_FORMAT f
     subresData.RowPitch = width * 4;
     subresData.SlicePitch = 0;
 
-    m_resource = std::make_unique<Resource>( resourceName, resourceDesc, subresData );
+    //m_resource = std::make_unique<Resource>( resourceName.c_str(), resourceDesc, subresData );
 
-    m_resource->setDebugName( resourceName );
+    //m_resource->setDebugName( resourceName );
 }
 
 Texture::Texture( std::wstring resourceName, UINT width, UINT height, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS flags, D3D12_TEXTURE_LAYOUT layout )
@@ -37,9 +37,9 @@ Texture::Texture( std::wstring resourceName, UINT width, UINT height, DXGI_FORMA
     subresData.RowPitch = width * 4;
     subresData.SlicePitch = 0;
 
-    m_resource = std::make_unique<Resource>( resourceName, resourceDesc, subresData );
+    //m_resource = std::make_unique<Resource>( resourceName, resourceDesc, subresData );
 
-    m_resource->setDebugName( resourceName );
+    //m_resource->setDebugName( resourceName );
 }
 
 Texture::Texture( std::wstring resourceName, ComPtr<ID3D12Resource> resource )
@@ -47,9 +47,9 @@ Texture::Texture( std::wstring resourceName, ComPtr<ID3D12Resource> resource )
     , m_width( 0 )
     , m_height( 0 )
 {
-    m_resource = std::make_unique<Resource>( resourceName, resource );
+    //m_resource = std::make_unique<Resource>( resourceName, resource );
 
-    m_resource->setDebugName( resourceName );
+    //m_resource->setDebugName( resourceName );
 }
 
 Texture::~Texture()

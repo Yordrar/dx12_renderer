@@ -9,7 +9,7 @@
 class Camera
 {
 public:
-	Camera( std::wstring name, DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio );
+	Camera( wchar_t const* name, DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio );
 	~Camera() = default;
 
 	void move( float delta_x, float delta_y, float delta_z );
@@ -26,6 +26,8 @@ public:
 	} m_cameraData;
 	
 	Resource* m_cameraBuffer;
+
+	std::wstring m_name;
 
 	DirectX::XMVECTOR right;
 	DirectX::XMVECTOR up;

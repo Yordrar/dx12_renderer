@@ -9,15 +9,17 @@
 class Scene
 {
 public:
-    Scene( std::wstring name );
+    Scene( wchar_t const* name );
     ~Scene();
 
     Camera& getCamera() { return m_camera; }
 
-    void record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
+    void record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
     void addGeometry( IGeometry* geometry );
 
 private:
+    std::wstring m_name;
+
     Camera m_camera;
 
     std::vector< std::shared_ptr<IGeometry> > m_geometry;

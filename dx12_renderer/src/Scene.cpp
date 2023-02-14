@@ -8,8 +8,9 @@
 #include <Camera.h>
 #include <geometry/IGeometry.h>
 
-Scene::Scene( std::wstring name )
-    : m_camera( Camera( name + L"_camera", DirectX::XMVectorSet(0.0f, 0.0f, 2.0f, 0.0f), DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f), 90.0f, 16.0f / 9.0f ) )
+Scene::Scene( wchar_t const* name )
+    : m_name( name )
+    , m_camera( Camera( std::wstring(m_name + L"_camera").c_str(), DirectX::XMVectorSet(0.0f, 0.0f, 2.0f, 0.0f), DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f), 90.0f, 16.0f / 9.0f ) )
 {
     
 }
@@ -19,7 +20,7 @@ Scene::~Scene()
 
 }
 
-void Scene::record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
+void Scene::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
 {
     m_camera.setCameraBufferView( commandList );
 

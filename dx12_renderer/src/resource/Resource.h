@@ -13,9 +13,9 @@ class Resource
 {
 	friend class ResourceManager;
 public:
-	Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc );
-	Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData );
-	Resource( std::wstring& name, ComPtr<ID3D12Resource> resource );
+	Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc );
+	Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData );
+	Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource );
 	~Resource();
 
 	static UINT getSizeAligned256( UINT sizeInBytes ) { return ( sizeInBytes + 255 ) & ~255; }
@@ -34,7 +34,7 @@ public:
 
 	std::optional<CD3DX12_RESOURCE_BARRIER> getTransitionBarrier( D3D12_RESOURCE_STATES newState );
 	void copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList );
-	void setDebugName( std::wstring& debugName );
+	void setDebugName( wchar_t const* debugName );
 
 protected:
 	std::wstring m_name;

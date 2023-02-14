@@ -8,10 +8,10 @@
 #include <geometry/PSOManager.h>
 #include <geometry/IGeometry.h>
 
-RenderPass::RenderPass( std::wstring name,
-                        std::wstring techniqueName,
-                        std::wstring renderTargetName,
-                        std::wstring depthStencilTargetName )
+RenderPass::RenderPass( wchar_t const* name,
+                        wchar_t const* techniqueName,
+                        wchar_t const* renderTargetName,
+                        wchar_t const* depthStencilTargetName )
     : m_name( name )
     , m_techniqueName( techniqueName )
     , m_renderTargetName( renderTargetName )
@@ -26,7 +26,7 @@ RenderPass::RenderPass( std::wstring name,
 
     HRESULT result = Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_commandList ) );
     m_commandList->Close();
-    std::wstring commandListName = name + L"_commandList";
+    std::wstring commandListName = m_name + L"_commandList";
     m_commandList->SetName( commandListName.c_str() );
 
     if ( renderTargetName == L"backbuffer" )
@@ -145,7 +145,7 @@ void RenderPass::record( Scene& scene )
     pipelineState.m_rootSignature = Renderer::getRootSignature().Get();
 
     // Record scene
-    scene.record( m_techniqueName, m_commandList, pipelineState );
+    scene.record( m_techniqueName.c_str(), m_commandList, pipelineState );
 
     if ( m_renderTarget && m_renderTarget->getName().rfind( L"backbuffer", 0 ) == 0 )
     {

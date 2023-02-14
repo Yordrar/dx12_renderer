@@ -2,8 +2,9 @@
 
 #include <resource/ResourceManager.h>
 
-Camera::Camera( std::wstring name, DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio)
-	: lookat(lookat)
+Camera::Camera( wchar_t const* name, DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio)
+	: m_name( name )
+	, lookat(lookat)
 	, fov(fov)
 	, aspect_ratio(aspect_ratio)
 {
@@ -13,7 +14,7 @@ Camera::Camera( std::wstring name, DirectX::XMVECTOR position, DirectX::XMVECTOR
 	m_cameraData.m_position = position;
 	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookAtRH( m_cameraData.m_position, lookat, up ) * DirectX::XMMatrixPerspectiveFovRH( fov, aspect_ratio, 0.1f, 1000.f ) );
 
-	m_cameraBuffer = ResourceManager::it().createResource( name + L"_buffer", CD3DX12_RESOURCE_DESC::Buffer( sizeof( m_cameraData ) ), D3D12_SUBRESOURCE_DATA{ &m_cameraData, sizeof( m_cameraData ), 0 } );
+	m_cameraBuffer = ResourceManager::it().createResource( std::wstring(m_name + L"_buffer").c_str(), CD3DX12_RESOURCE_DESC::Buffer( sizeof( m_cameraData ) ), D3D12_SUBRESOURCE_DATA{ &m_cameraData, sizeof( m_cameraData ), 0 } );
 }
 
 void Camera::move( float delta_x, float delta_y, float delta_z )

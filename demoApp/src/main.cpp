@@ -183,15 +183,14 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         subresData.RowPitch = width * 4;
         subresData.SlicePitch = 0;
 
-        ResourceManager::it().createResource( StrToWideStr( material.diffuse_texname.c_str() ), resourceDesc, subresData);
+        ResourceManager::it().createResource( StrToWideStr( material.diffuse_texname.c_str() ).c_str(), resourceDesc, subresData);
     }
 
     std::vector<Vertex>* vertexBuffers = new std::vector<Vertex>[shapes.size()];
     // Loop over shapes
     for ( size_t shapeIdx = 0; shapeIdx < shapes.size(); shapeIdx++ )
     {
-        std::wstring shapeName = std::wstring(shapes[shapeIdx].name.begin(), shapes[shapeIdx].name.end());
-        Mesh* mesh = new Mesh(shapeName, { L"depth", L"main" });
+        Mesh* mesh = new Mesh( StrToWideStr( shapes[ shapeIdx ].name ).c_str(), { L"depth", L"main" });
         mesh->addInputLayoutElement("POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT);
         mesh->addInputLayoutElement("NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT);
         mesh->addInputLayoutElement("TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT);
@@ -246,7 +245,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
             if ( materials[ shapes[ shapeIdx ].mesh.material_ids[ faceIdx ] ].diffuse_texname != "" )
             {
-                mesh->addResourceView( *ResourceManager::it().getResource( StrToWideStr( materials[ shapes[ shapeIdx ].mesh.material_ids[ faceIdx ] ].diffuse_texname ) )->getShaderResourceView() );
+                mesh->addResourceView( *ResourceManager::it().getResource( StrToWideStr( materials[ shapes[ shapeIdx ].mesh.material_ids[ faceIdx ] ].diffuse_texname ).c_str() )->getShaderResourceView() );
             }
         }
 

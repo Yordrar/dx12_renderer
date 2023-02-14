@@ -12,9 +12,9 @@ ResourceManager::ResourceManager()
 {
 }
 
-Resource* ResourceManager::createResource( std::wstring resourceName, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA subresourceData )
+Resource* ResourceManager::createResource( wchar_t const* resourceName, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA subresourceData )
 {
-    if ( resourceName == L"" )
+    if ( wmemcmp( resourceName, L"", wcslen( resourceName ) ) == 0 )
     {
         return nullptr;
     }
@@ -32,9 +32,12 @@ Resource* ResourceManager::createResource( std::wstring resourceName, D3D12_RESO
     return m_resources[ resourceName ].get();
 }
 
-Resource* ResourceManager::createResource( std::wstring resourceName, ComPtr<ID3D12Resource> resource )
+Resource* ResourceManager::createResource( wchar_t const* resourceName, ComPtr<ID3D12Resource> resource )
 {
-    assert( resourceName != L"" );
+    if ( wmemcmp( resourceName, L"", wcslen( resourceName ) ) == 0 )
+    {
+        return nullptr;
+    }
 
     std::unique_ptr<Resource> newResource = std::make_unique<Resource>( resourceName, resource );
 
@@ -43,7 +46,7 @@ Resource* ResourceManager::createResource( std::wstring resourceName, ComPtr<ID3
     return m_resources[ resourceName ].get();
 }
 
-void ResourceManager::destroyResource( std::wstring resourceName )
+void ResourceManager::destroyResource( wchar_t const* resourceName )
 {
     Resource* resource = getResource( resourceName );
     if ( resource )
@@ -52,7 +55,7 @@ void ResourceManager::destroyResource( std::wstring resourceName )
     }
 }
 
-Resource* ResourceManager::getResource( std::wstring resourceName )
+Resource* ResourceManager::getResource( wchar_t const* resourceName )
 {
     ResourceMap::iterator it = m_resources.find( resourceName );
 
@@ -63,7 +66,7 @@ Resource* ResourceManager::getResource( std::wstring resourceName )
     return nullptr;
 }
 
-void ResourceManager::createSampler( std::wstring resourceName )
+void ResourceManager::createSampler( wchar_t const* resourceName )
 {
     D3D12_SAMPLER_DESC samplerDesc = {};
     samplerDesc.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;

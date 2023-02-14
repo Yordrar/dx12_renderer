@@ -13,10 +13,10 @@ class Descriptor;
 class IGeometry
 {
 public:
-    IGeometry( std::wstring name, std::initializer_list<std::wstring> techniqueNames );
+    IGeometry( wchar_t const* name, std::initializer_list<wchar_t const*> techniqueNames );
     virtual ~IGeometry() = 0;
 
-    virtual void record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
+    virtual void record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
 
     void addResourceView( Descriptor const& resourceView );
 

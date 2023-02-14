@@ -7,7 +7,7 @@
 #include <resource/Descriptor.h>
 #include <resource/DescriptorHeap.h>
 
-Resource::Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData )
+Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData )
     : m_name( name )
     , m_resource( nullptr )
     , m_intermediateUploadBuffer( nullptr )
@@ -53,13 +53,13 @@ Resource::Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc, D3D12
     setDebugName( name );
 }
 
-Resource::Resource( std::wstring& name, D3D12_RESOURCE_DESC& resourceDesc )
+Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc )
     : Resource(name, resourceDesc, D3D12_SUBRESOURCE_DATA{nullptr, 0, 0})
 {
     m_needsCopyToGPU = false;
 }
 
-Resource::Resource( std::wstring& name, ComPtr<ID3D12Resource> resource )
+Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
     : m_name( name )
     , m_resource( resource )
     , m_intermediateUploadBuffer( nullptr )
@@ -218,7 +218,7 @@ void Resource::copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )
     m_needsCopyToGPU = false;
 }
 
-void Resource::setDebugName( std::wstring& debugName )
+void Resource::setDebugName( wchar_t const* debugName )
 {
-    m_resource->SetName( debugName.c_str() );
+    m_resource->SetName( debugName );
 }

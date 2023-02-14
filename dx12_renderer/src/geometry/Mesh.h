@@ -13,15 +13,15 @@
 class Mesh : public IGeometry
 {
 public:
-    Mesh( std::wstring name, std::initializer_list<std::wstring> renderPassNames );
+    Mesh( wchar_t const* name, std::initializer_list<wchar_t const*> renderPassNames );
     ~Mesh() = default;
 
-    void addInputLayoutElement( std::string semanticName, UINT semanticIndex, DXGI_FORMAT format );
+    void addInputLayoutElement( char const* semanticName, UINT semanticIndex, DXGI_FORMAT format );
     void setVertexBuffer( void* vertexData, UINT vertexSize, UINT vertexCount );
     void setIndexBuffer( UINT* indexData, UINT indexCount );
-    void setShaders( std::wstring vertexShaderFilename, std::wstring pixelShaderFilename );
+    void setShaders( wchar_t const* vertexShaderFilename, wchar_t const* pixelShaderFilename );
 
-    void record( std::wstring techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState ) override;
+    void record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState ) override;
 
 private:
     std::list<std::string> m_semanticNames;

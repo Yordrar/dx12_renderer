@@ -15,10 +15,10 @@ using namespace Microsoft::WRL;
 class RenderPass
 {
 public:
-    RenderPass( std::wstring name,
-                std::wstring techniqueName,
-                std::wstring renderTargetName,
-                std::wstring depthStencilTargetName );
+    RenderPass( wchar_t const* name,
+                wchar_t const* techniqueName,
+                wchar_t const* renderTargetName,
+                wchar_t const* depthStencilTargetName );
     ~RenderPass();
 
     ID3D12GraphicsCommandList* getCommandList() const { return m_commandList.Get(); }
