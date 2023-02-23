@@ -20,6 +20,7 @@ filter "Release"
 	symbols "off"
 	targetdir "build/bin/release"
 	debugdir "build/bin/release"
+	optimize "on"
 
 project "dx12_renderer"
 	kind "StaticLib"

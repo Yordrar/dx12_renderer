@@ -6,7 +6,6 @@
 #include <resource/Resource.h>
 #include <resource/DescriptorHeap.h>
 #include <resource/Descriptor.h>
-#include <resource/Texture.h>
 
 ResourceManager::ResourceManager()
 {

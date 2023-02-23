@@ -172,10 +172,12 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     scene = std::make_unique<Scene>(L"mainScene");
 
+    std::vector<Material> loadedMaterials;
+    loadedMaterials.reserve( materials.size() );
     for ( tinyobj::material_t const& material : materials )
     {
         int width, height, nrChannelsInFile;
-        uint8_t* data = stbi_load( (mtlDir + material.diffuse_texname).c_str(), &width, &height, &nrChannelsInFile, 4 );
+        uint8_t* data = stbi_load( ( mtlDir + material.diffuse_texname ).c_str(), &width, &height, &nrChannelsInFile, 4 );
         CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 1, 1, 0 );
 
         D3D12_SUBRESOURCE_DATA subresData;
@@ -183,21 +185,35 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         subresData.RowPitch = width * 4;
         subresData.SlicePitch = 0;
 
-        ResourceManager::it().createResource( StrToWideStr( material.diffuse_texname.c_str() ).c_str(), resourceDesc, subresData);
+        Resource* texture = ResourceManager::it().createResource( StrToWideStr( material.diffuse_texname ).c_str(),
+                                                                  resourceDesc,
+                                                                  subresData );
+        Material::MaterialDesc newMaterialDesc;
+        newMaterialDesc.m_name = StrToWideStr( material.name );
+        newMaterialDesc.m_techniqueNames = { L"depth", L"main" };
+        if ( texture )
+        {
+            newMaterialDesc.m_resourceViews.push_back( *texture->getShaderResourceView() );
+        }
+        newMaterialDesc.m_vertexShaderFilename = L"shader/test_vs.hlsl";
+        newMaterialDesc.m_pixelShaderFilename = L"shader/test_ps.hlsl";
+        newMaterialDesc.m_rasterizerState.FrontCounterClockwise = true;
+        newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
+        newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
+        newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
+        newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
+        newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
+        DXGI_FORMAT rtformats[ 8 ] = { DXGI_FORMAT_UNKNOWN };
+        rtformats[ 0 ] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        newMaterialDesc.m_rtFormats = CD3DX12_RT_FORMAT_ARRAY{ rtformats, 8 };
+        newMaterialDesc.m_dsFormat = DXGI_FORMAT_D32_FLOAT;
+        loadedMaterials.emplace_back( newMaterialDesc );
     }
 
     std::vector<Vertex>* vertexBuffers = new std::vector<Vertex>[shapes.size()];
-    // Loop over shapes
+    // Load shapes
     for ( size_t shapeIdx = 0; shapeIdx < shapes.size(); shapeIdx++ )
     {
-        Mesh* mesh = new Mesh( StrToWideStr( shapes[ shapeIdx ].name ).c_str(), { L"depth", L"main" });
-        mesh->addInputLayoutElement("POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT);
-        mesh->addInputLayoutElement("NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT);
-        mesh->addInputLayoutElement("TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT);
-        mesh->addInputLayoutElement("TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
-        mesh->addInputLayoutElement("BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT);
-        mesh->setShaders(L"shader/test_vs.hlsl", L"shader/test_ps.hlsl");
-
         std::vector<Vertex>& vertexBuffer = vertexBuffers[shapeIdx];
 
         // Loop over faces(polygon)
@@ -243,17 +259,14 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
             // per-face material
 
-            if ( materials[ shapes[ shapeIdx ].mesh.material_ids[ faceIdx ] ].diffuse_texname != "" )
-            {
-                mesh->addResourceView( *ResourceManager::it().getResource( StrToWideStr( materials[ shapes[ shapeIdx ].mesh.material_ids[ faceIdx ] ].diffuse_texname ).c_str() )->getShaderResourceView() );
-            }
         }
 
-        mesh->setVertexBuffer(vertexBuffer.data(), sizeof(Vertex), static_cast<UINT>( vertexBuffer.size() ));
+        Mesh* mesh = new Mesh( StrToWideStr( shapes[ shapeIdx ].name ).c_str(), { L"depth", L"main" }, loadedMaterials[ shapes[ shapeIdx ].mesh.material_ids[ 0 ] ] );
+        mesh->setVertexBuffer( vertexBuffer.data(), sizeof( Vertex ), static_cast<UINT>( vertexBuffer.size() ) );
 
-        scene->addGeometry(mesh);
+        scene->addGeometry( mesh );
     }
-
+    delete[] vertexBuffers;
 
     ResourceManager::it().createResource( L"mainRenderTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) );
     ResourceManager::it().createResource( L"mainDepthStencilTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) );

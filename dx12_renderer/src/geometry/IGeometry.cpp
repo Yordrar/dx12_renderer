@@ -7,7 +7,6 @@
 
 IGeometry::IGeometry( wchar_t const* name, std::initializer_list<wchar_t const*> techniqueNames )
     : m_name( name )
-    , m_bindlessIndices( nullptr )
 {
     for ( wchar_t const* techniqueName : techniqueNames )
     {
@@ -21,16 +20,4 @@ IGeometry::~IGeometry()
 
 void IGeometry::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
 {
-    if ( !m_bindlessIndices )
-    {
-        m_bindlessIndices = ResourceManager::it().createResource( std::wstring(m_name + L"_bindlessBuffer").c_str(),
-                                                                  CD3DX12_RESOURCE_DESC::Buffer( std::max( m_resourceIndices.size() * sizeof( float ), 1Ui64 ) ),
-                                                                  D3D12_SUBRESOURCE_DATA{ m_resourceIndices.data(), static_cast<LONG_PTR>( m_resourceIndices.size() * sizeof( float ) ), 0 } );
-    }
-    commandList->SetGraphicsRootConstantBufferView( 1, m_bindlessIndices->getGPUVirtualAddress() );
-}
-
-void IGeometry::addResourceView( Descriptor const& resourceView )
-{
-    m_resourceIndices.push_back( resourceView.getDescriptorIndex() );
 }

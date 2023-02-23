@@ -2,5 +2,5 @@
 
 namespace RendererConstants
 {
-    static constexpr unsigned int sc_numBackBuffers = 3;
+    static constexpr unsigned int sc_numBackBuffers = 2;
 }

@@ -4,7 +4,6 @@
 
 #include <Renderer.h>
 #include <resource/ResourceManager.h>
-#include <resource/Texture.h>
 #include <Camera.h>
 #include <geometry/IGeometry.h>
 

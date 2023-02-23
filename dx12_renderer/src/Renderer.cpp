@@ -10,12 +10,16 @@
 RECT Renderer::s_windowRect;
 ComPtr<ID3D12Device2> Renderer::s_device{ nullptr };
 UINT Renderer::s_currentBackBufferIndex = 0;
+UINT Renderer::s_currentRecordingIndex = 0;
 ComPtr<ID3D12RootSignature> Renderer::s_rootSignature{ nullptr };
 
 Renderer::Renderer( HWND hWnd, RECT windowRect )
     : m_hWnd(hWnd)
+    , m_presentThread( nullptr )
+    , m_terminatePresentThread( false )
 {
     s_currentBackBufferIndex = 0;
+    s_currentRecordingIndex = 0;
     s_windowRect = windowRect;
 #if defined(_DEBUG)
     ComPtr<ID3D12Debug> debugInterface;
@@ -65,8 +69,6 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     }
 #endif
 
-    m_fence = std::make_unique<Fence>( s_device );
-
     // Create command queues
     D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = {};
     cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -103,7 +105,9 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     {
         ComPtr<ID3D12Resource> backBuffer;
         m_swapChain->GetBuffer( i, IID_PPV_ARGS( &backBuffer ) );
-        ResourceManager::it().createResource( std::wstring(L"backbuffer" + std::to_wstring(i)).c_str(), backBuffer );
+        ResourceManager::it().createResource( ( L"backbuffer" + std::to_wstring( i ) ).c_str(), backBuffer );
+
+        m_frameFences[i] = std::make_unique<Fence>( ( L"Renderer_frameFence" + std::to_wstring( i ) ).c_str() );
     }
 
 
@@ -158,6 +162,8 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
 
 Renderer::~Renderer()
 {
+    m_terminatePresentThread = true;
+    m_presentThread->join();
 }
 
 void Renderer::addRenderPass( RenderPass& renderPass )
@@ -167,6 +173,13 @@ void Renderer::addRenderPass( RenderPass& renderPass )
 
 void Renderer::drawScene( Scene& scene )
 {
+    static uint64_t fenceCounters[ RendererConstants::sc_numBackBuffers ] = { 0 };
+
+    if ( !m_presentThread )
+    {
+        m_presentThread = std::make_unique<std::thread>( &Renderer::presentThreadFunc, this );
+    }
+
     auto start = std::chrono::high_resolution_clock::now();
 
     std::vector< ID3D12CommandList* > commandLists;
@@ -176,14 +189,27 @@ void Renderer::drawScene( Scene& scene )
         renderPass.record( scene );
         commandLists.push_back( renderPass.getCommandList() );
     }
-    m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>( commandLists.size() ), commandLists.data() );
-    m_fence->GPUSignal( m_graphicsCmdQueue );
 
-    m_fence->CPUWait( m_fence->getLastSignaledValue() );
-    m_swapChain->Present( 0, 0 );
-    s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+    m_frameFences[ getPreviousRecordingIndex() ]->CPUWait( fenceCounters[ getPreviousRecordingIndex() ] );
+    m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>( commandLists.size() ), commandLists.data() );
+    m_frameFences[ s_currentRecordingIndex ]->GPUSignal( m_graphicsCmdQueue );
+    fenceCounters[ s_currentRecordingIndex ] += 2;
+    s_currentRecordingIndex = (s_currentRecordingIndex + 1) % RendererConstants::sc_numBackBuffers;
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( end - start );
     OutputDebugStringA( std::string( "CPU time: " + std::to_string( elapsed.count() ) + "ms\n" ).c_str() );
+}
+
+void Renderer::presentThreadFunc()
+{
+    static uint64_t fenceCounters[ RendererConstants::sc_numBackBuffers ] = { 0 };
+    while ( !m_terminatePresentThread )
+    {
+        m_frameFences[ s_currentBackBufferIndex ]->CPUWait( fenceCounters[ s_currentBackBufferIndex ] + 1, 1000Ui64 );
+        m_swapChain->Present( 1, 0 );
+        m_frameFences[ s_currentBackBufferIndex ]->CPUSignal();
+        fenceCounters[ s_currentBackBufferIndex ] += 2 ;
+        s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+    }
 }

@@ -2,11 +2,13 @@
 
 #include <Renderer.h>
 
-VertexBuffer::VertexBuffer( void* vertices, UINT vertexSize, UINT vertexCount )
-	: m_vertices( vertices )
+VertexBuffer::VertexBuffer( void* vertices, size_t vertexSize, size_t vertexCount )
+	: m_vertices( new char[ vertexCount * vertexSize ] )
 	, m_vertexSize( vertexSize )
 	, m_vertexCount( vertexCount )
 {
+	memcpy( m_vertices, vertices, vertexCount * vertexSize );
+
 	Renderer::device()->CreateCommittedResource( &CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_DEFAULT ),
 												 D3D12_HEAP_FLAG_NONE,
 												 &CD3DX12_RESOURCE_DESC::Buffer( vertexCount * vertexSize ),
@@ -22,7 +24,7 @@ VertexBuffer::VertexBuffer( void* vertices, UINT vertexSize, UINT vertexCount )
 												 IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
 
 	m_subResourceData = {};
-	m_subResourceData.pData = vertices;
+	m_subResourceData.pData = m_vertices;
 	m_subResourceData.RowPitch = static_cast<UINT64>( vertexCount ) * static_cast<UINT64>( vertexSize );
 	m_subResourceData.SlicePitch = 0;
 
@@ -50,7 +52,7 @@ void VertexBuffer::bind( ComPtr<ID3D12GraphicsCommandList> commandList )
 
 	D3D12_VERTEX_BUFFER_VIEW view;
 	view.BufferLocation = m_bufferResource->GetGPUVirtualAddress();
-	view.SizeInBytes = m_vertexSize * m_vertexCount;
-	view.StrideInBytes = m_vertexSize;
+	view.SizeInBytes = static_cast<UINT>( m_vertexSize * m_vertexCount );
+	view.StrideInBytes = static_cast<UINT>( m_vertexSize );
 	commandList->IASetVertexBuffers( 0, 1, &view );
 }

@@ -35,15 +35,16 @@ public:
 
         struct Hasher
         {
-            size_t operator()( PipelineStateStream const& shaderDesc ) const noexcept
+            size_t operator()( PipelineStateStream const& pipelineStateStream ) const noexcept
             {
                 // FNV-1a hash
                 std::size_t hash = 0xcbf29ce484222325;
+                char const* data = reinterpret_cast<char const*>( &pipelineStateStream );
                 
-                for ( int i = 0; i < sizeof( shaderDesc ); ++i )
+                for ( int i = 0; i < sizeof( pipelineStateStream ); ++i )
                 {
-                    hash = hash ^ reinterpret_cast<char const*>( &shaderDesc )[ i ];
-                    hash = hash * 0x100000001b3;
+                    hash ^= data[ i ];
+                    hash *= 0x100000001b3;
                 }
 
                 return hash;

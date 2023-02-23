@@ -2,11 +2,15 @@
 
 #include <pix3.h>
 
-Fence::Fence( ComPtr<ID3D12Device> device )
+#include <Renderer.h>
+
+Fence::Fence( wchar_t const* name )
 {
-    device->CreateFence( 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &m_fence ) );
+    Renderer::device()->CreateFence( 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &m_fence ) );
 
     m_fenceEvent = CreateEvent( NULL, FALSE, FALSE, NULL );
+
+    m_fence->SetName( name );
 }
 
 Fence::~Fence()

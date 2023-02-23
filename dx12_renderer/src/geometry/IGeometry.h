@@ -18,14 +18,10 @@ public:
 
     virtual void record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
 
-    void addResourceView( Descriptor const& resourceView );
-
     std::wstring const& getName() const { return m_name; }
     std::unordered_set<std::wstring> const& getTechniqueNames() const { return m_techniqueNames; }
 
 protected:
     std::wstring m_name;
     std::unordered_set<std::wstring> m_techniqueNames;
-    Resource* m_bindlessIndices;
-    std::vector<UINT> m_resourceIndices;
 };

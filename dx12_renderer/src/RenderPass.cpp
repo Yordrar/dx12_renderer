@@ -49,7 +49,7 @@ RenderPass::~RenderPass()
 void RenderPass::record( Scene& scene )
 {
     // Reset command list and allocator
-    ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentBackbufferIndex() ];
+    ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentRecordingIndex() ];
     currentCommandAllocator->Reset();
     m_commandList->Reset( currentCommandAllocator.Get(), nullptr );
 

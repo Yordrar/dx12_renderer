@@ -11,7 +11,7 @@ using namespace Microsoft::WRL;
 class Fence
 {
 public:
-    Fence( ComPtr<ID3D12Device> device );
+    Fence( wchar_t const* name );
     ~Fence();
 
     uint64_t CPUSignal();
@@ -19,6 +19,7 @@ public:
     uint64_t GPUSignal( ComPtr<ID3D12CommandQueue> commandQueue );
     void GPUWait( ComPtr<ID3D12CommandQueue> commandQueue, uint64_t fenceValue );
 
+    uint64_t getNextSignalValue() const { return m_fenceValue + 1; }
     uint64_t getLastSignaledValue() const { return m_fenceValue; }
     uint64_t getCompletedValue() const { return m_fence->GetCompletedValue(); }
 
