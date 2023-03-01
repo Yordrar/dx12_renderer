@@ -11,12 +11,14 @@ ResourceManager::ResourceManager()
 {
 }
 
-Resource* ResourceManager::createResource( wchar_t const* resourceName, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA subresourceData )
+Resource* ResourceManager::createResource( wchar_t const* resourceName, D3D12_RESOURCE_DESC const& resDesc, D3D12_SUBRESOURCE_DATA subresourceData )
 {
     if ( wmemcmp( resourceName, L"", wcslen( resourceName ) ) == 0 )
     {
         return nullptr;
     }
+
+    D3D12_RESOURCE_DESC resourceDesc = resDesc;
 
     // For constant buffers, size has to be aligned to 256
     if ( resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER )
@@ -81,28 +83,42 @@ void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> comm
 {
     PIXScopedEvent( commandList.Get(), PIX_COLOR_DEFAULT, "Copy resources to GPU" );
 
-    std::vector<CD3DX12_RESOURCE_BARRIER> barriers;
+    std::vector<CD3DX12_RESOURCE_BARRIER> preCopyBarriers;
     std::vector<Resource*> resourcesToCopy;
     for ( ResourceMap::value_type& resource_pair : m_resources )
     {
         if ( resource_pair.second->getNeedsCopyToGPU() )
         {
-            std::optional<CD3DX12_RESOURCE_BARRIER> barrier_optional = resource_pair.second->getTransitionBarrier( D3D12_RESOURCE_STATE_COPY_DEST );
-            if ( barrier_optional.has_value() )
+            std::optional<CD3DX12_RESOURCE_BARRIER> preCopyBarrier = resource_pair.second->getTransitionBarrier( D3D12_RESOURCE_STATE_COPY_DEST );
+            if ( preCopyBarrier.has_value() )
             {
-                barriers.push_back( barrier_optional.value() );
+                preCopyBarriers.push_back( preCopyBarrier.value() );
             }
             resourcesToCopy.push_back( resource_pair.second.get() );
         }
     }
 
-    if ( barriers.size() > 0 )
+    if ( preCopyBarriers.size() > 0 )
     {
-        commandList->ResourceBarrier( static_cast<UINT>( barriers.size() ), barriers.data() );
+        commandList->ResourceBarrier( static_cast<UINT>( preCopyBarriers.size() ), preCopyBarriers.data() );
     }
 
     for ( Resource* resource : resourcesToCopy )
     {
         resource->copyDataToGPU( commandList );
+    }
+
+    std::vector<CD3DX12_RESOURCE_BARRIER> postCopyBarriers;
+    for ( Resource* resource : resourcesToCopy )
+    {
+        std::optional<CD3DX12_RESOURCE_BARRIER> postCopyBarrier = resource->getTransitionBarrier( D3D12_RESOURCE_STATE_GENERIC_READ );
+        if ( postCopyBarrier.has_value() )
+        {
+            postCopyBarriers.push_back( postCopyBarrier.value() );
+        }
+    }
+    if ( postCopyBarriers.size() > 0 )
+    {
+        commandList->ResourceBarrier( static_cast<UINT>( postCopyBarriers.size() ), postCopyBarriers.data() );
     }
 }

@@ -8,17 +8,17 @@
 Material::Material( MaterialDesc const& materialDesc )
     : m_desc( materialDesc )
 {
-    for ( std::wstring const& techniqueName : m_desc.m_techniqueNames )
+    for ( Technique const& technique : m_desc.m_techniques )
     {
         ShaderManager::ShaderDesc vertexShaderDesc;
-        vertexShaderDesc.m_filename = m_desc.m_vertexShaderFilename;
-        vertexShaderDesc.m_entryPoint = techniqueName + L"_vs";
+        vertexShaderDesc.m_filename = technique.m_shaderFilename;
+        vertexShaderDesc.m_entryPoint = technique.m_name + L"_vs";
         vertexShaderDesc.m_shaderType = ShaderManager::ShaderType::VertexShader;
         vertexShaderDesc.m_enableDebug = true;
 
         ShaderManager::ShaderDesc pixelShaderDesc;
-        pixelShaderDesc.m_filename = m_desc.m_pixelShaderFilename;
-        pixelShaderDesc.m_entryPoint = techniqueName + L"_ps";
+        pixelShaderDesc.m_filename = technique.m_shaderFilename;
+        pixelShaderDesc.m_entryPoint = technique.m_name + L"_ps";
         pixelShaderDesc.m_shaderType = ShaderManager::ShaderType::PixelShader;
         pixelShaderDesc.m_enableDebug = true;
 
@@ -26,33 +26,40 @@ Material::Material( MaterialDesc const& materialDesc )
         pipelineStateStream.m_rootSignature = Renderer::getRootSignature().Get();
         pipelineStateStream.m_vertexShader = ShaderManager::it().getShader( vertexShaderDesc );
         pipelineStateStream.m_pixelShader = ShaderManager::it().getShader( pixelShaderDesc );
-        pipelineStateStream.m_blendState = m_desc.m_blendState;
-        pipelineStateStream.m_rasterizerState = m_desc.m_rasterizerState;
-        pipelineStateStream.m_depthStencilState = m_desc.m_depthStencilState;
+        pipelineStateStream.m_blendState = technique.m_blendState;
+        pipelineStateStream.m_rasterizerState = technique.m_rasterizerState;
+        pipelineStateStream.m_depthStencilState = technique.m_depthStencilState;
         pipelineStateStream.m_inputLayout = D3D12_INPUT_LAYOUT_DESC{ m_desc.m_inputLayout.data(), static_cast<UINT>(m_desc.m_inputLayout.size()) };
-        pipelineStateStream.m_topologyType = m_desc.m_topologyType;
-        pipelineStateStream.m_rtFormats = m_desc.m_rtFormats;
-        pipelineStateStream.m_dsFormat = m_desc.m_dsFormat;
+        pipelineStateStream.m_topologyType = technique.m_topologyType;
+        pipelineStateStream.m_rtFormats = technique.m_rtFormats;
+        pipelineStateStream.m_dsFormat = technique.m_dsFormat;
 
-        m_psoCache[ techniqueName ] = PSOManager::it().getPSO( pipelineStateStream );
-        m_psoCache[ techniqueName ]->SetName( ( m_desc.m_name + L"/" + techniqueName ).c_str() );
+        m_psoCache[ technique.m_name ] = PSOManager::it().getPSO( pipelineStateStream );
+        m_psoCache[ technique.m_name ]->SetName( ( m_desc.m_name + L"/" + technique.m_name ).c_str() );
     }
 
     for ( Descriptor const& resourceView : m_desc.m_resourceViews )
     {
         m_bindlessIndices.push_back( resourceView.getDescriptorIndex() );
     }
-    m_bindlessIndicesResource = ResourceManager::it().createResource( ( m_desc.m_name + L"_bindlessBuffer" ).c_str(),
+    m_bindlessIndicesBufferResource = ResourceManager::it().createResource( ( m_desc.m_name + L"_bindlessIndicesBuffer" ).c_str(),
                                                                       CD3DX12_RESOURCE_DESC::Buffer( std::max( m_bindlessIndices.size() * sizeof( UINT ), 1Ui64 ) ),
                                                                       D3D12_SUBRESOURCE_DATA{ m_bindlessIndices.data(), static_cast<LONG_PTR>( m_bindlessIndices.size() * sizeof( UINT ) ), 0 } );
+
+    m_materialBufferData.bindlessIndicesBufferIndex = m_bindlessIndicesBufferResource->getShaderResourceView()->getDescriptorIndex();
+    m_materialBuffer = ResourceManager::it().createResource( ( m_desc.m_name + L"_materialBuffer" ).c_str(),
+                                                             CD3DX12_RESOURCE_DESC::Buffer( std::max( sizeof( m_materialBufferData ), 1Ui64 ) ),
+                                                             D3D12_SUBRESOURCE_DATA{ &m_materialBufferData, static_cast<LONG_PTR>( sizeof( m_materialBufferData ) ), 0 } );
+
 }
 
-void Material::bindToPipeline( ComPtr<ID3D12GraphicsCommandList> commandList )
+ComPtr<ID3D12PipelineState> Material::getPSOForTechnique( wchar_t const* techniqueName ) const
 {
-    std::optional<CD3DX12_RESOURCE_BARRIER> barrier_optional = m_bindlessIndicesResource->getTransitionBarrier( D3D12_RESOURCE_STATE_GENERIC_READ );
-    if ( barrier_optional.has_value() )
+    PSOCache::const_iterator it = m_psoCache.find( techniqueName );
+    if ( it != m_psoCache.end() )
     {
-        commandList->ResourceBarrier( 1, &barrier_optional.value() );
+        return it->second;
     }
-    commandList->SetGraphicsRootConstantBufferView( 1, m_bindlessIndicesResource->getGPUVirtualAddress() );
+
+    return nullptr;
 }

@@ -20,7 +20,7 @@ public:
     void setVertexBuffer( void* vertexData, UINT vertexSize, UINT vertexCount );
     void setIndexBuffer( UINT* indexData, UINT indexCount );
 
-    void record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState ) override;
+    void record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList ) override;
 
 private:
     std::unique_ptr<VertexBuffer> m_vertexBuffer;

@@ -13,8 +13,7 @@ class Resource
 {
 	friend class ResourceManager;
 public:
-	Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc );
-	Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData );
+	Resource( wchar_t const* name, D3D12_RESOURCE_DESC const& resourceDesc, D3D12_SUBRESOURCE_DATA const& subresourceData = D3D12_SUBRESOURCE_DATA{ nullptr, 0, 0 } );
 	Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource );
 	~Resource();
 
@@ -36,7 +35,7 @@ public:
 	void copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList );
 	void setDebugName( wchar_t const* debugName );
 
-protected:
+private:
 	std::wstring m_name;
 
 	ComPtr<ID3D12Resource> m_resource;

@@ -1,9 +1,37 @@
-cbuffer cameraBuffer : register(b0, space0)
+#define DESCRIPTORS_IN_HEAPS 100000
+
+cbuffer sceneBuffer : register(b0, space0)
 {
-    float4x4 viewProj;
+    float4x4 viewProjMatrix;
+    float4x4 inverseViewProjMatrix;
     float4 cameraPosition;
 };
 
-Texture2D texture2DResources[1024] : register(t0, space0);
-TextureCube textureCubeResources[1024] : register(t0, space1);
-sampler sampler2DResources[1024] : register(s0, space0);
+cbuffer materialBuffer : register(b1, space0)
+{
+    uint bindlessIndicesBufferIndex;
+};
+
+cbuffer geometryBuffer : register(b2, space0)
+{
+    float4x4 modelMatrix;
+    float4x4 inverseModelMatrix;
+};
+
+ByteAddressBuffer bufferResources[DESCRIPTORS_IN_HEAPS] : register(t0, space0);
+Texture2D texture2DResources[DESCRIPTORS_IN_HEAPS] : register(t0, space1);
+TextureCube textureCubeResources[DESCRIPTORS_IN_HEAPS] : register(t0, space2);
+sampler sampler2DResources[DESCRIPTORS_IN_HEAPS] : register(s0, space0);
+
+template<typename buffer_type>
+buffer_type getBuffer(uint index)
+{
+    ByteAddressBuffer buffer = bufferResources[index];
+    return buffer.Load<buffer_type>(0);
+}
+
+template<typename buffer_type>
+buffer_type getBindlessIndicesBuffer()
+{
+    return getBuffer<buffer_type>(bindlessIndicesBufferIndex);
+}

@@ -18,6 +18,6 @@ IGeometry::~IGeometry()
 {
 }
 
-void IGeometry::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
+void IGeometry::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList )
 {
 }

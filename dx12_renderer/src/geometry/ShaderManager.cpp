@@ -57,6 +57,7 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& shaderDesc )
     compileArgs.push_back( csoFilenameWideStr.c_str() );
     compileArgs.push_back( L"-Fd" );
     compileArgs.push_back( pdbFilenameWideStr.c_str() );
+    compileArgs.push_back( L"-HV 2021" );
 
     // Open source file.
     ComPtr<IDxcBlobEncoding> sourceBlob = nullptr;

@@ -57,9 +57,12 @@ void RenderPass::record( Scene& scene )
 
     PIXBeginEvent( m_commandList.Get(), PIX_COLOR_DEFAULT, m_name.c_str() );
 
+
     // Set viewport
-    m_commandList->RSSetViewports( 1, &CD3DX12_VIEWPORT( 0.0f, 0.0f, static_cast<float>( Renderer::getWindowRect().right - Renderer::getWindowRect().left ), static_cast<float>( Renderer::getWindowRect().bottom - Renderer::getWindowRect().top ) ) );
-    m_commandList->RSSetScissorRects( 1, &CD3DX12_RECT( 0, 0, Renderer::getWindowRect().right - Renderer::getWindowRect().left, Renderer::getWindowRect().bottom - Renderer::getWindowRect().top ) );
+    CD3DX12_VIEWPORT viewport( ResourceManager::it().getCurrentBackbufferResource()->getResource().Get() );
+    m_commandList->RSSetViewports( 1, &viewport );
+    D3D12_RECT const& scissorRect = Renderer::getWindowRect();
+    m_commandList->RSSetScissorRects( 1, &scissorRect );
 
     // Set root signature
     m_commandList->SetGraphicsRootSignature( Renderer::getRootSignature().Get() );
@@ -75,7 +78,8 @@ void RenderPass::record( Scene& scene )
     // Set descriptor tables in root signature
     m_commandList->SetGraphicsRootDescriptorTable( 2, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetGraphicsRootDescriptorTable( 3, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 4, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 4, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 5, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
 
     // Clear and set render targets
     static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -116,36 +120,18 @@ void RenderPass::record( Scene& scene )
 
     if ( m_renderTarget )
     {
-        m_commandList->OMSetRenderTargets( 1, &m_renderTarget->getRenderTargetView()->getView(), false, &m_depthStencilTarget->getDepthStencilView()->getView() );
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_renderTarget->getRenderTargetView()->getView();
+        D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_depthStencilTarget->getDepthStencilView()->getView();
+        m_commandList->OMSetRenderTargets( 1, &rtv, false, &dsv );
     }
     else
     {
-        m_commandList->OMSetRenderTargets( 0, nullptr, false, &m_depthStencilTarget->getDepthStencilView()->getView() );
+        D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_depthStencilTarget->getDepthStencilView()->getView();
+        m_commandList->OMSetRenderTargets( 0, nullptr, false, &dsv );
     }
 
-    // Set initial pipeline state
-    PSOManager::PipelineStateStream pipelineState;
-    CD3DX12_RASTERIZER_DESC rasterizerDesc( CD3DX12_DEFAULT{} );
-    rasterizerDesc.FrontCounterClockwise = true;
-    pipelineState.m_rasterizerState = rasterizerDesc;
-
-    std::vector<DXGI_FORMAT> rtFormats;
-    m_renderTarget ? rtFormats.push_back( m_renderTarget->getResourceDesc().Format ) : rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
-    rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
-    rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
-    rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
-    rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
-    rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
-    rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
-    rtFormats.push_back( DXGI_FORMAT_UNKNOWN );
-    pipelineState.m_rtFormats = CD3DX12_RT_FORMAT_ARRAY( rtFormats.data(), m_renderTarget ? 1 : 0 );
-
-    pipelineState.m_dsFormat = m_depthStencilTarget ? m_depthStencilTarget->getResourceDesc().Format : DXGI_FORMAT_UNKNOWN;
-
-    pipelineState.m_rootSignature = Renderer::getRootSignature().Get();
-
     // Record scene
-    scene.record( m_techniqueName.c_str(), m_commandList, pipelineState );
+    scene.record( m_techniqueName.c_str(), m_commandList );
 
     if ( m_renderTarget && m_renderTarget->getName().rfind( L"backbuffer", 0 ) == 0 )
     {

@@ -7,7 +7,7 @@
 #include <resource/Descriptor.h>
 #include <resource/DescriptorHeap.h>
 
-Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA& subresourceData )
+Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC const& resourceDesc, D3D12_SUBRESOURCE_DATA const& subresourceData )
     : m_name( name )
     , m_resource( nullptr )
     , m_intermediateUploadBuffer( nullptr )
@@ -35,7 +35,7 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc, D3D1
         clearValuePtr = &clearValue;
     }
 
-    CD3DX12_HEAP_PROPERTIES heapProperties = CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_DEFAULT );
+    CD3DX12_HEAP_PROPERTIES heapProperties( D3D12_HEAP_TYPE_DEFAULT );
     Renderer::device()->CreateCommittedResource( &heapProperties,
                                                  D3D12_HEAP_FLAG_NONE,
                                                  &resourceDesc,
@@ -43,20 +43,15 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc, D3D1
                                                  clearValuePtr,
                                                  IID_PPV_ARGS( m_resource.GetAddressOf() ) );
 
-    CD3DX12_HEAP_PROPERTIES uploadHeapProperties = CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_UPLOAD );
+    CD3DX12_RESOURCE_DESC uploadBufferResourceDesc = CD3DX12_RESOURCE_DESC::Buffer( GetRequiredIntermediateSize( m_resource.Get(), 0, 1 ) );
+    CD3DX12_HEAP_PROPERTIES uploadHeapProperties( D3D12_HEAP_TYPE_UPLOAD );
     Renderer::device()->CreateCommittedResource( &uploadHeapProperties,
                                                  D3D12_HEAP_FLAG_NONE,
-                                                 &CD3DX12_RESOURCE_DESC::Buffer( GetRequiredIntermediateSize( m_resource.Get(), 0, 1 ) ),
+                                                 &uploadBufferResourceDesc,
                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
                                                  nullptr,
                                                  IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
     setDebugName( name );
-}
-
-Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc )
-    : Resource(name, resourceDesc, D3D12_SUBRESOURCE_DATA{nullptr, 0, 0})
-{
-    m_needsCopyToGPU = false;
 }
 
 Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
@@ -74,9 +69,10 @@ Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
 {
 
     CD3DX12_HEAP_PROPERTIES uploadHeapProperties = CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_UPLOAD );
+    CD3DX12_RESOURCE_DESC uploadBufferResourceDesc = CD3DX12_RESOURCE_DESC::Buffer( GetRequiredIntermediateSize( m_resource.Get(), 0, 1 ) );
     Renderer::device()->CreateCommittedResource( &uploadHeapProperties,
                                                  D3D12_HEAP_FLAG_NONE,
-                                                 &CD3DX12_RESOURCE_DESC::Buffer( GetRequiredIntermediateSize( m_resource.Get(), 0, 1 ) ),
+                                                 &uploadBufferResourceDesc,
                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
                                                  nullptr,
                                                  IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
@@ -117,11 +113,30 @@ Descriptor const* Resource::getShaderResourceView()
     {
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.Format = getResourceDesc().Format;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        switch ( getResourceDesc().Dimension )
+        {
+            case D3D12_RESOURCE_DIMENSION_BUFFER:
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+                srvDesc.Buffer.FirstElement = 0;
+                srvDesc.Buffer.NumElements = 1;
+                srvDesc.Buffer.StructureByteStride = getResourceDesc().Width;
+                break;
+            case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
+                break;
+            case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+                srvDesc.Texture2D.MipLevels = 1;
+                srvDesc.Texture2D.MostDetailedMip = 0;
+                srvDesc.Texture2D.PlaneSlice = 0;
+                break;
+            case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+                break;
+            default:
+                break;
+        }
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Texture2D.MipLevels = 1;
-        srvDesc.Texture2D.MostDetailedMip = 0;
-        srvDesc.Texture2D.PlaneSlice = 0;
 
         UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addSRV( getResource(), &srvDesc );
         m_srv = std::move( std::make_unique<Descriptor>( DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),

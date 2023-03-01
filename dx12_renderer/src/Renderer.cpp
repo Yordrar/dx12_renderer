@@ -112,34 +112,42 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
 
 
     // Create root signature
-    CD3DX12_ROOT_PARAMETER slotRootParameters[ 5 ] = {};
+    CD3DX12_ROOT_PARAMETER slotRootParameters[ 6 ] = {};
 
-    slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Camera buffer
-    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Resource indices buffer
+    slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Scene buffer
+    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Material buffer
 
-    D3D12_DESCRIPTOR_RANGE srvRangeTexture2DHeap{};
-    srvRangeTexture2DHeap.BaseShaderRegister = 0;
-    srvRangeTexture2DHeap.RegisterSpace = 0;
-    srvRangeTexture2DHeap.NumDescriptors = 1024;
-    srvRangeTexture2DHeap.OffsetInDescriptorsFromTableStart = 0;
-    srvRangeTexture2DHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    slotRootParameters[ 2 ].InitAsDescriptorTable( 1, &srvRangeTexture2DHeap );
+    D3D12_DESCRIPTOR_RANGE srvRangeBuffer{};
+    srvRangeBuffer.BaseShaderRegister = 0;
+    srvRangeBuffer.RegisterSpace = 0;
+    srvRangeBuffer.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
+    srvRangeBuffer.OffsetInDescriptorsFromTableStart = 0;
+    srvRangeBuffer.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    slotRootParameters[ 2 ].InitAsDescriptorTable( 1, &srvRangeBuffer );
 
-    D3D12_DESCRIPTOR_RANGE srvRangeTextureCubeHeap{};
-    srvRangeTextureCubeHeap.BaseShaderRegister = 0;
-    srvRangeTextureCubeHeap.RegisterSpace = 1;
-    srvRangeTextureCubeHeap.NumDescriptors = 1024;
-    srvRangeTextureCubeHeap.OffsetInDescriptorsFromTableStart = 0;
-    srvRangeTextureCubeHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    slotRootParameters[ 3 ].InitAsDescriptorTable( 1, &srvRangeTextureCubeHeap );
+    D3D12_DESCRIPTOR_RANGE srvRangeTexture2D{};
+    srvRangeTexture2D.BaseShaderRegister = 0;
+    srvRangeTexture2D.RegisterSpace = 1;
+    srvRangeTexture2D.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
+    srvRangeTexture2D.OffsetInDescriptorsFromTableStart = 0;
+    srvRangeTexture2D.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    slotRootParameters[ 3 ].InitAsDescriptorTable( 1, &srvRangeTexture2D );
 
-    D3D12_DESCRIPTOR_RANGE srvRangeSamplerHeap{};
-    srvRangeSamplerHeap.BaseShaderRegister = 0;
-    srvRangeSamplerHeap.RegisterSpace = 0;
-    srvRangeSamplerHeap.NumDescriptors = 1024;
-    srvRangeSamplerHeap.OffsetInDescriptorsFromTableStart = 0;
-    srvRangeSamplerHeap.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeSamplerHeap );
+    D3D12_DESCRIPTOR_RANGE srvRangeTextureCube{};
+    srvRangeTextureCube.BaseShaderRegister = 0;
+    srvRangeTextureCube.RegisterSpace = 2;
+    srvRangeTextureCube.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
+    srvRangeTextureCube.OffsetInDescriptorsFromTableStart = 0;
+    srvRangeTextureCube.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeTextureCube );
+
+    D3D12_DESCRIPTOR_RANGE srvRangeSampler{};
+    srvRangeSampler.BaseShaderRegister = 0;
+    srvRangeSampler.RegisterSpace = 0;
+    srvRangeSampler.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
+    srvRangeSampler.OffsetInDescriptorsFromTableStart = 0;
+    srvRangeSampler.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeSampler );
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( _countof(slotRootParameters), slotRootParameters, 0, nullptr,
                                              D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -153,6 +161,11 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     ComPtr<ID3DBlob> errorBlob = nullptr;
     HRESULT hr = D3D12SerializeRootSignature( &rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
                                               serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf() );
+
+    if ( errorBlob != nullptr && errorBlob->GetBufferSize() != 0 )
+    {
+        OutputDebugStringA( (LPCSTR)errorBlob->GetBufferPointer() );
+    }
 
     Renderer::device()->CreateRootSignature( 0,
                                              serializedRootSig->GetBufferPointer(),
@@ -207,7 +220,7 @@ void Renderer::presentThreadFunc()
     while ( !m_terminatePresentThread )
     {
         m_frameFences[ s_currentBackBufferIndex ]->CPUWait( fenceCounters[ s_currentBackBufferIndex ] + 1, 1000Ui64 );
-        m_swapChain->Present( 1, 0 );
+        m_swapChain->Present( 0, 0 );
         m_frameFences[ s_currentBackBufferIndex ]->CPUSignal();
         fenceCounters[ s_currentBackBufferIndex ] += 2 ;
         s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();

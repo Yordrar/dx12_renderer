@@ -14,7 +14,7 @@ public:
 
     Camera& getCamera() { return m_camera; }
 
-    void record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
+    void record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList );
     void addGeometry( IGeometry* geometry );
 
 private:

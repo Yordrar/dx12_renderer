@@ -19,7 +19,7 @@ Scene::~Scene()
 
 }
 
-void Scene::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
+void Scene::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList )
 {
     m_camera.setCameraBufferView( commandList );
 
@@ -27,7 +27,7 @@ void Scene::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandLi
     {
         if ( geometry->getTechniqueNames().find( techniqueName ) != geometry->getTechniqueNames().end() )
         {
-            geometry->record( techniqueName, commandList, pipelineState );
+            geometry->record( techniqueName, commandList );
         }
     }
 }

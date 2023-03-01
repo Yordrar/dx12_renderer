@@ -2,6 +2,7 @@
 
 #include <geometry/ShaderManager.h>
 #include <geometry/PSOManager.h>
+#include <resource/Resource.h>
 
 #include <pix3.h>
 
@@ -24,11 +25,11 @@ void Mesh::setIndexBuffer( UINT* indexData, UINT indexCount )
     m_indexBuffer = std::make_unique<IndexBuffer>( indexData, indexCount );
 }
 
-void Mesh::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState )
+void Mesh::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList )
 {
-    IGeometry::record( techniqueName, commandList, pipelineState );
+    IGeometry::record( techniqueName, commandList );
 
-    m_material.bindToPipeline( commandList );
+    commandList->SetGraphicsRootConstantBufferView( 1, m_material.getMaterialBufferResource()->getGPUVirtualAddress() );
 
     commandList->SetPipelineState( m_material.getPSOForTechnique( techniqueName ).Get() );
 

@@ -188,25 +188,40 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         Resource* texture = ResourceManager::it().createResource( StrToWideStr( material.diffuse_texname ).c_str(),
                                                                   resourceDesc,
                                                                   subresData );
+
+        DXGI_FORMAT rtformats[ 8 ] = { DXGI_FORMAT_UNKNOWN };
+        rtformats[ 0 ] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        Material::Technique depthTechnique =
+        {
+            .m_name = L"depth",
+            .m_shaderFilename = L"shader/test.hlsl",
+            .m_rtFormats = CD3DX12_RT_FORMAT_ARRAY{ rtformats, 8 },
+            .m_dsFormat = DXGI_FORMAT_D32_FLOAT
+        };
+        depthTechnique.m_rasterizerState.FrontCounterClockwise = true;
+        Material::Technique mainTechnique =
+        {
+            .m_name = L"main",
+            .m_shaderFilename = L"shader/test.hlsl",
+            .m_rtFormats = CD3DX12_RT_FORMAT_ARRAY{ rtformats, 8 },
+            .m_dsFormat = DXGI_FORMAT_D32_FLOAT
+        };
+        mainTechnique.m_rasterizerState.FrontCounterClockwise = true;
+
         Material::MaterialDesc newMaterialDesc;
         newMaterialDesc.m_name = StrToWideStr( material.name );
-        newMaterialDesc.m_techniqueNames = { L"depth", L"main" };
+        newMaterialDesc.m_techniques.push_back( depthTechnique );
+        newMaterialDesc.m_techniques.push_back( mainTechnique );
         if ( texture )
         {
             newMaterialDesc.m_resourceViews.push_back( *texture->getShaderResourceView() );
         }
-        newMaterialDesc.m_vertexShaderFilename = L"shader/test_vs.hlsl";
-        newMaterialDesc.m_pixelShaderFilename = L"shader/test_ps.hlsl";
-        newMaterialDesc.m_rasterizerState.FrontCounterClockwise = true;
         newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
         newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
         newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "TEXCOORDS", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
         newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
         newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
-        DXGI_FORMAT rtformats[ 8 ] = { DXGI_FORMAT_UNKNOWN };
-        rtformats[ 0 ] = DXGI_FORMAT_R8G8B8A8_UNORM;
-        newMaterialDesc.m_rtFormats = CD3DX12_RT_FORMAT_ARRAY{ rtformats, 8 };
-        newMaterialDesc.m_dsFormat = DXGI_FORMAT_D32_FLOAT;
+
         loadedMaterials.emplace_back( newMaterialDesc );
     }
 
@@ -256,9 +271,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
                 vertexBuffer.push_back( vertex );
             }
             index_offset += numFaceVertices;
-
-            // per-face material
-
         }
 
         Mesh* mesh = new Mesh( StrToWideStr( shapes[ shapeIdx ].name ).c_str(), { L"depth", L"main" }, loadedMaterials[ shapes[ shapeIdx ].mesh.material_ids[ 0 ] ] );

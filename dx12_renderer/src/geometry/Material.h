@@ -17,43 +17,46 @@ class Resource;
 class Material
 {
 public:
-    struct MaterialDesc
+    struct Technique
     {
         std::wstring m_name;
-        std::vector<std::wstring> m_techniqueNames;
-        std::vector<Descriptor> m_resourceViews;
-        std::wstring m_vertexShaderFilename;
-        std::wstring m_pixelShaderFilename;
+        std::wstring m_shaderFilename;
         CD3DX12_BLEND_DESC m_blendState = CD3DX12_BLEND_DESC( CD3DX12_DEFAULT{} );
         CD3DX12_RASTERIZER_DESC m_rasterizerState = CD3DX12_RASTERIZER_DESC( CD3DX12_DEFAULT{} );
         CD3DX12_DEPTH_STENCIL_DESC m_depthStencilState = CD3DX12_DEPTH_STENCIL_DESC( CD3DX12_DEFAULT{} );
-        std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
         D3D12_PRIMITIVE_TOPOLOGY_TYPE m_topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         CD3DX12_RT_FORMAT_ARRAY m_rtFormats;
         DXGI_FORMAT m_dsFormat;
+    };
+
+    struct MaterialDesc
+    {
+        std::wstring m_name;
+        std::vector<Technique> m_techniques;
+        std::vector<Descriptor> m_resourceViews;
+        std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
+    };
+
+    struct MaterialBufferData
+    {
+        uint32_t bindlessIndicesBufferIndex;
     };
 
     Material( MaterialDesc const& materialDesc );
     ~Material() = default;
 
     std::wstring const& getName() const { return m_desc.m_name; }
-    ComPtr<ID3D12PipelineState> getPSOForTechnique( wchar_t const* techniqueName ) const
-    {
-        PSOCache::const_iterator it = m_psoCache.find( techniqueName );
-        if ( it != m_psoCache.end() )
-        {
-            return it->second;
-        }
-
-        return nullptr;
-    }
-
-    void bindToPipeline( ComPtr<ID3D12GraphicsCommandList> commandList );
+    ComPtr<ID3D12PipelineState> getPSOForTechnique( wchar_t const* techniqueName ) const;
+    Resource const* getMaterialBufferResource() const { return m_materialBuffer; }
+    Resource const* getBindlessIndicesBufferResource() const { return m_bindlessIndicesBufferResource; }
 
 private:
     MaterialDesc m_desc;
 
-    Resource* m_bindlessIndicesResource;
+    Resource* m_materialBuffer;
+    MaterialBufferData m_materialBufferData;
+
+    Resource* m_bindlessIndicesBufferResource;
     std::vector<UINT> m_bindlessIndices;
     
     // PSO name is: <technique_name>

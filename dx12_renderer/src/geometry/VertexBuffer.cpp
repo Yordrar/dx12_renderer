@@ -9,16 +9,20 @@ VertexBuffer::VertexBuffer( void* vertices, size_t vertexSize, size_t vertexCoun
 {
 	memcpy( m_vertices, vertices, vertexCount * vertexSize );
 
-	Renderer::device()->CreateCommittedResource( &CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_DEFAULT ),
+	CD3DX12_HEAP_PROPERTIES heapProps( D3D12_HEAP_TYPE_DEFAULT );
+	CD3DX12_HEAP_PROPERTIES uploadHeapProps( D3D12_HEAP_TYPE_UPLOAD );
+	CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer( vertexCount * vertexSize );
+
+	Renderer::device()->CreateCommittedResource( &heapProps,
 												 D3D12_HEAP_FLAG_NONE,
-												 &CD3DX12_RESOURCE_DESC::Buffer( vertexCount * vertexSize ),
+												 &resourceDesc,
 												 D3D12_RESOURCE_STATE_COMMON,
 												 nullptr,
 												 IID_PPV_ARGS( m_bufferResource.GetAddressOf() ) );
 
-	Renderer::device()->CreateCommittedResource( &CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_UPLOAD ),
+	Renderer::device()->CreateCommittedResource( &uploadHeapProps,
 												 D3D12_HEAP_FLAG_NONE,
-												 &CD3DX12_RESOURCE_DESC::Buffer( vertexCount * vertexSize ),
+												 &resourceDesc,
 												 D3D12_RESOURCE_STATE_GENERIC_READ,
 												 nullptr,
 												 IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
@@ -40,13 +44,15 @@ void VertexBuffer::bind( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
 	if ( m_isDirty )
 	{
-		commandList->ResourceBarrier( 1, &CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
-																				D3D12_RESOURCE_STATE_COMMON,
-																				D3D12_RESOURCE_STATE_COPY_DEST ) );
+		CD3DX12_RESOURCE_BARRIER copyDestBarrier = CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
+																						 D3D12_RESOURCE_STATE_COMMON,
+																						 D3D12_RESOURCE_STATE_COPY_DEST );
+		CD3DX12_RESOURCE_BARRIER readBarrier = CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
+																					 D3D12_RESOURCE_STATE_COPY_DEST,
+																					 D3D12_RESOURCE_STATE_GENERIC_READ );
+		commandList->ResourceBarrier( 1, &copyDestBarrier );
 		UpdateSubresources<1>( commandList.Get(), m_bufferResource.Get(), m_intermediateUploadBuffer.Get(), 0, 0, 1, &m_subResourceData );
-		commandList->ResourceBarrier( 1, &CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
-																				D3D12_RESOURCE_STATE_COPY_DEST,
-																				D3D12_RESOURCE_STATE_GENERIC_READ ) );
+		commandList->ResourceBarrier( 1, &readBarrier );
 		m_isDirty = false;
 	}
 

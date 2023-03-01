@@ -16,7 +16,7 @@ public:
     IGeometry( wchar_t const* name, std::initializer_list<wchar_t const*> techniqueNames );
     virtual ~IGeometry() = 0;
 
-    virtual void record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList, PSOManager::PipelineStateStream& pipelineState );
+    virtual void record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList );
 
     std::wstring const& getName() const { return m_name; }
     std::unordered_set<std::wstring> const& getTechniqueNames() const { return m_techniqueNames; }
