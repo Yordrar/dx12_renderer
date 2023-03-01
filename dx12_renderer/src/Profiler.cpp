@@ -3,23 +3,70 @@
 #include <d3dx12.h>
 
 #include <Renderer.h>
+#include <RendererConstants.h>
 
 Profiler::Profiler()
     : m_queryHeap( nullptr )
-    , m_readBackResource( nullptr )
+    , m_resolvedQueriesResource( nullptr )
+    , m_numAllocatedQueryIndices( 0 )
 {
-    D3D12_QUERY_HEAP_DESC queryHeapDesc = { };
-    queryHeapDesc.Count = 1024;
-    queryHeapDesc.NodeMask = 0;
-    queryHeapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+    D3D12_QUERY_HEAP_DESC queryHeapDesc =
+    {
+        .Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP,
+        .Count = 2 * sc_numQueriesPerFrame * RendererConstants::sc_numBackBuffers,
+        .NodeMask = 0,
+    };
     Renderer::device()->CreateQueryHeap( &queryHeapDesc, IID_PPV_ARGS( m_queryHeap.GetAddressOf() ) );
 
-    CD3DX12_HEAP_PROPERTIES readBackResourceHeapProperties = CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_READBACK, 0, 0 );
-    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(1024);
-    Renderer::device()->CreateCommittedResource( &readBackResourceHeapProperties,
+    CD3DX12_HEAP_PROPERTIES resolvedQueriesResourceHeapProperties = CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_READBACK, 0, 0 );
+    CD3DX12_RESOURCE_DESC resolvedQueriesResourceDesc = CD3DX12_RESOURCE_DESC::Buffer( queryHeapDesc.Count * sizeof( uint64_t ) );
+    Renderer::device()->CreateCommittedResource( &resolvedQueriesResourceHeapProperties,
                                                  D3D12_HEAP_FLAG_NONE,
-                                                 &resourceDesc,
-                                                 D3D12_RESOURCE_STATE_COMMON,
+                                                 &resolvedQueriesResourceDesc,
+                                                 D3D12_RESOURCE_STATE_COPY_DEST,
                                                  nullptr,
-                                                 IID_PPV_ARGS( m_readBackResource.GetAddressOf() ) );
+                                                 IID_PPV_ARGS( m_resolvedQueriesResource.GetAddressOf() ) );
+}
+
+uint64_t Profiler::getInHeapQueryIndexForCurrentFrameFromAllocatedIndex( uint64_t allocatedIndex )
+{
+    return  2 * ( allocatedIndex + ( sc_numQueriesPerFrame * Renderer::getCurrentRecordingIndex() ) );
+}
+
+uint64_t Profiler::getInHeapQueryIndexForPreviousFrameFromAllocatedIndex( uint64_t allocatedIndex )
+{
+    return  2 * ( allocatedIndex + ( sc_numQueriesPerFrame * Renderer::getPreviousRecordingIndex() ) );
+}
+
+uint64_t Profiler::allocateQueryIndex()
+{
+    return m_numAllocatedQueryIndices++;
+}
+
+void Profiler::startQuery( ComPtr<ID3D12GraphicsCommandList> commandList, uint64_t index )
+{
+    commandList->EndQuery( m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, static_cast<UINT>( getInHeapQueryIndexForCurrentFrameFromAllocatedIndex( index ) ) );
+}
+
+void Profiler::endQuery( ComPtr<ID3D12GraphicsCommandList> commandList, uint64_t index )
+{
+    commandList->EndQuery( m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, static_cast<UINT>( getInHeapQueryIndexForCurrentFrameFromAllocatedIndex( index ) + 1 ) );
+
+    uint64_t const dstOffset = getInHeapQueryIndexForCurrentFrameFromAllocatedIndex( index ) * sizeof( uint64_t );
+    commandList->ResolveQueryData( m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, static_cast<UINT>( getInHeapQueryIndexForCurrentFrameFromAllocatedIndex( index ) ), 2, m_resolvedQueriesResource.Get(), dstOffset );
+}
+
+double Profiler::getResolvedQuery( uint64_t index )
+{
+    void* data = nullptr;
+    m_resolvedQueriesResource->Map( 0, nullptr, &data );
+    uint64_t* resolvedQueries = reinterpret_cast<uint64_t*>( data );
+    double gpuFrequency = static_cast<double>( Renderer::getTimestampFrequency() );
+
+    uint64_t start = resolvedQueries[ getInHeapQueryIndexForPreviousFrameFromAllocatedIndex( index ) ];
+    uint64_t end = resolvedQueries[ getInHeapQueryIndexForPreviousFrameFromAllocatedIndex( index ) + 1 ];
+
+    m_resolvedQueriesResource->Unmap( 0, nullptr );
+
+    return ( ( end - start ) / gpuFrequency ) * 1000.0f;
 }

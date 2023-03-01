@@ -25,14 +25,16 @@ uint64_t Fence::CPUSignal()
     return m_fenceValue;
 }
 
-void Fence::CPUWait( uint64_t fenceValue, uint64_t duration )
+DWORD Fence::CPUWait( uint64_t fenceValue, uint64_t duration )
 {
     if ( m_fence->GetCompletedValue() < fenceValue )
     {
         m_fence->SetEventOnCompletion( fenceValue, m_fenceEvent );
-        WaitForSingleObject( m_fenceEvent, static_cast<DWORD>( duration ) );
+        DWORD result = WaitForSingleObject( m_fenceEvent, static_cast<DWORD>( duration ) );
         PIXNotifyWakeFromFenceSignal( m_fenceEvent );
+        return result;
     }
+    return 0;
 }
 
 uint64_t Fence::GPUSignal( ComPtr<ID3D12CommandQueue> commandQueue )

@@ -22,8 +22,11 @@ public:
 
     static ComPtr<ID3D12Device2> device() { return s_device; }
 
-    void addRenderPass( RenderPass& renderPass );
-    void drawScene( Scene& scene );
+    void beginFrame();
+    void submitPass( RenderPass& pass );
+    void endFrame();
+
+    void waitForIdleGPU();
 
     void presentThreadFunc();
 
@@ -31,6 +34,7 @@ public:
     static UINT getPreviousRecordingIndex() { return std::abs(static_cast<int>(s_currentRecordingIndex) - 1); }
     static RECT getWindowRect() { return s_windowRect; }
     static ComPtr<ID3D12RootSignature> getRootSignature() { return s_rootSignature; }
+    static uint64_t getTimestampFrequency() { return s_timestampFrequency; }
 
 private:
     HWND m_hWnd;
@@ -39,6 +43,7 @@ private:
     static ComPtr<ID3D12Device2> s_device;
     static UINT s_currentBackBufferIndex;
     static UINT s_currentRecordingIndex;
+    static uint64_t s_timestampFrequency;
     ComPtr<IDXGISwapChain4> m_swapChain;
     ComPtr<ID3D12Resource> m_backBuffers[ RendererConstants::sc_numBackBuffers ];
     std::unique_ptr<Fence> m_frameFences[ RendererConstants::sc_numBackBuffers ];
@@ -47,7 +52,6 @@ private:
     ComPtr<ID3D12CommandQueue> m_computeCmdQueue;
     ComPtr<ID3D12CommandQueue> m_copyCmdQueue;
 
-    std::vector<RenderPass> m_renderPasses;
     static ComPtr<ID3D12RootSignature> s_rootSignature;
 
     std::unique_ptr<std::thread> m_presentThread;

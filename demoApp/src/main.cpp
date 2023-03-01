@@ -116,7 +116,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     int screenHeight = ::GetSystemMetrics( SM_CYSCREEN );
 
     RECT windowRect = { 0, 0, static_cast<LONG>( 1280 ), static_cast<LONG>( 720 ) };
-    AdjustWindowRect( &windowRect, WS_OVERLAPPEDWINDOW, FALSE );
+    //AdjustWindowRect( &windowRect, WS_OVERLAPPEDWINDOW, FALSE );
 
     int windowWidth = windowRect.right - windowRect.left;
     int windowHeight = windowRect.bottom - windowRect.top;
@@ -284,11 +284,9 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     ResourceManager::it().createResource( L"mainDepthStencilTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) );
 
     RenderPass depthPass(L"Depth Prepass", L"depth", L"", L"mainDepthStencilTarget");
+    depthPass.addScene( scene.get() );
     RenderPass mainPass(L"Main Pass", L"main", L"backbuffer", L"mainDepthStencilTarget");
-    //RenderPass copyToBackbufferPass( L"Copy to Backbuffer", L"copy", L"backbuffer", L"" );
-    renderer.addRenderPass( depthPass );
-    renderer.addRenderPass( mainPass );
-    //renderer.addRenderPass( copyToBackbufferPass );
+    mainPass.addScene( scene.get() );
 
     ResourceManager::it().createSampler(L"globalSampler");
 
@@ -301,8 +299,13 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             DispatchMessage( &msg );
         }
 
-        renderer.drawScene(*scene);
+        renderer.beginFrame();
+        renderer.submitPass( depthPass );
+        renderer.submitPass( mainPass );
+        renderer.endFrame();
     }
+
+    renderer.waitForIdleGPU();
 
     return 0;
 }

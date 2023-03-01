@@ -15,7 +15,7 @@ public:
     ~Fence();
 
     uint64_t CPUSignal();
-    void CPUWait( uint64_t fenceValue, uint64_t duration = 0xFFFFFFFFFFFFFFFF );
+    DWORD CPUWait( uint64_t fenceValue, uint64_t duration = 0xFFFFFFFFFFFFFFFF );
     uint64_t GPUSignal( ComPtr<ID3D12CommandQueue> commandQueue );
     void GPUWait( ComPtr<ID3D12CommandQueue> commandQueue, uint64_t fenceValue );
 

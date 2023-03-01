@@ -22,17 +22,25 @@ public:
     ~RenderPass();
 
     ID3D12GraphicsCommandList* getCommandList() const { return m_commandList.Get(); }
+    double getExecutionTimeMilliseconds() const { return m_executionTimeInMilliseconds; }
 
-    void record( Scene& scene );
+    void addScene( Scene* scene ) { m_scenes.push_back( scene ); }
+    void record();
 
 private:
     std::wstring m_name;
     std::wstring m_techniqueName;
     std::wstring m_renderTargetName;
+
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     ComPtr<ID3D12CommandAllocator> m_commandAllocators[ RendererConstants::sc_numBackBuffers ];
 
     Resource* m_renderTarget;
     Resource* m_depthStencilTarget;
+
+    std::vector<Scene*> m_scenes;
+
+    uint64_t m_profilerQueryIndex;
+    double m_executionTimeInMilliseconds;
 };
 

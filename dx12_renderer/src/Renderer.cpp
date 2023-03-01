@@ -11,6 +11,7 @@ RECT Renderer::s_windowRect;
 ComPtr<ID3D12Device2> Renderer::s_device{ nullptr };
 UINT Renderer::s_currentBackBufferIndex = 0;
 UINT Renderer::s_currentRecordingIndex = 0;
+uint64_t Renderer::s_timestampFrequency = 0;
 ComPtr<ID3D12RootSignature> Renderer::s_rootSignature{ nullptr };
 
 Renderer::Renderer( HWND hWnd, RECT windowRect )
@@ -171,6 +172,8 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
                                              serializedRootSig->GetBufferPointer(),
                                              serializedRootSig->GetBufferSize(),
                                              IID_PPV_ARGS( s_rootSignature.GetAddressOf() ) );
+
+    m_graphicsCmdQueue->GetTimestampFrequency( &s_timestampFrequency );
 }
 
 Renderer::~Renderer()
@@ -179,39 +182,48 @@ Renderer::~Renderer()
     m_presentThread->join();
 }
 
-void Renderer::addRenderPass( RenderPass& renderPass )
+static auto start = std::chrono::high_resolution_clock::now();
+static std::vector<ID3D12CommandList*> commandLists;
+static double gpuTime = 0;
+void Renderer::beginFrame()
 {
-    m_renderPasses.push_back( renderPass );
-}
-
-void Renderer::drawScene( Scene& scene )
-{
-    static uint64_t fenceCounters[ RendererConstants::sc_numBackBuffers ] = { 0 };
-
     if ( !m_presentThread )
     {
         m_presentThread = std::make_unique<std::thread>( &Renderer::presentThreadFunc, this );
     }
 
-    auto start = std::chrono::high_resolution_clock::now();
+    commandLists.clear();
 
-    std::vector< ID3D12CommandList* > commandLists;
-    commandLists.reserve( m_renderPasses.size() );
-    for ( RenderPass& renderPass : m_renderPasses )
-    {
-        renderPass.record( scene );
-        commandLists.push_back( renderPass.getCommandList() );
-    }
+    gpuTime = 0;
 
-    m_frameFences[ getPreviousRecordingIndex() ]->CPUWait( fenceCounters[ getPreviousRecordingIndex() ] );
+    start = std::chrono::high_resolution_clock::now();
+}
+
+void Renderer::submitPass( RenderPass& pass )
+{
+    pass.record();
+    gpuTime += pass.getExecutionTimeMilliseconds();
+    commandLists.push_back( pass.getCommandList() );
+}
+
+static uint64_t fenceCounters[ RendererConstants::sc_numBackBuffers ] = { 0 };
+void Renderer::endFrame()
+{
+    waitForIdleGPU();
     m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>( commandLists.size() ), commandLists.data() );
     m_frameFences[ s_currentRecordingIndex ]->GPUSignal( m_graphicsCmdQueue );
     fenceCounters[ s_currentRecordingIndex ] += 2;
-    s_currentRecordingIndex = (s_currentRecordingIndex + 1) % RendererConstants::sc_numBackBuffers;
+    s_currentRecordingIndex = ( s_currentRecordingIndex + 1 ) % RendererConstants::sc_numBackBuffers;
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( end - start );
-    OutputDebugStringA( std::string( "CPU time: " + std::to_string( elapsed.count() ) + "ms\n" ).c_str() );
+    //OutputDebugStringA( std::string( "CPU time: " + std::to_string( elapsed.count() ) + "ms\n" ).c_str() );
+    OutputDebugStringA( std::string( "GPU time: " + std::to_string( gpuTime ) + "ms\n" ).c_str() );
+}
+
+void Renderer::waitForIdleGPU()
+{
+    m_frameFences[ getPreviousRecordingIndex() ]->CPUWait( fenceCounters[ getPreviousRecordingIndex() ] );
 }
 
 void Renderer::presentThreadFunc()
@@ -219,10 +231,13 @@ void Renderer::presentThreadFunc()
     static uint64_t fenceCounters[ RendererConstants::sc_numBackBuffers ] = { 0 };
     while ( !m_terminatePresentThread )
     {
-        m_frameFences[ s_currentBackBufferIndex ]->CPUWait( fenceCounters[ s_currentBackBufferIndex ] + 1, 1000Ui64 );
-        m_swapChain->Present( 0, 0 );
-        m_frameFences[ s_currentBackBufferIndex ]->CPUSignal();
-        fenceCounters[ s_currentBackBufferIndex ] += 2 ;
-        s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+        DWORD result = m_frameFences[ s_currentBackBufferIndex ]->CPUWait( fenceCounters[ s_currentBackBufferIndex ] + 1, 100Ui64 );
+        if ( result == 0 )
+        {
+            m_swapChain->Present( 0, 0 );
+            m_frameFences[ s_currentBackBufferIndex ]->CPUSignal();
+            fenceCounters[ s_currentBackBufferIndex ] += 2;
+            s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+        }
     }
 }

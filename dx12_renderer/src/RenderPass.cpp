@@ -3,6 +3,7 @@
 #include <pix3.h>
 
 #include <Renderer.h>
+#include <Profiler.h>
 #include <resource/ResourceManager.h>
 #include <resource/Descriptor.h>
 #include <geometry/PSOManager.h>
@@ -18,6 +19,8 @@ RenderPass::RenderPass( wchar_t const* name,
     , m_commandList( nullptr )
     , m_renderTarget( nullptr )
     , m_depthStencilTarget( nullptr )
+    , m_profilerQueryIndex( Profiler::it().allocateQueryIndex() )
+    , m_executionTimeInMilliseconds( 0 )
 {
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
     {
@@ -46,17 +49,18 @@ RenderPass::~RenderPass()
 
 }
 
-void RenderPass::record( Scene& scene )
+void RenderPass::record()
 {
     // Reset command list and allocator
     ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentRecordingIndex() ];
     currentCommandAllocator->Reset();
     m_commandList->Reset( currentCommandAllocator.Get(), nullptr );
 
+    Profiler::it().startQuery( m_commandList.Get(), m_profilerQueryIndex );
+
     ResourceManager::it().copyResourcesToGPU( m_commandList );
 
     PIXBeginEvent( m_commandList.Get(), PIX_COLOR_DEFAULT, m_name.c_str() );
-
 
     // Set viewport
     CD3DX12_VIEWPORT viewport( ResourceManager::it().getCurrentBackbufferResource()->getResource().Get() );
@@ -109,6 +113,7 @@ void RenderPass::record( Scene& scene )
     {
         m_commandList->ResourceBarrier( static_cast<UINT>( barriers.size() ), barriers.data() );
     }
+
     if ( m_renderTarget )
     {
         m_commandList->ClearRenderTargetView( m_renderTarget->getRenderTargetView()->getView(), clearColor, 0, nullptr );
@@ -130,8 +135,11 @@ void RenderPass::record( Scene& scene )
         m_commandList->OMSetRenderTargets( 0, nullptr, false, &dsv );
     }
 
-    // Record scene
-    scene.record( m_techniqueName.c_str(), m_commandList );
+    // Record scenes
+    for ( Scene* scene : m_scenes )
+    {
+        scene->record( m_techniqueName.c_str(), m_commandList );
+    }
 
     if ( m_renderTarget && m_renderTarget->getName().rfind( L"backbuffer", 0 ) == 0 )
     {
@@ -143,6 +151,9 @@ void RenderPass::record( Scene& scene )
     }
 
     PIXEndEvent( m_commandList.Get() );
+
+    Profiler::it().endQuery( m_commandList.Get(), m_profilerQueryIndex );
+    m_executionTimeInMilliseconds = Profiler::it().getResolvedQuery( m_profilerQueryIndex );
 
     m_commandList->Close();
 }

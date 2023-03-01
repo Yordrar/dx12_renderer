@@ -22,6 +22,7 @@ public:
 	struct
 	{
 		DirectX::XMMATRIX m_viewProjMatrix;
+		DirectX::XMMATRIX m_inverseViewProjMatrix;
 		DirectX::XMVECTOR m_position;
 	} m_cameraData;
 	

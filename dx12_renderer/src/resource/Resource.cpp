@@ -119,19 +119,26 @@ Descriptor const* Resource::getShaderResourceView()
                 srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
                 srvDesc.Buffer.FirstElement = 0;
                 srvDesc.Buffer.NumElements = 1;
-                srvDesc.Buffer.StructureByteStride = getResourceDesc().Width;
+                srvDesc.Buffer.StructureByteStride = static_cast<UINT>( getResourceDesc().Width );
                 break;
             case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
                 srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
+                srvDesc.Texture1D.MipLevels = getResourceDesc().MipLevels;
+                srvDesc.Texture1D.MostDetailedMip = 0;
+                srvDesc.Texture1D.ResourceMinLODClamp = 0;
                 break;
             case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
                 srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-                srvDesc.Texture2D.MipLevels = 1;
+                srvDesc.Texture2D.MipLevels = getResourceDesc().MipLevels;
                 srvDesc.Texture2D.MostDetailedMip = 0;
                 srvDesc.Texture2D.PlaneSlice = 0;
+                srvDesc.Texture2D.ResourceMinLODClamp = 0;
                 break;
             case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
                 srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+                srvDesc.Texture3D.MipLevels = getResourceDesc().MipLevels;
+                srvDesc.Texture3D.MostDetailedMip = 0;
+                srvDesc.Texture3D.ResourceMinLODClamp = 0;
                 break;
             default:
                 break;
