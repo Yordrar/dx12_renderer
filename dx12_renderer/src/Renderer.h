@@ -7,6 +7,7 @@ using namespace Microsoft::WRL;
 
 #include <vector>
 #include <thread>
+#include <algorithm>
 
 #include <RendererConstants.h>
 #include <RenderPass.h>
@@ -18,7 +19,7 @@ class Renderer
 {
 public:
     Renderer(HWND hWnd, RECT windowRect);
-    ~Renderer();
+    ~Renderer() = default;
 
     static ComPtr<ID3D12Device2> device() { return s_device; }
 
@@ -28,10 +29,8 @@ public:
 
     void waitForIdleGPU();
 
-    void presentThreadFunc();
-
-    static UINT getCurrentRecordingIndex() { return s_currentRecordingIndex; }
-    static UINT getPreviousRecordingIndex() { return std::abs(static_cast<int>(s_currentRecordingIndex) - 1); }
+    static UINT getCurrentBackbufferIndex() { return s_currentBackBufferIndex; }
+    static UINT getPreviousBackbufferIndex() { return std::clamp( s_currentBackBufferIndex - 1, 0u, RendererConstants::sc_numBackBuffers - 1 ); }
     static RECT getWindowRect() { return s_windowRect; }
     static ComPtr<ID3D12RootSignature> getRootSignature() { return s_rootSignature; }
     static uint64_t getTimestampFrequency() { return s_timestampFrequency; }
@@ -42,19 +41,16 @@ private:
 
     static ComPtr<ID3D12Device2> s_device;
     static UINT s_currentBackBufferIndex;
-    static UINT s_currentRecordingIndex;
     static uint64_t s_timestampFrequency;
     ComPtr<IDXGISwapChain4> m_swapChain;
     ComPtr<ID3D12Resource> m_backBuffers[ RendererConstants::sc_numBackBuffers ];
-    std::unique_ptr<Fence> m_frameFences[ RendererConstants::sc_numBackBuffers ];
+    std::unique_ptr<Fence> m_frameFence;
+    uint64_t m_fenceValues[ RendererConstants::sc_numBackBuffers ];
 
     ComPtr<ID3D12CommandQueue> m_graphicsCmdQueue;
     ComPtr<ID3D12CommandQueue> m_computeCmdQueue;
     ComPtr<ID3D12CommandQueue> m_copyCmdQueue;
 
     static ComPtr<ID3D12RootSignature> s_rootSignature;
-
-    std::unique_ptr<std::thread> m_presentThread;
-    bool m_terminatePresentThread;
 };
 

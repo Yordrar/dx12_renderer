@@ -1,38 +1,24 @@
 #include "VertexBuffer.h"
 
 #include <Renderer.h>
+#include <resource/ResourceManager.h>
 
-VertexBuffer::VertexBuffer( void* vertices, size_t vertexSize, size_t vertexCount )
+VertexBuffer::VertexBuffer( wchar_t const* name, void* vertices, size_t vertexSize, size_t vertexCount )
 	: m_vertices( new char[ vertexCount * vertexSize ] )
 	, m_vertexSize( vertexSize )
 	, m_vertexCount( vertexCount )
+	, m_resource( nullptr )
 {
-	memcpy( m_vertices, vertices, vertexCount * vertexSize );
+	memcpy( m_vertices, vertices, m_vertexCount * m_vertexSize );
 
-	CD3DX12_HEAP_PROPERTIES heapProps( D3D12_HEAP_TYPE_DEFAULT );
-	CD3DX12_HEAP_PROPERTIES uploadHeapProps( D3D12_HEAP_TYPE_UPLOAD );
-	CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer( vertexCount * vertexSize );
-
-	Renderer::device()->CreateCommittedResource( &heapProps,
-												 D3D12_HEAP_FLAG_NONE,
-												 &resourceDesc,
-												 D3D12_RESOURCE_STATE_COMMON,
-												 nullptr,
-												 IID_PPV_ARGS( m_bufferResource.GetAddressOf() ) );
-
-	Renderer::device()->CreateCommittedResource( &uploadHeapProps,
-												 D3D12_HEAP_FLAG_NONE,
-												 &resourceDesc,
-												 D3D12_RESOURCE_STATE_GENERIC_READ,
-												 nullptr,
-												 IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
-
-	m_subResourceData = {};
-	m_subResourceData.pData = m_vertices;
-	m_subResourceData.RowPitch = static_cast<UINT64>( vertexCount ) * static_cast<UINT64>( vertexSize );
-	m_subResourceData.SlicePitch = 0;
-
-	m_isDirty = true;
+	CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer( m_vertexCount * m_vertexSize );
+	D3D12_SUBRESOURCE_DATA subresData =
+	{
+		.pData = m_vertices,
+		.RowPitch = static_cast<INT64>( m_vertexCount ) * static_cast<INT64>( m_vertexSize ),
+		.SlicePitch = 0,
+	};
+	m_resource = ResourceManager::it().createResource( name, resourceDesc, subresData );
 }
 
 VertexBuffer::~VertexBuffer()
@@ -42,23 +28,11 @@ VertexBuffer::~VertexBuffer()
 
 void VertexBuffer::bind( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
-	if ( m_isDirty )
+	D3D12_VERTEX_BUFFER_VIEW view =
 	{
-		CD3DX12_RESOURCE_BARRIER copyDestBarrier = CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
-																						 D3D12_RESOURCE_STATE_COMMON,
-																						 D3D12_RESOURCE_STATE_COPY_DEST );
-		CD3DX12_RESOURCE_BARRIER readBarrier = CD3DX12_RESOURCE_BARRIER::Transition( m_bufferResource.Get(),
-																					 D3D12_RESOURCE_STATE_COPY_DEST,
-																					 D3D12_RESOURCE_STATE_GENERIC_READ );
-		commandList->ResourceBarrier( 1, &copyDestBarrier );
-		UpdateSubresources<1>( commandList.Get(), m_bufferResource.Get(), m_intermediateUploadBuffer.Get(), 0, 0, 1, &m_subResourceData );
-		commandList->ResourceBarrier( 1, &readBarrier );
-		m_isDirty = false;
-	}
-
-	D3D12_VERTEX_BUFFER_VIEW view;
-	view.BufferLocation = m_bufferResource->GetGPUVirtualAddress();
-	view.SizeInBytes = static_cast<UINT>( m_vertexSize * m_vertexCount );
-	view.StrideInBytes = static_cast<UINT>( m_vertexSize );
+		.BufferLocation = m_resource->getGPUVirtualAddress(),
+		.SizeInBytes = static_cast<UINT>( m_vertexSize * m_vertexCount ),
+		.StrideInBytes = static_cast<UINT>( m_vertexSize ),
+	};
 	commandList->IASetVertexBuffers( 0, 1, &view );
 }

@@ -6,10 +6,12 @@ using namespace Microsoft::WRL;
 
 #include <vector>
 
+class Resource;
+
 class IndexBuffer
 {
 public:
-	IndexBuffer( UINT* indices, UINT count );
+	IndexBuffer( wchar_t const* name, UINT* indices, UINT count );
 	virtual ~IndexBuffer();
 
 	void bind( ComPtr<ID3D12GraphicsCommandList> commandList );
@@ -19,8 +21,5 @@ public:
 private:
 	UINT* m_indices;
 	UINT m_indexCount;
-	ComPtr<ID3D12Resource> m_bufferResource;
-	ComPtr<ID3D12Resource> m_intermediateUploadBuffer;
-	D3D12_SUBRESOURCE_DATA m_subResourceData;
-	bool m_isDirty;
+	Resource* m_resource;
 };

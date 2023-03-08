@@ -18,11 +18,9 @@ Fence::~Fence()
 
 }
 
-uint64_t Fence::CPUSignal()
+HRESULT Fence::CPUSignal( uint64_t fenceValue )
 {
-    m_fence->Signal( ++m_fenceValue );
-
-    return m_fenceValue;
+    return m_fence->Signal( fenceValue );
 }
 
 DWORD Fence::CPUWait( uint64_t fenceValue, uint64_t duration )
@@ -37,14 +35,12 @@ DWORD Fence::CPUWait( uint64_t fenceValue, uint64_t duration )
     return 0;
 }
 
-uint64_t Fence::GPUSignal( ComPtr<ID3D12CommandQueue> commandQueue )
+HRESULT Fence::GPUSignal( ComPtr<ID3D12CommandQueue> commandQueue, uint64_t fenceValue )
 {
-    commandQueue->Signal( m_fence.Get(), ++m_fenceValue );
-
-    return m_fenceValue;
+    return commandQueue->Signal( m_fence.Get(), fenceValue );
 }
 
-void Fence::GPUWait( ComPtr<ID3D12CommandQueue> commandQueue, uint64_t fenceValue )
+HRESULT Fence::GPUWait( ComPtr<ID3D12CommandQueue> commandQueue, uint64_t fenceValue )
 {
-    commandQueue->Wait( m_fence.Get(), fenceValue );
+    return commandQueue->Wait( m_fence.Get(), fenceValue );
 }

@@ -10,17 +10,15 @@
 RECT Renderer::s_windowRect;
 ComPtr<ID3D12Device2> Renderer::s_device{ nullptr };
 UINT Renderer::s_currentBackBufferIndex = 0;
-UINT Renderer::s_currentRecordingIndex = 0;
 uint64_t Renderer::s_timestampFrequency = 0;
 ComPtr<ID3D12RootSignature> Renderer::s_rootSignature{ nullptr };
 
 Renderer::Renderer( HWND hWnd, RECT windowRect )
     : m_hWnd(hWnd)
-    , m_presentThread( nullptr )
-    , m_terminatePresentThread( false )
 {
+    for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i ) m_fenceValues[ i ] = 0;
+    m_fenceValues[ 0 ] = 1;
     s_currentBackBufferIndex = 0;
-    s_currentRecordingIndex = 0;
     s_windowRect = windowRect;
 #if defined(_DEBUG)
     ComPtr<ID3D12Debug> debugInterface;
@@ -100,6 +98,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     dxgiFactory->CreateSwapChainForHwnd( m_graphicsCmdQueue.Get(), m_hWnd, &swapChainDesc, nullptr, nullptr, swapChain.GetAddressOf() );
     swapChain.As( &m_swapChain );
 
+    m_frameFence = std::make_unique<Fence>( L"Renderer_frameFence" );
 
     // Create RTVs for the backbuffers
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
@@ -108,15 +107,14 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
         m_swapChain->GetBuffer( i, IID_PPV_ARGS( &backBuffer ) );
         ResourceManager::it().createResource( ( L"backbuffer" + std::to_wstring( i ) ).c_str(), backBuffer );
 
-        m_frameFences[i] = std::make_unique<Fence>( ( L"Renderer_frameFence" + std::to_wstring( i ) ).c_str() );
     }
 
-
     // Create root signature
-    CD3DX12_ROOT_PARAMETER slotRootParameters[ 6 ] = {};
+    CD3DX12_ROOT_PARAMETER slotRootParameters[ 7 ] = {};
 
     slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Scene buffer
     slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Material buffer
+    slotRootParameters[ 2 ].InitAsConstantBufferView( 2, 0 ); // Geometry buffer
 
     D3D12_DESCRIPTOR_RANGE srvRangeBuffer{};
     srvRangeBuffer.BaseShaderRegister = 0;
@@ -124,7 +122,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeBuffer.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
     srvRangeBuffer.OffsetInDescriptorsFromTableStart = 0;
     srvRangeBuffer.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    slotRootParameters[ 2 ].InitAsDescriptorTable( 1, &srvRangeBuffer );
+    slotRootParameters[ 3 ].InitAsDescriptorTable( 1, &srvRangeBuffer );
 
     D3D12_DESCRIPTOR_RANGE srvRangeTexture2D{};
     srvRangeTexture2D.BaseShaderRegister = 0;
@@ -132,7 +130,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeTexture2D.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
     srvRangeTexture2D.OffsetInDescriptorsFromTableStart = 0;
     srvRangeTexture2D.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    slotRootParameters[ 3 ].InitAsDescriptorTable( 1, &srvRangeTexture2D );
+    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeTexture2D );
 
     D3D12_DESCRIPTOR_RANGE srvRangeTextureCube{};
     srvRangeTextureCube.BaseShaderRegister = 0;
@@ -140,7 +138,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeTextureCube.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
     srvRangeTextureCube.OffsetInDescriptorsFromTableStart = 0;
     srvRangeTextureCube.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeTextureCube );
+    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeTextureCube );
 
     D3D12_DESCRIPTOR_RANGE srvRangeSampler{};
     srvRangeSampler.BaseShaderRegister = 0;
@@ -148,7 +146,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     srvRangeSampler.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
     srvRangeSampler.OffsetInDescriptorsFromTableStart = 0;
     srvRangeSampler.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeSampler );
+    slotRootParameters[ 6 ].InitAsDescriptorTable( 1, &srvRangeSampler );
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( _countof(slotRootParameters), slotRootParameters, 0, nullptr,
                                              D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -176,22 +174,11 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     m_graphicsCmdQueue->GetTimestampFrequency( &s_timestampFrequency );
 }
 
-Renderer::~Renderer()
-{
-    m_terminatePresentThread = true;
-    m_presentThread->join();
-}
-
 static auto start = std::chrono::high_resolution_clock::now();
 static std::vector<ID3D12CommandList*> commandLists;
 static double gpuTime = 0;
 void Renderer::beginFrame()
 {
-    if ( !m_presentThread )
-    {
-        m_presentThread = std::make_unique<std::thread>( &Renderer::presentThreadFunc, this );
-    }
-
     commandLists.clear();
 
     gpuTime = 0;
@@ -206,38 +193,34 @@ void Renderer::submitPass( RenderPass& pass )
     commandLists.push_back( pass.getCommandList() );
 }
 
-static uint64_t fenceCounters[ RendererConstants::sc_numBackBuffers ] = { 0 };
 void Renderer::endFrame()
 {
-    waitForIdleGPU();
     m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>( commandLists.size() ), commandLists.data() );
-    m_frameFences[ s_currentRecordingIndex ]->GPUSignal( m_graphicsCmdQueue );
-    fenceCounters[ s_currentRecordingIndex ] += 2;
-    s_currentRecordingIndex = ( s_currentRecordingIndex + 1 ) % RendererConstants::sc_numBackBuffers;
+    m_swapChain->Present( 0, 0 );
+
+    // Schedule a Signal command in the queue.
+    uint64_t const currentFenceValue = m_fenceValues[ s_currentBackBufferIndex ];
+    m_frameFence->GPUSignal( m_graphicsCmdQueue, currentFenceValue );
+
+    // Update the frame index.
+    s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+
+    // If the next frame is not ready to be rendered yet, wait until it is ready.
+    m_frameFence->CPUWait( m_fenceValues[ s_currentBackBufferIndex ] );
+
+    // Set the fence value for the next frame.
+    m_fenceValues[ s_currentBackBufferIndex ] = currentFenceValue + 1;
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( end - start );
-    //OutputDebugStringA( std::string( "CPU time: " + std::to_string( elapsed.count() ) + "ms\n" ).c_str() );
+    OutputDebugStringA( std::string( "CPU time: " + std::to_string( elapsed.count() ) + "ms\n" ).c_str() );
     OutputDebugStringA( std::string( "GPU time: " + std::to_string( gpuTime ) + "ms\n" ).c_str() );
 }
 
 void Renderer::waitForIdleGPU()
 {
-    m_frameFences[ getPreviousRecordingIndex() ]->CPUWait( fenceCounters[ getPreviousRecordingIndex() ] );
-}
-
-void Renderer::presentThreadFunc()
-{
-    static uint64_t fenceCounters[ RendererConstants::sc_numBackBuffers ] = { 0 };
-    while ( !m_terminatePresentThread )
-    {
-        DWORD result = m_frameFences[ s_currentBackBufferIndex ]->CPUWait( fenceCounters[ s_currentBackBufferIndex ] + 1, 100Ui64 );
-        if ( result == 0 )
-        {
-            m_swapChain->Present( 0, 0 );
-            m_frameFences[ s_currentBackBufferIndex ]->CPUSignal();
-            fenceCounters[ s_currentBackBufferIndex ] += 2;
-            s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
-        }
-    }
+    uint64_t const currentFenceValue = m_fenceValues[ s_currentBackBufferIndex ];
+    m_frameFence->GPUSignal( m_graphicsCmdQueue, currentFenceValue );
+    m_frameFence->CPUWait( m_fenceValues[ s_currentBackBufferIndex ] );
+    m_fenceValues[ s_currentBackBufferIndex ]++;
 }

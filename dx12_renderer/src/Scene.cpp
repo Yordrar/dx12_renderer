@@ -5,7 +5,6 @@
 #include <Renderer.h>
 #include <resource/ResourceManager.h>
 #include <Camera.h>
-#include <geometry/IGeometry.h>
 
 Scene::Scene( wchar_t const* name )
     : m_name( name )
@@ -23,17 +22,18 @@ void Scene::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandLi
 {
     m_camera.setCameraBufferView( commandList );
 
-    for ( std::shared_ptr<IGeometry>& geometry : m_geometry )
+    for ( std::shared_ptr<Mesh>& geometry : m_geometry )
     {
-        if ( geometry->getTechniqueNames().find( techniqueName ) != geometry->getTechniqueNames().end() )
+        std::vector<std::wstring> const& techniqueNames = geometry->getTechniqueNames();
+        if ( std::find( techniqueNames.cbegin(), techniqueNames.cend(), techniqueName ) != geometry->getTechniqueNames().cend() )
         {
             geometry->record( techniqueName, commandList );
         }
     }
 }
 
-void Scene::addGeometry( IGeometry* geometry )
+void Scene::addGeometry( Mesh* mesh )
 {
-    std::shared_ptr<IGeometry> newGeometry( geometry );
-    m_geometry.push_back( newGeometry );
+    std::shared_ptr<Mesh> newMesh( mesh );
+    m_geometry.push_back( newMesh );
 }

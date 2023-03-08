@@ -4,31 +4,30 @@
 #include <geometry/PSOManager.h>
 #include <resource/Resource.h>
 
-#include <pix3.h>
-
 Mesh::Mesh( wchar_t const* name, std::initializer_list<wchar_t const*> techniqueNames, Material& material )
-    : IGeometry( name, techniqueNames )
+    : m_name( name )
     , m_vertexBuffer( nullptr )
     , m_indexBuffer( nullptr )
     , m_material( material )
 {
-
+    for ( wchar_t const* techniqueName : techniqueNames )
+    {
+        m_techniqueNames.push_back( techniqueName );
+    }
 }
 
 void Mesh::setVertexBuffer( void* vertexData, UINT vertexSize, UINT vertexCount )
 {
-    m_vertexBuffer = std::make_unique<VertexBuffer>( vertexData, vertexSize, vertexCount );
+    m_vertexBuffer = std::make_unique<VertexBuffer>( ( m_name + L"_vertexbuffer" ).c_str(), vertexData, vertexSize, vertexCount);
 }
 
 void Mesh::setIndexBuffer( UINT* indexData, UINT indexCount )
 {
-    m_indexBuffer = std::make_unique<IndexBuffer>( indexData, indexCount );
+    m_indexBuffer = std::make_unique<IndexBuffer>( ( m_name + L"_indexbuffer" ).c_str(), indexData, indexCount );
 }
 
 void Mesh::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList )
 {
-    IGeometry::record( techniqueName, commandList );
-
     commandList->SetGraphicsRootConstantBufferView( 1, m_material.getMaterialBufferResource()->getGPUVirtualAddress() );
 
     commandList->SetPipelineState( m_material.getPSOForTechnique( techniqueName ).Get() );

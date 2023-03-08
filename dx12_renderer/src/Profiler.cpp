@@ -30,12 +30,12 @@ Profiler::Profiler()
 
 uint64_t Profiler::getInHeapQueryIndexForCurrentFrameFromAllocatedIndex( uint64_t allocatedIndex )
 {
-    return  2 * ( allocatedIndex + ( sc_numQueriesPerFrame * Renderer::getCurrentRecordingIndex() ) );
+    return  2 * ( allocatedIndex + ( sc_numQueriesPerFrame * Renderer::getCurrentBackbufferIndex() ) );
 }
 
 uint64_t Profiler::getInHeapQueryIndexForPreviousFrameFromAllocatedIndex( uint64_t allocatedIndex )
 {
-    return  2 * ( allocatedIndex + ( sc_numQueriesPerFrame * Renderer::getPreviousRecordingIndex() ) );
+    return  2 * ( allocatedIndex + ( sc_numQueriesPerFrame * Renderer::getPreviousBackbufferIndex() ) );
 }
 
 uint64_t Profiler::allocateQueryIndex()

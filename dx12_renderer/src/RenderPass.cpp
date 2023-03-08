@@ -7,7 +7,6 @@
 #include <resource/ResourceManager.h>
 #include <resource/Descriptor.h>
 #include <geometry/PSOManager.h>
-#include <geometry/IGeometry.h>
 
 RenderPass::RenderPass( wchar_t const* name,
                         wchar_t const* techniqueName,
@@ -52,7 +51,7 @@ RenderPass::~RenderPass()
 void RenderPass::record()
 {
     // Reset command list and allocator
-    ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentRecordingIndex() ];
+    ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentBackbufferIndex() ];
     currentCommandAllocator->Reset();
     m_commandList->Reset( currentCommandAllocator.Get(), nullptr );
 
@@ -80,10 +79,10 @@ void RenderPass::record()
     m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
 
     // Set descriptor tables in root signature
-    m_commandList->SetGraphicsRootDescriptorTable( 2, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetGraphicsRootDescriptorTable( 3, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetGraphicsRootDescriptorTable( 4, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 5, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 5, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 6, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
 
     // Clear and set render targets
     static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };

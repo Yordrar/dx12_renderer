@@ -21,7 +21,7 @@ public:
     ~ResourceManager() = default;
 
     Resource* getResource( wchar_t const* resourceName );
-    Resource* getCurrentBackbufferResource() { return getResource( std::wstring( L"backbuffer" + std::to_wstring( Renderer::getCurrentRecordingIndex() ) ).c_str() ); }
+    Resource* getCurrentBackbufferResource() { return getResource( std::wstring( L"backbuffer" + std::to_wstring( Renderer::getCurrentBackbufferIndex() ) ).c_str() ); }
 
     Resource* createResource( wchar_t const* resourceName, D3D12_RESOURCE_DESC const& resourceDesc, D3D12_SUBRESOURCE_DATA subresourceData = {nullptr, 0, 0} );
     Resource* createResource( wchar_t const* resourceName, ComPtr<ID3D12Resource> resource );
