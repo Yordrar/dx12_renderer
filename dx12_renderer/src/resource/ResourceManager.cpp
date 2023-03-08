@@ -1,7 +1,5 @@
 #include "ResourceManager.h"
 
-#include <pix3.h>
-
 #include <Renderer.h>
 #include <resource/Resource.h>
 #include <resource/DescriptorHeap.h>
@@ -89,11 +87,8 @@ void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> comm
     {
         if ( resource_pair.second->getNeedsCopyToGPU() )
         {
-            std::optional<CD3DX12_RESOURCE_BARRIER> preCopyBarrier = resource_pair.second->getTransitionBarrier( D3D12_RESOURCE_STATE_COPY_DEST );
-            if ( preCopyBarrier.has_value() )
-            {
-                preCopyBarriers.push_back( preCopyBarrier.value() );
-            }
+            CD3DX12_RESOURCE_BARRIER preCopyBarrier = resource_pair.second->getTransitionBarrier( D3D12_RESOURCE_STATE_COPY_DEST );
+            preCopyBarriers.push_back( preCopyBarrier );
             resourcesToCopy.push_back( resource_pair.second.get() );
         }
     }
@@ -111,11 +106,8 @@ void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> comm
     std::vector<CD3DX12_RESOURCE_BARRIER> postCopyBarriers;
     for ( Resource* resource : resourcesToCopy )
     {
-        std::optional<CD3DX12_RESOURCE_BARRIER> postCopyBarrier = resource->getTransitionBarrier( D3D12_RESOURCE_STATE_GENERIC_READ );
-        if ( postCopyBarrier.has_value() )
-        {
-            postCopyBarriers.push_back( postCopyBarrier.value() );
-        }
+        CD3DX12_RESOURCE_BARRIER postCopyBarrier = resource->getTransitionBarrier( D3D12_RESOURCE_STATE_GENERIC_READ );
+        postCopyBarriers.push_back( postCopyBarrier );
     }
     if ( postCopyBarriers.size() > 0 )
     {

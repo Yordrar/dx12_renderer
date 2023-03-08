@@ -1,11 +1,6 @@
 #pragma once
 
-#include <d3d12.h>
-#include <wrl.h>
-using namespace Microsoft::WRL;
-
 #include <queue>
-#include <memory>
 
 #include <Renderer.h>
 #include <resource/Descriptor.h>

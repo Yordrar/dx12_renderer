@@ -3,11 +3,7 @@
 #include <d3d12.h>
 #include <d3dx12.h>
 #include <dxgi1_6.h>
-#include <wrl.h>
-using namespace Microsoft::WRL;
 
-#include <vector>
-#include <string>
 #include <unordered_map>
 
 #include <resource/Descriptor.h>

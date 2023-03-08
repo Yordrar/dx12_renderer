@@ -1,14 +1,5 @@
 #pragma once
 
-#include <d3d12.h>
-#include <d3dx12.h>
-#include <dxgi1_6.h>
-#include <wrl.h>
-using namespace Microsoft::WRL;
-
-#include <string>
-#include <unordered_map>
-
 #include <Manager.h>
 
 class PSOManager : public Manager<PSOManager>

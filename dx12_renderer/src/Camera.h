@@ -1,10 +1,6 @@
 #pragma once
 
-#include <directxmath.h>
-
 #include <resource/Resource.h>
-
-#include <string>
 
 class Camera
 {

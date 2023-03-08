@@ -1,13 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <limits>
-
-#include <d3d12.h>
-#include <dxgi1_6.h>
-#include <wrl.h>
-using namespace Microsoft::WRL;
-
 class Fence
 {
 public:

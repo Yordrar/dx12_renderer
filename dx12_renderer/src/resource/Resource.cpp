@@ -1,8 +1,5 @@
 #include "Resource.h"
 
-#include <cassert>
-#include <memory>
-
 #include <Renderer.h>
 #include <resource/Descriptor.h>
 #include <resource/DescriptorHeap.h>
@@ -213,23 +210,18 @@ Descriptor const* Resource::getDepthStencilView()
     return m_dsv.get();
 }
 
-std::optional<CD3DX12_RESOURCE_BARRIER> Resource::getTransitionBarrier( D3D12_RESOURCE_STATES newState )
+CD3DX12_RESOURCE_BARRIER Resource::getTransitionBarrier( D3D12_RESOURCE_STATES newState )
 {
-    if ( newState != m_resourceState )
-    {
-        CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition
-        (
-            m_resource.Get(),
-            m_resourceState,
-            newState
-        );
+    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition
+    (
+        m_resource.Get(),
+        m_resourceState,
+        newState
+    );
 
-        m_resourceState = newState;
+    m_resourceState = newState;
 
-        return std::optional<CD3DX12_RESOURCE_BARRIER>( barrier );
-    }
-
-    return std::optional<CD3DX12_RESOURCE_BARRIER>();
+    return barrier;
 }
 
 void Resource::copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )

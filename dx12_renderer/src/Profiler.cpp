@@ -1,7 +1,5 @@
 #include "Profiler.h"
 
-#include <d3dx12.h>
-
 #include <Renderer.h>
 #include <RendererConstants.h>
 

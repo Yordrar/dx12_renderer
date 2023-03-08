@@ -1,8 +1,5 @@
 #pragma once
 
-#include <string>
-#include <memory>
-
 #include <Camera.h>
 #include <geometry/Mesh.h>
 

@@ -1,13 +1,5 @@
 #pragma once
 
-#include <d3d12.h>
-#include <wrl.h>
-using namespace Microsoft::WRL;
-
-#include <memory>
-#include <unordered_map>
-#include <type_traits>
-
 #include <Renderer.h>
 #include <Manager.h>
 #include <resource/DescriptorHeap.h>

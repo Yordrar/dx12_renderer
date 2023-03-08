@@ -1,12 +1,5 @@
 #pragma once
 
-#include <d3d12.h>
-
-#include <vector>
-#include <string>
-#include <memory>
-#include <list>
-
 #include <geometry/Material.h>
 #include <geometry/PSOManager.h>
 #include <geometry/VertexBuffer.h>

@@ -43,6 +43,9 @@ project "dx12_renderer"
 		"{COPYFILE} " .. _WORKING_DIR .. "/dx12_renderer/external/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll %{cfg.buildtarget.directory}",
 		"{COPYDIR} " .. _WORKING_DIR .. "/dx12_renderer/shader %{cfg.buildtarget.directory}shader",
 	}
+	pchheader "stdafx.h"
+	pchsource "dx12_renderer/src/stdafx.cpp"
+	forceincludes "stdafx.h"
 
 project "demoApp"
 	kind "WindowedApp"

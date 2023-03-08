@@ -5,8 +5,6 @@
 #include <wrl.h>
 using namespace Microsoft::WRL;
 
-#include <optional>
-
 #include <resource/Descriptor.h>
 
 class Resource
@@ -30,8 +28,9 @@ public:
 	Descriptor const* getUniformAccessView();
 	Descriptor const* getRenderTargetView();
 	Descriptor const* getDepthStencilView();
+	D3D12_RESOURCE_STATES getResourceState() const { return m_resourceState; }
 
-	std::optional<CD3DX12_RESOURCE_BARRIER> getTransitionBarrier( D3D12_RESOURCE_STATES newState );
+	CD3DX12_RESOURCE_BARRIER getTransitionBarrier( D3D12_RESOURCE_STATES newState );
 	void copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList );
 	void setDebugName( wchar_t const* debugName );
 

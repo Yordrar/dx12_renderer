@@ -1,7 +1,5 @@
 #include "Scene.h"
 
-#include <directxmath.h>
-
 #include <Renderer.h>
 #include <resource/ResourceManager.h>
 #include <Camera.h>

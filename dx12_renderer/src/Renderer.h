@@ -1,14 +1,5 @@
 #pragma once
 
-#include <d3d12.h>
-#include <dxgi1_6.h>
-#include <wrl.h>
-using namespace Microsoft::WRL;
-
-#include <vector>
-#include <thread>
-#include <algorithm>
-
 #include <RendererConstants.h>
 #include <RenderPass.h>
 #include <Fence.h>
@@ -30,7 +21,7 @@ public:
     void waitForIdleGPU();
 
     static UINT getCurrentBackbufferIndex() { return s_currentBackBufferIndex; }
-    static UINT getPreviousBackbufferIndex() { return std::clamp( s_currentBackBufferIndex - 1, 0u, RendererConstants::sc_numBackBuffers - 1 ); }
+    static UINT getPreviousBackbufferIndex();
     static RECT getWindowRect() { return s_windowRect; }
     static ComPtr<ID3D12RootSignature> getRootSignature() { return s_rootSignature; }
     static uint64_t getTimestampFrequency() { return s_timestampFrequency; }

@@ -1,10 +1,5 @@
 #include "Renderer.h"
 
-#include <d3dx12.h>
-
-#include <chrono>
-#include <string>
-
 #include <resource/ResourceManager.h>
 
 RECT Renderer::s_windowRect;
@@ -223,4 +218,9 @@ void Renderer::waitForIdleGPU()
     m_frameFence->GPUSignal( m_graphicsCmdQueue, currentFenceValue );
     m_frameFence->CPUWait( m_fenceValues[ s_currentBackBufferIndex ] );
     m_fenceValues[ s_currentBackBufferIndex ]++;
+}
+
+UINT Renderer::getPreviousBackbufferIndex()
+{
+    return std::clamp( s_currentBackBufferIndex - 1, 0u, RendererConstants::sc_numBackBuffers - 1 );
 }

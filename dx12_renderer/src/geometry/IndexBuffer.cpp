@@ -1,7 +1,5 @@
 #include "IndexBuffer.h"
 
-#include <d3dx12.h>
-
 #include <Renderer.h>
 #include <resource/ResourceManager.h>
 

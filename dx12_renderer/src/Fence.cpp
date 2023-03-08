@@ -1,7 +1,5 @@
 #include "Fence.h"
 
-#include <pix3.h>
-
 #include <Renderer.h>
 
 Fence::Fence( wchar_t const* name )

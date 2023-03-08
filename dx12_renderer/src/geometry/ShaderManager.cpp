@@ -1,10 +1,5 @@
 #include "ShaderManager.h"
 
-#include <d3dx12.h>
-
-#include <regex>
-#include <cstdio>
-
 #include <Utils.h>
 
 ShaderManager::ShaderManager()

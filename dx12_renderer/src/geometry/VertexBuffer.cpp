@@ -4,7 +4,7 @@
 #include <resource/ResourceManager.h>
 
 VertexBuffer::VertexBuffer( wchar_t const* name, void* vertices, size_t vertexSize, size_t vertexCount )
-	: m_vertices( new char[ vertexCount * vertexSize ] )
+	: m_vertices( new uint8_t[ vertexCount * vertexSize ] )
 	, m_vertexSize( vertexSize )
 	, m_vertexCount( vertexCount )
 	, m_resource( nullptr )

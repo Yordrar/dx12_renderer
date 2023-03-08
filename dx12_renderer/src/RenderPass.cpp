@@ -1,7 +1,5 @@
 #include "RenderPass.h"
 
-#include <pix3.h>
-
 #include <Renderer.h>
 #include <Profiler.h>
 #include <resource/ResourceManager.h>
@@ -92,21 +90,15 @@ void RenderPass::record()
     }
 
     std::vector<CD3DX12_RESOURCE_BARRIER> barriers;
-    if ( m_renderTarget )
+    if ( m_renderTarget && m_renderTarget->getResourceState() != D3D12_RESOURCE_STATE_RENDER_TARGET )
     {
-        std::optional<CD3DX12_RESOURCE_BARRIER> renderTargetBarrier = m_renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_RENDER_TARGET );
-        if ( renderTargetBarrier.has_value() )
-        {
-            barriers.push_back( renderTargetBarrier.value() );
-        }
+        CD3DX12_RESOURCE_BARRIER renderTargetBarrier = m_renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_RENDER_TARGET );
+        barriers.push_back( renderTargetBarrier );
     }
-    if ( m_depthStencilTarget )
+    if ( m_depthStencilTarget && m_depthStencilTarget->getResourceState() != D3D12_RESOURCE_STATE_DEPTH_WRITE )
     {
-        std::optional<CD3DX12_RESOURCE_BARRIER> depthStencilBarrier = m_depthStencilTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_DEPTH_WRITE );
-        if ( depthStencilBarrier.has_value() )
-        {
-            barriers.push_back( depthStencilBarrier.value() );
-        }
+        CD3DX12_RESOURCE_BARRIER depthStencilBarrier = m_depthStencilTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_DEPTH_WRITE );
+        barriers.push_back( depthStencilBarrier );
     }
     if ( barriers.size() > 0 )
     {
@@ -142,11 +134,8 @@ void RenderPass::record()
 
     if ( m_renderTarget && m_renderTarget->getName().rfind( L"backbuffer", 0 ) == 0 )
     {
-        std::optional<CD3DX12_RESOURCE_BARRIER> renderTargetBarrier = m_renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
-        if ( renderTargetBarrier.has_value() )
-        {
-            m_commandList->ResourceBarrier( 1, &renderTargetBarrier.value() );
-        }
+        CD3DX12_RESOURCE_BARRIER renderTargetBarrier = m_renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
+        m_commandList->ResourceBarrier( 1, &renderTargetBarrier );
     }
 
     PIXEndEvent( m_commandList.Get() );

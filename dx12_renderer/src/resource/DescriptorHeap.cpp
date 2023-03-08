@@ -1,7 +1,5 @@
 #include "DescriptorHeap.h"
 
-#include <assert.h>
-
 #include <Renderer.h>
 
 std::unique_ptr<DescriptorHeap> DescriptorHeap::s_descriptorHeapCbvSrvUav = nullptr;

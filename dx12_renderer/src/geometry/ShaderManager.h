@@ -1,13 +1,5 @@
 #pragma once
 
-#include <d3d12.h>
-#include <dxcapi.h>
-#include <wrl.h>
-using namespace Microsoft::WRL;
-
-#include <string>
-#include <unordered_map>
-
 #include <Manager.h>
 
 class ShaderManager : public Manager<ShaderManager>

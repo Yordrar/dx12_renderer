@@ -1,25 +1,23 @@
+// Windows
 #include <Windows.h>
 #include <Windowsx.h>
-#include <wrl.h>
-using namespace Microsoft::WRL;
 
+// DirectX 12
 #include <DirectXMath.h>
 
-#define TINYOBJLOADER_IMPLEMENTATION 
-#include <tiny_obj_loader.h>
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include <iostream>
 
 #include <Utils.h>
 #include <Renderer.h>
 #include <Scene.h>
 #include <geometry/Mesh.h>
 #include <resource/ResourceManager.h>
-#include <resource/Descriptor.h>
 
-#include <iostream>
-#include <string>
+#define TINYOBJLOADER_IMPLEMENTATION 
+#include <tiny_obj_loader.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 struct Vertex
 {
@@ -225,11 +223,10 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         loadedMaterials.emplace_back( newMaterialDesc );
     }
 
-    std::vector<Vertex>* vertexBuffers = new std::vector<Vertex>[shapes.size()];
     // Load shapes
     for ( size_t shapeIdx = 0; shapeIdx < shapes.size(); shapeIdx++ )
     {
-        std::vector<Vertex>& vertexBuffer = vertexBuffers[shapeIdx];
+        std::vector<Vertex> vertexBuffer;
 
         // Loop over faces(polygon)
         size_t index_offset = 0;
@@ -278,7 +275,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
         scene->addGeometry( mesh );
     }
-    delete[] vertexBuffers;
 
     ResourceManager::it().createResource( L"mainRenderTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) );
     ResourceManager::it().createResource( L"mainDepthStencilTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) );
