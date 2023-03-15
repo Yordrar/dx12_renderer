@@ -4,11 +4,12 @@
 #include <geometry/PSOManager.h>
 #include <resource/Resource.h>
 
-Mesh::Mesh( wchar_t const* name, wchar_t const* materialName )
+Mesh::Mesh( wchar_t const* name, wchar_t const* materialName, D3D_PRIMITIVE_TOPOLOGY primitiveTopology )
     : m_name( name )
     , m_materialName( materialName )
     , m_vertexBuffer( nullptr )
     , m_indexBuffer( nullptr )
+    , m_primitiveTopology( primitiveTopology )
 {
 }
 
@@ -22,9 +23,14 @@ void Mesh::setIndexBuffer( UINT* indexData, UINT indexCount )
     m_indexBuffer = std::make_unique<IndexBuffer>( ( m_name + L"_indexbuffer" ).c_str(), indexData, indexCount );
 }
 
-void Mesh::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList )
+bool Mesh::isAABBValid() const
 {
-    commandList->IASetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+    return DirectX::XMVector3LessOrEqual( m_aabb.m_minBounds, m_aabb.m_maxBounds );
+}
+
+void Mesh::record( ComPtr<ID3D12GraphicsCommandList> commandList )
+{
+    commandList->IASetPrimitiveTopology( m_primitiveTopology );
     m_vertexBuffer->bind( commandList );
 
     if( m_indexBuffer )

@@ -2,17 +2,20 @@
 
 #include <resource/ResourceManager.h>
 
-Camera::Camera( wchar_t const* name, DirectX::XMVECTOR position, DirectX::XMVECTOR lookat, float fov, float aspect_ratio)
+Camera::Camera( wchar_t const* name, DirectX::XMVECTOR position, DirectX::XMVECTOR focusPosition, float fov, float aspect_ratio, float nearZ, float farZ )
 	: m_name( name )
-	, lookat(lookat)
+	, forward( DirectX::XMVector3Normalize( DirectX::XMVectorSubtract( focusPosition, position ) ) )
+	, m_focusPosition( focusPosition )
 	, fov(fov)
 	, aspect_ratio(aspect_ratio)
+	, m_nearZ( nearZ )
+	, m_farZ( farZ )
 {
 	up = DirectX::XMVectorSet( 0, 1, 0, 0 );
 	right = DirectX::XMVectorSet( 1, 0, 0, 0 );
 	
 	m_cameraData.m_position = position;
-	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookAtRH( m_cameraData.m_position, lookat, up ) * DirectX::XMMatrixPerspectiveFovRH( fov, aspect_ratio, 0.1f, 5000.f ) );
+	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookAtRH( m_cameraData.m_position, m_focusPosition, up ) * DirectX::XMMatrixPerspectiveFovRH( fov, aspect_ratio, m_nearZ, m_farZ ) );
 	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
 
 	m_cameraBuffer = ResourceManager::it().createResource( std::wstring(m_name + L"_buffer").c_str(), CD3DX12_RESOURCE_DESC::Buffer( sizeof( m_cameraData ) ), D3D12_SUBRESOURCE_DATA{ &m_cameraData, sizeof( m_cameraData ), 0 } );
@@ -24,7 +27,7 @@ void Camera::move( float delta_x, float delta_y, float delta_z )
 	m_cameraData.m_position.m128_f32[1] += delta_y;
 	m_cameraData.m_position.m128_f32[2] += delta_z;
 
-	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookAtRH( m_cameraData.m_position, lookat, up ) * DirectX::XMMatrixPerspectiveFovRH(fov, aspect_ratio, 0.1f, 5000.f));
+	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookAtRH( m_cameraData.m_position, m_focusPosition, up ) * DirectX::XMMatrixPerspectiveFovRH( fov, aspect_ratio, m_nearZ, m_farZ ));
 	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
 
 	m_cameraBuffer->setNeedsCopyToGPU( true );
@@ -49,33 +52,46 @@ void Camera::rotate( float delta_angles_x, float delta_angles_y )
 
 	//Apply result quaternion to camera position and right vector
 	{
-		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply(quaternion, DirectX::XMVectorSet( m_cameraData.m_position.m128_f32[0], m_cameraData.m_position.m128_f32[1], m_cameraData.m_position.m128_f32[2], 0));
+		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion, m_cameraData.m_position );
 		intermediate_result = DirectX::XMQuaternionMultiply(intermediate_result, DirectX::XMQuaternionConjugate(quaternion));
-		m_cameraData.m_position.m128_f32[0] = intermediate_result.m128_f32[0];
-		m_cameraData.m_position.m128_f32[1] = intermediate_result.m128_f32[1];
-		m_cameraData.m_position.m128_f32[2] = intermediate_result.m128_f32[2];
+		m_cameraData.m_position = intermediate_result;
 	}
 	{
-		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply(quaternion_y, DirectX::XMVectorSet(right.m128_f32[0], right.m128_f32[1], right.m128_f32[2], 0));
+		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion_y, right );
 		intermediate_result = DirectX::XMQuaternionMultiply(intermediate_result, DirectX::XMQuaternionConjugate(quaternion_y));
-		right.m128_f32[0] = intermediate_result.m128_f32[0];
-		right.m128_f32[1] = intermediate_result.m128_f32[1];
-		right.m128_f32[2] = intermediate_result.m128_f32[2];
+		right = intermediate_result;
 	}
 
-	// Update camera lookat and up vectors
-	lookat = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(DirectX::XMVectorSet(0, 0, 0, 2), m_cameraData.m_position));
-	lookat.m128_f32[3] = 1;
-	up = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(lookat, DirectX::XMVectorNegate(right)));
-	up.m128_f32[3] = 1;
+	// Update camera forward and up vectors
+	forward = DirectX::XMVector3Normalize( DirectX::XMVectorSubtract( m_focusPosition, m_cameraData.m_position ) );
+	forward.m128_f32[3] = 0;
+	up = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(forward, DirectX::XMVectorNegate(right)));
+	up.m128_f32[3] = 0;
 
-	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookAtRH( m_cameraData.m_position, lookat, up ) * DirectX::XMMatrixPerspectiveFovRH(fov, aspect_ratio, 0.1f, 5000.f));
+	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookAtRH( m_cameraData.m_position, m_focusPosition, up ) * DirectX::XMMatrixPerspectiveFovRH( fov, aspect_ratio, m_nearZ, m_farZ ));
 	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
 
 	m_cameraBuffer->setNeedsCopyToGPU( true );
 }
 
-void Camera::setCameraBufferView( ComPtr<ID3D12GraphicsCommandList> commandList )
+bool Camera::isAABBVisible( Mesh::AABB const& aabb ) const
 {
-	commandList->SetGraphicsRootConstantBufferView( 0, m_cameraBuffer->getGPUVirtualAddress() );
+	// Very naive visibility test, just check if any one corner of the AABB is in front of the camera
+	DirectX::XMVECTOR aabbCorners[ 8 ] = {
+		DirectX::XMVectorSet( aabb.m_minBounds.m128_f32[ 0 ], aabb.m_minBounds.m128_f32[ 1 ], aabb.m_minBounds.m128_f32[ 2 ], 1.0 ),
+		DirectX::XMVectorSet( aabb.m_maxBounds.m128_f32[ 0 ], aabb.m_minBounds.m128_f32[ 1 ], aabb.m_minBounds.m128_f32[ 2 ], 1.0 ),
+		DirectX::XMVectorSet( aabb.m_minBounds.m128_f32[ 0 ], aabb.m_maxBounds.m128_f32[ 1 ], aabb.m_minBounds.m128_f32[ 2 ], 1.0 ),
+		DirectX::XMVectorSet( aabb.m_maxBounds.m128_f32[ 0 ], aabb.m_maxBounds.m128_f32[ 1 ], aabb.m_minBounds.m128_f32[ 2 ], 1.0 ),
+		DirectX::XMVectorSet( aabb.m_minBounds.m128_f32[ 0 ], aabb.m_minBounds.m128_f32[ 1 ], aabb.m_maxBounds.m128_f32[ 2 ], 1.0 ),
+		DirectX::XMVectorSet( aabb.m_maxBounds.m128_f32[ 0 ], aabb.m_minBounds.m128_f32[ 1 ], aabb.m_maxBounds.m128_f32[ 2 ], 1.0 ),
+		DirectX::XMVectorSet( aabb.m_minBounds.m128_f32[ 0 ], aabb.m_maxBounds.m128_f32[ 1 ], aabb.m_maxBounds.m128_f32[ 2 ], 1.0 ),
+		DirectX::XMVectorSet( aabb.m_maxBounds.m128_f32[ 0 ], aabb.m_maxBounds.m128_f32[ 1 ], aabb.m_maxBounds.m128_f32[ 2 ], 1.0 ),
+	};
+
+	bool visible = false;
+	for ( size_t i = 0; i < 8; i++ )
+	{
+		visible = visible || DirectX::XMVector3Dot( DirectX::XMVector3Normalize( DirectX::XMVectorSubtract( aabbCorners[i], m_cameraData.m_position ) ), forward ).m128_f32[ 0 ] > 0.0f;
+	}
+	return visible;
 }

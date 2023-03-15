@@ -130,26 +130,29 @@ void RenderPass::record()
     std::wstring currentMaterialName;
     for ( Scene* scene : m_scenes )
     {
-        scene->getCamera().setCameraBufferView( m_commandList );
+        m_commandList->SetGraphicsRootConstantBufferView( 0, scene->getCamera().getGPUBufferResource()->getGPUVirtualAddress() );
         for ( std::shared_ptr<Mesh> const& currentMesh : scene->getMeshes() )
         {
-            std::wstring const& currentMeshMaterialName = currentMesh->getMaterialName();
-            if ( currentMaterialName != currentMeshMaterialName )
+            if ( !currentMesh->isAABBValid() || scene->getCamera().isAABBVisible( currentMesh->getAABB() ) )
             {
-                std::unique_ptr<Material> const& currentMeshMaterial = MaterialManager::it().getMaterial( currentMeshMaterialName.c_str() );
-                if ( currentMeshMaterial && currentMeshMaterial->hasTechnique( m_techniqueName.c_str() ) )
+                std::wstring const& currentMeshMaterialName = currentMesh->getMaterialName();
+                if ( currentMaterialName != currentMeshMaterialName )
                 {
-                    m_commandList->SetGraphicsRootConstantBufferView( 1, currentMeshMaterial->getMaterialBufferResource()->getGPUVirtualAddress() );
-                    m_commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
-                    currentMaterialName = currentMeshMaterialName;
+                    Material* currentMeshMaterial = MaterialManager::it().getMaterial( currentMeshMaterialName.c_str() );
+                    if ( currentMeshMaterial && currentMeshMaterial->hasTechnique( m_techniqueName.c_str() ) )
+                    {
+                        m_commandList->SetGraphicsRootConstantBufferView( 1, currentMeshMaterial->getMaterialBufferResource()->getGPUVirtualAddress() );
+                        m_commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
+                        currentMaterialName = currentMeshMaterialName;
+                    }
+                    else
+                    {
+                        continue;
+                    }
                 }
-                else
-                {
-                    continue;
-                }
-            }
 
-            currentMesh->record( m_techniqueName.c_str(), m_commandList );
+                currentMesh->record( m_commandList );
+            }
         }
     }
 

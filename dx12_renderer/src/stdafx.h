@@ -16,6 +16,9 @@ using namespace Microsoft::WRL;
 #include <chrono>
 #include <memory>
 
+// Numeric
+#include <limits>
+
 // Strings
 #include <string>
 

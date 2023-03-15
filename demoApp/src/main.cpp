@@ -229,6 +229,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     for ( size_t shapeIdx = 0; shapeIdx < shapes.size(); shapeIdx++ )
     {
         std::vector<Vertex> vertexBuffer;
+        Mesh::AABB currentMeshAABB;
 
         // Loop over faces(polygon)
         size_t index_offset = 0;
@@ -246,6 +247,10 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
                 vertex.m_position.x = attrib.vertices[ 3 * size_t( idx.vertex_index ) + 0 ];
                 vertex.m_position.y = attrib.vertices[ 3 * size_t( idx.vertex_index ) + 1 ];
                 vertex.m_position.z = attrib.vertices[ 3 * size_t( idx.vertex_index ) + 2 ];
+
+                DirectX::XMVECTOR positionVector = DirectX::XMVectorSet( vertex.m_position.x, vertex.m_position.y, vertex.m_position.z, 0.0f );
+                currentMeshAABB.m_minBounds = DirectX::XMVectorMin( currentMeshAABB.m_minBounds, positionVector ); 
+                currentMeshAABB.m_maxBounds = DirectX::XMVectorMax( currentMeshAABB.m_maxBounds, positionVector );
 
                 // Check if `normal_index` is zero or positive. negative = no normal data
                 if ( idx.normal_index >= 0 )
@@ -274,6 +279,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
         Mesh* mesh = new Mesh( StrToWideStr( shapes[ shapeIdx ].name ).c_str(), loadedMaterials[ shapes[ shapeIdx ].mesh.material_ids[ 0 ] ].c_str() );
         mesh->setVertexBuffer( vertexBuffer.data(), sizeof( Vertex ), static_cast<UINT>( vertexBuffer.size() ) );
+        mesh->setAABB( currentMeshAABB );
 
         scene->addMesh( mesh );
     }

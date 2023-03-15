@@ -5,13 +5,13 @@ MaterialManager::MaterialManager()
 
 }
 
-std::unique_ptr<Material> const& MaterialManager::getMaterial( wchar_t const* materialName ) const
+Material* MaterialManager::getMaterial( wchar_t const* materialName ) const
 {
     for ( std::unique_ptr<Material> const& material : m_materials )
     {
         if ( material->getName() == materialName )
         {
-            return material;
+            return material.get();
         }
     }
     return nullptr;

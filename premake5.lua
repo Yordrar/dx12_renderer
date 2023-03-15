@@ -52,6 +52,7 @@ project "demoApp"
 	files { "demoApp/src/**.h", "demoApp/src/**.cpp" }
 	libdirs "demoApp/external/"
 	links { "dx12_renderer" }
+	defines { "NOMINMAX", "WIN32_LEAN_AND_MEAN" }
 	includedirs { 
 		"demoApp/src", 
 		"demoApp/external", 

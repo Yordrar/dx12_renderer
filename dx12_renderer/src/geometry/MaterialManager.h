@@ -12,7 +12,7 @@ class MaterialManager : public Manager<MaterialManager>
 public:
     ~MaterialManager() = default;
 
-    std::unique_ptr<Material> const& getMaterial( wchar_t const* materialName ) const;
+    Material* getMaterial( wchar_t const* materialName ) const;
 
     void createMaterial( Material::MaterialDesc const& materialDesc );
 
