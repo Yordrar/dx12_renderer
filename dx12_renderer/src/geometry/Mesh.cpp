@@ -4,16 +4,12 @@
 #include <geometry/PSOManager.h>
 #include <resource/Resource.h>
 
-Mesh::Mesh( wchar_t const* name, std::initializer_list<wchar_t const*> techniqueNames, Material& material )
+Mesh::Mesh( wchar_t const* name, wchar_t const* materialName )
     : m_name( name )
+    , m_materialName( materialName )
     , m_vertexBuffer( nullptr )
     , m_indexBuffer( nullptr )
-    , m_material( material )
 {
-    for ( wchar_t const* techniqueName : techniqueNames )
-    {
-        m_techniqueNames.push_back( techniqueName );
-    }
 }
 
 void Mesh::setVertexBuffer( void* vertexData, UINT vertexSize, UINT vertexCount )
@@ -28,10 +24,6 @@ void Mesh::setIndexBuffer( UINT* indexData, UINT indexCount )
 
 void Mesh::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList )
 {
-    commandList->SetGraphicsRootConstantBufferView( 1, m_material.getMaterialBufferResource()->getGPUVirtualAddress() );
-
-    commandList->SetPipelineState( m_material.getPSOForTechnique( techniqueName ).Get() );
-
     commandList->IASetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
     m_vertexBuffer->bind( commandList );
 

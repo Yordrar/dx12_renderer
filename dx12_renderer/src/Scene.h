@@ -10,15 +10,15 @@ public:
     ~Scene();
 
     Camera& getCamera() { return m_camera; }
+    std::vector< std::shared_ptr<Mesh> > const& getMeshes() const { return m_meshes; }
 
-    void record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList );
-    void addGeometry( Mesh* geometry );
+    void addMesh( Mesh* geometry );
 
 private:
     std::wstring m_name;
 
     Camera m_camera;
 
-    std::vector< std::shared_ptr<Mesh> > m_geometry;
+    std::vector< std::shared_ptr<Mesh> > m_meshes;
 };
 

@@ -15,6 +15,9 @@ public:
 	Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource );
 	~Resource();
 
+	Resource( const Resource& ) = delete;
+	Resource& operator= ( const Resource& ) = delete;
+
 	static UINT getSizeAligned256( UINT sizeInBytes ) { return ( sizeInBytes + 255 ) & ~255; }
 
 	std::wstring const& getName() const { return m_name; }

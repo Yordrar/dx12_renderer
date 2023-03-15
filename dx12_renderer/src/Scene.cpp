@@ -16,22 +16,9 @@ Scene::~Scene()
 
 }
 
-void Scene::record( wchar_t const* techniqueName, ComPtr<ID3D12GraphicsCommandList> commandList )
-{
-    m_camera.setCameraBufferView( commandList );
-
-    for ( std::shared_ptr<Mesh>& geometry : m_geometry )
-    {
-        std::vector<std::wstring> const& techniqueNames = geometry->getTechniqueNames();
-        if ( std::find( techniqueNames.cbegin(), techniqueNames.cend(), techniqueName ) != geometry->getTechniqueNames().cend() )
-        {
-            geometry->record( techniqueName, commandList );
-        }
-    }
-}
-
-void Scene::addGeometry( Mesh* mesh )
+void Scene::addMesh( Mesh* mesh )
 {
     std::shared_ptr<Mesh> newMesh( mesh );
-    m_geometry.push_back( newMesh );
+    m_meshes.push_back( newMesh );
+    std::sort( m_meshes.begin(), m_meshes.end(), [] ( std::shared_ptr<Mesh> const& a, std::shared_ptr<Mesh> const& b ) { return a->getMaterialName() < b->getMaterialName(); } );
 }

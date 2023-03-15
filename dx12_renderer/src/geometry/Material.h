@@ -41,10 +41,15 @@ public:
     Material( MaterialDesc const& materialDesc );
     ~Material() = default;
 
+    Material( const Material& ) = delete;
+    Material& operator= ( const Material& ) = delete;
+
     std::wstring const& getName() const { return m_desc.m_name; }
     ComPtr<ID3D12PipelineState> getPSOForTechnique( wchar_t const* techniqueName ) const;
     Resource const* getMaterialBufferResource() const { return m_materialBuffer; }
     Resource const* getBindlessIndicesBufferResource() const { return m_bindlessIndicesBufferResource; }
+
+    bool hasTechnique( wchar_t const* techniqueName ) const;
 
 private:
     MaterialDesc m_desc;

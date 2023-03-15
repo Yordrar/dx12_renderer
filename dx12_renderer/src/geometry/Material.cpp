@@ -63,3 +63,15 @@ ComPtr<ID3D12PipelineState> Material::getPSOForTechnique( wchar_t const* techniq
 
     return nullptr;
 }
+
+bool Material::hasTechnique( wchar_t const* techniqueName ) const
+{
+    for ( Technique const& technique : m_desc.m_techniques )
+    {
+        if ( technique.m_name == techniqueName )
+        {
+            return true;
+        }
+    }
+    return false;
+}

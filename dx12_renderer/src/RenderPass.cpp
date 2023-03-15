@@ -5,6 +5,7 @@
 #include <resource/ResourceManager.h>
 #include <resource/Descriptor.h>
 #include <geometry/PSOManager.h>
+#include <geometry/MaterialManager.h>
 
 RenderPass::RenderPass( wchar_t const* name,
                         wchar_t const* techniqueName,
@@ -114,22 +115,42 @@ void RenderPass::record()
         m_commandList->ClearDepthStencilView( m_depthStencilTarget->getDepthStencilView()->getView(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr );
     }
 
+    D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_depthStencilTarget->getDepthStencilView()->getView();
     if ( m_renderTarget )
     {
         D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_renderTarget->getRenderTargetView()->getView();
-        D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_depthStencilTarget->getDepthStencilView()->getView();
         m_commandList->OMSetRenderTargets( 1, &rtv, false, &dsv );
     }
     else
     {
-        D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_depthStencilTarget->getDepthStencilView()->getView();
         m_commandList->OMSetRenderTargets( 0, nullptr, false, &dsv );
     }
 
     // Record scenes
+    std::wstring currentMaterialName;
     for ( Scene* scene : m_scenes )
     {
-        scene->record( m_techniqueName.c_str(), m_commandList );
+        scene->getCamera().setCameraBufferView( m_commandList );
+        for ( std::shared_ptr<Mesh> const& currentMesh : scene->getMeshes() )
+        {
+            std::wstring const& currentMeshMaterialName = currentMesh->getMaterialName();
+            if ( currentMaterialName != currentMeshMaterialName )
+            {
+                std::unique_ptr<Material> const& currentMeshMaterial = MaterialManager::it().getMaterial( currentMeshMaterialName.c_str() );
+                if ( currentMeshMaterial && currentMeshMaterial->hasTechnique( m_techniqueName.c_str() ) )
+                {
+                    m_commandList->SetGraphicsRootConstantBufferView( 1, currentMeshMaterial->getMaterialBufferResource()->getGPUVirtualAddress() );
+                    m_commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
+                    currentMaterialName = currentMeshMaterialName;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            currentMesh->record( m_techniqueName.c_str(), m_commandList );
+        }
     }
 
     if ( m_renderTarget && m_renderTarget->getName().rfind( L"backbuffer", 0 ) == 0 )

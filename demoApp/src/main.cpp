@@ -12,6 +12,7 @@
 #include <Scene.h>
 #include <geometry/Mesh.h>
 #include <resource/ResourceManager.h>
+#include <geometry/MaterialManager.h>
 
 #define TINYOBJLOADER_IMPLEMENTATION 
 #include <tiny_obj_loader.h>
@@ -170,7 +171,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     scene = std::make_unique<Scene>(L"mainScene");
 
-    std::vector<Material> loadedMaterials;
+    std::vector<std::wstring> loadedMaterials;
     loadedMaterials.reserve( materials.size() );
     for ( tinyobj::material_t const& material : materials )
     {
@@ -220,7 +221,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
         newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
 
-        loadedMaterials.emplace_back( newMaterialDesc );
+        MaterialManager::it().createMaterial( newMaterialDesc );
+        loadedMaterials.push_back( newMaterialDesc.m_name );
     }
 
     // Load shapes
@@ -270,10 +272,10 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
             index_offset += numFaceVertices;
         }
 
-        Mesh* mesh = new Mesh( StrToWideStr( shapes[ shapeIdx ].name ).c_str(), { L"depth", L"main" }, loadedMaterials[ shapes[ shapeIdx ].mesh.material_ids[ 0 ] ] );
+        Mesh* mesh = new Mesh( StrToWideStr( shapes[ shapeIdx ].name ).c_str(), loadedMaterials[ shapes[ shapeIdx ].mesh.material_ids[ 0 ] ].c_str() );
         mesh->setVertexBuffer( vertexBuffer.data(), sizeof( Vertex ), static_cast<UINT>( vertexBuffer.size() ) );
 
-        scene->addGeometry( mesh );
+        scene->addMesh( mesh );
     }
 
     ResourceManager::it().createResource( L"mainRenderTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) );
