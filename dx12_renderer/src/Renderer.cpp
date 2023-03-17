@@ -181,7 +181,7 @@ void Renderer::beginFrame()
     start = std::chrono::high_resolution_clock::now();
 }
 
-void Renderer::submitPass( RenderPass& pass )
+void Renderer::submitRenderPass( RenderPass& pass )
 {
     pass.record();
     gpuTime += pass.getExecutionTimeMilliseconds();

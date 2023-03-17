@@ -4,7 +4,6 @@
 #include <Manager.h>
 #include <resource/DescriptorHeap.h>
 #include <resource/Resource.h>
-#include <resource/TextureSampler.h>
 
 class ResourceManager : public Manager<ResourceManager>
 {

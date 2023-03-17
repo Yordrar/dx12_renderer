@@ -15,7 +15,7 @@ public:
     static ComPtr<ID3D12Device2> device() { return s_device; }
 
     void beginFrame();
-    void submitPass( RenderPass& pass );
+    void submitRenderPass( RenderPass& pass );
     void endFrame();
 
     void waitForIdleGPU();

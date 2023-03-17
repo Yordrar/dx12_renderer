@@ -156,7 +156,7 @@ void RenderPass::record()
         }
     }
 
-    if ( m_renderTarget && m_renderTarget->getName().rfind( L"backbuffer", 0 ) == 0 )
+    if ( m_renderTargetName == L"backbuffer" )
     {
         CD3DX12_RESOURCE_BARRIER renderTargetBarrier = m_renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
         m_commandList->ResourceBarrier( 1, &renderTargetBarrier );

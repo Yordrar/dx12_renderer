@@ -20,6 +20,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <meshoptimizer.h>
+
 struct Vertex
 {
     DirectX::XMFLOAT3 m_position;
@@ -33,6 +35,7 @@ std::unique_ptr<Scene> scene = nullptr;
 bool mouse_clicked = false;
 int previous_pos_x = -1;
 int previous_pos_y = -1;
+bool useIndexedVertexBuffer = true;
 LRESULT CALLBACK WndProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
     switch ( message )
@@ -228,7 +231,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     // Load shapes
     for ( size_t shapeIdx = 0; shapeIdx < shapes.size(); shapeIdx++ )
     {
-        std::vector<Vertex> vertexBuffer;
+        std::vector<Vertex> unindexedVertexBuffer;
         Mesh::AABB currentMeshAABB;
 
         // Loop over faces(polygon)
@@ -272,13 +275,34 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
                     // Calculate tangent space
                 }
 
-                vertexBuffer.push_back( vertex );
+                unindexedVertexBuffer.push_back( vertex );
             }
             index_offset += numFaceVertices;
         }
 
+        size_t index_count = shapes[ shapeIdx ].mesh.num_face_vertices.size() * 3;
+        std::vector<UINT> indexBuffer( index_count );
+
+        std::vector<unsigned int> remap( index_count );
+        size_t vertex_count = meshopt_generateVertexRemap( &remap[ 0 ], NULL, index_count, &unindexedVertexBuffer[ 0 ], index_count, sizeof( Vertex ) );
+        std::vector<Vertex> vertexBuffer( vertex_count );
+
+        meshopt_remapIndexBuffer( indexBuffer.data(), NULL, index_count, &remap[ 0 ] );
+        meshopt_remapVertexBuffer( vertexBuffer.data(), &unindexedVertexBuffer[ 0 ], index_count, sizeof( Vertex ), &remap[ 0 ] );
+        meshopt_optimizeVertexCache( indexBuffer.data(), indexBuffer.data(), index_count, vertex_count );
+        meshopt_optimizeOverdraw( indexBuffer.data(), indexBuffer.data(), index_count, &vertexBuffer[ 0 ].m_position.x, vertex_count, sizeof( Vertex ), 1.05f );
+        meshopt_optimizeVertexFetch( vertexBuffer.data(), indexBuffer.data(), index_count, vertexBuffer.data(), vertex_count, sizeof( Vertex ) );
+
         Mesh* mesh = new Mesh( StrToWideStr( shapes[ shapeIdx ].name ).c_str(), loadedMaterials[ shapes[ shapeIdx ].mesh.material_ids[ 0 ] ].c_str() );
-        mesh->setVertexBuffer( vertexBuffer.data(), sizeof( Vertex ), static_cast<UINT>( vertexBuffer.size() ) );
+        if ( useIndexedVertexBuffer )
+        {
+            mesh->setVertexBuffer( vertexBuffer.data(), sizeof( Vertex ), static_cast<UINT>( vertexBuffer.size() ) );
+            mesh->setIndexBuffer( indexBuffer.data(), static_cast<UINT>( index_count ) );
+        }
+        else
+        {
+            mesh->setVertexBuffer( unindexedVertexBuffer.data(), sizeof( Vertex ), static_cast<UINT>( unindexedVertexBuffer.size() ) );
+        }
         mesh->setAABB( currentMeshAABB );
 
         scene->addMesh( mesh );
@@ -304,8 +328,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         }
 
         renderer.beginFrame();
-        renderer.submitPass( depthPass );
-        renderer.submitPass( mainPass );
+        renderer.submitRenderPass( depthPass );
+        renderer.submitRenderPass( mainPass );
         renderer.endFrame();
     }
 
