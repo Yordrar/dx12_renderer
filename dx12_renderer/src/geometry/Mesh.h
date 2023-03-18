@@ -22,6 +22,7 @@ public:
     ~Mesh() = default;
 
     void setVertexBuffer( void* vertexData, UINT vertexSize, UINT vertexCount );
+    bool hasVertexBuffer() const { return m_vertexBuffer != nullptr; }
     void setIndexBuffer( UINT* indexData, UINT indexCount );
     void setAABB( AABB const& aabb ) { m_aabb = aabb; }
     bool isAABBValid() const;

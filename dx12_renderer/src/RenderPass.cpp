@@ -13,10 +13,12 @@ RenderPass::RenderPass( wchar_t const* name,
                         wchar_t const* depthStencilTargetName )
     : m_name( name )
     , m_techniqueName( techniqueName )
-    , m_renderTargetName( renderTargetName )
     , m_commandList( nullptr )
+    , m_renderTargetName( renderTargetName )
+    , m_depthStencilTargetName( depthStencilTargetName )
     , m_renderTarget( nullptr )
     , m_depthStencilTarget( nullptr )
+    , m_scissorRect( Renderer::getWindowRect() )
     , m_profilerQueryIndex( Profiler::it().allocateQueryIndex() )
     , m_executionTimeInMilliseconds( 0 )
 {
@@ -30,16 +32,11 @@ RenderPass::RenderPass( wchar_t const* name,
     std::wstring commandListName = m_name + L"_commandList";
     m_commandList->SetName( commandListName.c_str() );
 
-    if ( renderTargetName == L"backbuffer" )
+    if ( m_renderTargetName != L"backbuffer" )
     {
-        m_renderTarget = ResourceManager::it().getCurrentBackbufferResource();
+        m_renderTarget = ResourceManager::it().getResource( m_renderTargetName.c_str() );
     }
-    else
-    {
-        m_renderTarget = ResourceManager::it().getResource( renderTargetName );
-    }
-
-    m_depthStencilTarget = ResourceManager::it().getResource( depthStencilTargetName );
+    m_depthStencilTarget = ResourceManager::it().getResource( m_depthStencilTargetName.c_str() );
 }
 
 RenderPass::~RenderPass()
@@ -47,12 +44,19 @@ RenderPass::~RenderPass()
 
 }
 
-void RenderPass::record()
+void RenderPass::record( Scene const& scene )
 {
     // Reset command list and allocator
     ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentBackbufferIndex() ];
     currentCommandAllocator->Reset();
     m_commandList->Reset( currentCommandAllocator.Get(), nullptr );
+
+    static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    Resource* renderTarget = nullptr;
+    if ( m_renderTargetName == L"backbuffer" )
+    {
+        renderTarget = ResourceManager::it().getCurrentBackbufferResource();
+    }
 
     Profiler::it().startQuery( m_commandList.Get(), m_profilerQueryIndex );
 
@@ -61,10 +65,12 @@ void RenderPass::record()
     PIXBeginEvent( m_commandList.Get(), PIX_COLOR_DEFAULT, m_name.c_str() );
 
     // Set viewport
-    CD3DX12_VIEWPORT viewport( ResourceManager::it().getCurrentBackbufferResource()->getResource().Get() );
-    m_commandList->RSSetViewports( 1, &viewport );
-    D3D12_RECT const& scissorRect = Renderer::getWindowRect();
-    m_commandList->RSSetScissorRects( 1, &scissorRect );
+    if ( renderTarget )
+    {
+        D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT( renderTarget->getResource().Get() );
+        m_commandList->RSSetViewports( 1, &viewport );
+    }
+    m_commandList->RSSetScissorRects( 1, &m_scissorRect );
 
     // Set root signature
     m_commandList->SetGraphicsRootSignature( Renderer::getRootSignature().Get() );
@@ -84,16 +90,10 @@ void RenderPass::record()
     m_commandList->SetGraphicsRootDescriptorTable( 6, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
 
     // Clear and set render targets
-    static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    if ( m_renderTargetName == L"backbuffer" )
-    {
-        m_renderTarget = ResourceManager::it().getCurrentBackbufferResource();
-    }
-
     std::vector<CD3DX12_RESOURCE_BARRIER> barriers;
-    if ( m_renderTarget && m_renderTarget->getResourceState() != D3D12_RESOURCE_STATE_RENDER_TARGET )
+    if ( renderTarget && renderTarget->getResourceState() != D3D12_RESOURCE_STATE_RENDER_TARGET )
     {
-        CD3DX12_RESOURCE_BARRIER renderTargetBarrier = m_renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_RENDER_TARGET );
+        CD3DX12_RESOURCE_BARRIER renderTargetBarrier = renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_RENDER_TARGET );
         barriers.push_back( renderTargetBarrier );
     }
     if ( m_depthStencilTarget && m_depthStencilTarget->getResourceState() != D3D12_RESOURCE_STATE_DEPTH_WRITE )
@@ -106,9 +106,9 @@ void RenderPass::record()
         m_commandList->ResourceBarrier( static_cast<UINT>( barriers.size() ), barriers.data() );
     }
 
-    if ( m_renderTarget )
+    if ( renderTarget )
     {
-        m_commandList->ClearRenderTargetView( m_renderTarget->getRenderTargetView()->getView(), clearColor, 0, nullptr );
+        m_commandList->ClearRenderTargetView( renderTarget->getRenderTargetView()->getView(), clearColor, 0, nullptr );
     }
     if ( m_depthStencilTarget )
     {
@@ -116,9 +116,9 @@ void RenderPass::record()
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_depthStencilTarget->getDepthStencilView()->getView();
-    if ( m_renderTarget )
+    if ( renderTarget )
     {
-        D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_renderTarget->getRenderTargetView()->getView();
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv = renderTarget->getRenderTargetView()->getView();
         m_commandList->OMSetRenderTargets( 1, &rtv, false, &dsv );
     }
     else
@@ -128,37 +128,41 @@ void RenderPass::record()
 
     // Record scenes
     std::wstring currentMaterialName;
-    for ( Scene* scene : m_scenes )
+    m_commandList->SetGraphicsRootConstantBufferView( 0, scene.getCameraBufferResource()->getGPUVirtualAddress() );
+    for ( std::shared_ptr<Mesh> const& currentMesh : scene.getMeshes() )
     {
-        m_commandList->SetGraphicsRootConstantBufferView( 0, scene->getCamera().getGPUBufferResource()->getGPUVirtualAddress() );
-        for ( std::shared_ptr<Mesh> const& currentMesh : scene->getMeshes() )
+        if ( !currentMesh->hasVertexBuffer() )
         {
-            if ( !currentMesh->isAABBValid() || scene->getCamera().isAABBVisible( currentMesh->getAABB() ) )
-            {
-                std::wstring const& currentMeshMaterialName = currentMesh->getMaterialName();
-                if ( currentMaterialName != currentMeshMaterialName )
-                {
-                    Material* currentMeshMaterial = MaterialManager::it().getMaterial( currentMeshMaterialName.c_str() );
-                    if ( currentMeshMaterial && currentMeshMaterial->hasTechnique( m_techniqueName.c_str() ) )
-                    {
-                        m_commandList->SetGraphicsRootConstantBufferView( 1, currentMeshMaterial->getMaterialBufferResource()->getGPUVirtualAddress() );
-                        m_commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
-                        currentMaterialName = currentMeshMaterialName;
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                }
+            continue;
+        }
 
-                currentMesh->record( m_commandList );
+        if ( currentMesh->isAABBValid() && !scene.isAABBVisible( currentMesh->getAABB() ) )
+        {
+            continue;
+        }
+
+        std::wstring const& currentMeshMaterialName = currentMesh->getMaterialName();
+        if ( currentMaterialName != currentMeshMaterialName )
+        {
+            Material* currentMeshMaterial = MaterialManager::it().getMaterial( currentMeshMaterialName.c_str() );
+            if ( currentMeshMaterial && currentMeshMaterial->hasTechnique( m_techniqueName.c_str() ) )
+            {
+                m_commandList->SetGraphicsRootConstantBufferView( 1, currentMeshMaterial->getMaterialBufferResource()->getGPUVirtualAddress() );
+                m_commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
+                currentMaterialName = currentMeshMaterialName;
+            }
+            else
+            {
+                continue;
             }
         }
+
+        currentMesh->record( m_commandList );
     }
 
     if ( m_renderTargetName == L"backbuffer" )
     {
-        CD3DX12_RESOURCE_BARRIER renderTargetBarrier = m_renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
+        CD3DX12_RESOURCE_BARRIER renderTargetBarrier = renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
         m_commandList->ResourceBarrier( 1, &renderTargetBarrier );
     }
 

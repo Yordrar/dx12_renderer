@@ -18,15 +18,13 @@ Resource* ResourceManager::createResource( wchar_t const* resourceName, D3D12_RE
 
     D3D12_RESOURCE_DESC resourceDesc = resDesc;
 
-    // For constant buffers, size has to be aligned to 256
+    // For buffers, size has to be aligned to 256
     if ( resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER )
     {
         resourceDesc.Width = Resource::getSizeAligned256( static_cast<UINT>( resourceDesc.Width ) );
     }
 
-    std::unique_ptr<Resource> newResource = std::make_unique<Resource>( resourceName, resourceDesc, subresourceData );
-
-    m_resources[ resourceName ] = std::move( newResource );
+    m_resources[ resourceName ] = std::make_unique<Resource>( resourceName, resourceDesc, subresourceData );
 
     return m_resources[ resourceName ].get();
 }

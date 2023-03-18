@@ -10,6 +10,11 @@ ComPtr<ID3D12RootSignature> Renderer::s_rootSignature{ nullptr };
 
 Renderer::Renderer( HWND hWnd, RECT windowRect )
     : m_hWnd(hWnd)
+    , m_swapChain( nullptr )
+    , m_frameFence( nullptr )
+    , m_graphicsCmdQueue( nullptr )
+    , m_computeCmdQueue( nullptr )
+    , m_currentScene( nullptr )
 {
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i ) m_fenceValues[ i ] = 0;
     m_fenceValues[ 0 ] = 1;
@@ -73,9 +78,6 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
 
     cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
     s_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_computeCmdQueue ) );
-
-    cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
-    s_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_copyCmdQueue ) );
 
     // Create swap chain
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
@@ -165,6 +167,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
                                              serializedRootSig->GetBufferPointer(),
                                              serializedRootSig->GetBufferSize(),
                                              IID_PPV_ARGS( s_rootSignature.GetAddressOf() ) );
+    s_rootSignature->SetName( L"Global Root Signature" );
 
     m_graphicsCmdQueue->GetTimestampFrequency( &s_timestampFrequency );
 }
@@ -174,6 +177,8 @@ static std::vector<ID3D12CommandList*> commandLists;
 static double gpuTime = 0;
 void Renderer::beginFrame()
 {
+    assert( m_currentScene );
+
     commandLists.clear();
 
     gpuTime = 0;
@@ -183,7 +188,7 @@ void Renderer::beginFrame()
 
 void Renderer::submitRenderPass( RenderPass& pass )
 {
-    pass.record();
+    pass.record( *m_currentScene );
     gpuTime += pass.getExecutionTimeMilliseconds();
     commandLists.push_back( pass.getCommandList() );
 }

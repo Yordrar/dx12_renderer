@@ -14,6 +14,8 @@ public:
 
     static ComPtr<ID3D12Device2> device() { return s_device; }
 
+    void setCurrentScene( Scene const& scene ) { m_currentScene = &scene; }
+
     void beginFrame();
     void submitRenderPass( RenderPass& pass );
     void endFrame();
@@ -31,8 +33,10 @@ private:
     static RECT s_windowRect;
 
     static ComPtr<ID3D12Device2> s_device;
+    static ComPtr<ID3D12RootSignature> s_rootSignature;
     static UINT s_currentBackBufferIndex;
     static uint64_t s_timestampFrequency;
+
     ComPtr<IDXGISwapChain4> m_swapChain;
     ComPtr<ID3D12Resource> m_backBuffers[ RendererConstants::sc_numBackBuffers ];
     std::unique_ptr<Fence> m_frameFence;
@@ -40,8 +44,7 @@ private:
 
     ComPtr<ID3D12CommandQueue> m_graphicsCmdQueue;
     ComPtr<ID3D12CommandQueue> m_computeCmdQueue;
-    ComPtr<ID3D12CommandQueue> m_copyCmdQueue;
 
-    static ComPtr<ID3D12RootSignature> s_rootSignature;
+    Scene const* m_currentScene;
 };
 

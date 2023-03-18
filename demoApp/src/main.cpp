@@ -42,14 +42,13 @@ LRESULT CALLBACK WndProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam 
     {
         case WM_PAINT:
             break; 
-        break;
         // The default window procedure will play a system notification sound 
         // when pressing the Alt+Enter keyboard combination if this message is 
         // not handled.
         case WM_SYSCHAR:
             break;
         case WM_SIZE:
-        break;
+            break;
         case WM_DESTROY:
             PostQuitMessage( 0 );
             break;
@@ -69,7 +68,7 @@ LRESULT CALLBACK WndProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam 
                 int pos_x = GET_X_LPARAM( lParam );
                 int pos_y = GET_Y_LPARAM( lParam );
 
-                scene->getCamera().rotate( ( pos_y - previous_pos_y ) / 3.5f, 0 );
+                scene->getCamera().rotate( -( pos_y - previous_pos_y ) / 3.5f, 0 );
                 scene->getCamera().rotate( 0, ( pos_x - previous_pos_x ) / 3.5f );
 
                 previous_pos_x = pos_x;
@@ -87,29 +86,31 @@ LRESULT CALLBACK WndProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam 
             break;
         }
         default:
-            return DefWindowProcW( hwnd, message, wParam, lParam );
+            break;
     }
 
-    return 0;
+    return DefWindowProcW( hwnd, message, wParam, lParam );
 }
 
 int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow )
 {
-    static auto windowClassName = L"DemoWndClass";
+    static auto windowClassName = L"DemoAppWindowClass";
 
-    WNDCLASSEXW windowClass = {};
-    windowClass.cbSize = sizeof( WNDCLASSEX );
-    windowClass.style = CS_HREDRAW | CS_VREDRAW;
-    windowClass.lpfnWndProc = &WndProc;
-    windowClass.cbClsExtra = 0;
-    windowClass.cbWndExtra = 0;
-    windowClass.hInstance = hInstance;
-    windowClass.hIcon = ::LoadIcon( hInstance, MAKEINTRESOURCE( 32512 ) );
-    windowClass.hCursor = ::LoadCursor( NULL, IDC_ARROW );
-    windowClass.hbrBackground = (HBRUSH)( COLOR_WINDOW + 1 );
-    windowClass.lpszMenuName = NULL;
-    windowClass.lpszClassName = windowClassName;
-    windowClass.hIconSm = ::LoadIcon( hInstance, MAKEINTRESOURCE( 32512 ) );
+    WNDCLASSEXW windowClass =
+    {
+        .cbSize = sizeof( WNDCLASSEX ),
+        .style = CS_HREDRAW | CS_VREDRAW,
+        .lpfnWndProc = &WndProc,
+        .cbClsExtra = 0,
+        .cbWndExtra = 0,
+        .hInstance = hInstance,
+        .hIcon = ::LoadIcon( hInstance, MAKEINTRESOURCE( 32512 ) ),
+        .hCursor = ::LoadCursor( NULL, IDC_ARROW ),
+        .hbrBackground = (HBRUSH)( COLOR_WINDOW + 1 ),
+        .lpszMenuName = NULL,
+        .lpszClassName = windowClassName,
+        .hIconSm = ::LoadIcon( hInstance, MAKEINTRESOURCE( 32512 ) ),
+    };
 
     static ATOM atom = ::RegisterClassExW( &windowClass );
     assert( atom > 0 );
@@ -312,13 +313,13 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     ResourceManager::it().createResource( L"mainDepthStencilTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) );
 
     RenderPass depthPass(L"Depth Prepass", L"depth", L"", L"mainDepthStencilTarget");
-    depthPass.addScene( scene.get() );
     RenderPass mainPass(L"Main Pass", L"main", L"backbuffer", L"mainDepthStencilTarget");
-    mainPass.addScene( scene.get() );
 
     ResourceManager::it().createSampler(L"globalSampler");
 
-    MSG msg = {};
+    renderer.setCurrentScene( *scene );
+
+    MSG msg{};
     while ( msg.message != WM_QUIT )
     {
         if ( PeekMessage( &msg, NULL, 0, 0, PM_REMOVE ) )

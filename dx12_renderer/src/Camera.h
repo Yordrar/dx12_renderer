@@ -6,7 +6,13 @@
 class Camera
 {
 public:
-	Camera( wchar_t const* name, DirectX::XMVECTOR position, DirectX::XMVECTOR focusPosition, float fov = 90.0f, float aspect_ratio = 16.0f/9.0f, float nearZ = 0.1f, float farZ = 10000.0f );
+	struct Frustum
+	{
+		DirectX::XMVECTOR m_cornerPositions[8];
+		DirectX::XMVECTOR m_planes[6]; // Left Right Top Bottom Near Far
+	};
+
+	Camera( wchar_t const* name, DirectX::XMVECTOR position, float fov = 90.0f, float aspect_ratio = 16.0f/9.0f, float nearZ = 0.1f, float farZ = 10000.0f );
 	~Camera() = default;
 
 	void move( float delta_x, float delta_y, float delta_z );
@@ -26,13 +32,11 @@ public:
 	Resource* m_cameraBuffer;
 
 	std::wstring m_name;
-
-	DirectX::XMVECTOR right;
-	DirectX::XMVECTOR up;
-	DirectX::XMVECTOR forward;
-	DirectX::XMVECTOR m_focusPosition;
-	float aspect_ratio;
-	float fov;
+	DirectX::XMVECTOR m_rightBasisVector;
+	DirectX::XMVECTOR m_upBasisVector;
+	DirectX::XMVECTOR m_forwardBasisVector;
+	float m_aspectRatio;
+	float m_fov;
 	float m_nearZ;
 	float m_farZ;
 };
