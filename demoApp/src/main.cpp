@@ -5,7 +5,7 @@
 // DirectX 12
 #include <DirectXMath.h>
 
-#include <iostream>
+#include <string>
 
 #include <Utils.h>
 #include <Renderer.h>
@@ -22,6 +22,8 @@
 
 #include <meshoptimizer.h>
 
+#include <imgui.h>
+
 struct Vertex
 {
     DirectX::XMFLOAT3 m_position;
@@ -36,8 +38,23 @@ bool mouse_clicked = false;
 int previous_pos_x = -1;
 int previous_pos_y = -1;
 bool useIndexedVertexBuffer = true;
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 LRESULT CALLBACK WndProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
+    if ( ImGui_ImplWin32_WndProcHandler( hwnd, message, wParam, lParam ) )
+    {
+        return DefWindowProcW( hwnd, message, wParam, lParam );
+    }
+
+    if ( ImGui::GetCurrentContext() )
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        if ( io.WantCaptureMouse )
+        {
+            return DefWindowProcW( hwnd, message, wParam, lParam );
+        }
+    }
+
     switch ( message )
     {
         case WM_PAINT:
@@ -96,30 +113,32 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 {
     static auto windowClassName = L"DemoAppWindowClass";
 
-    WNDCLASSEXW windowClass =
+    WNDCLASSEX windowClass =
     {
-        .cbSize = sizeof( WNDCLASSEX ),
+        .cbSize = sizeof(WNDCLASSEX),
         .style = CS_HREDRAW | CS_VREDRAW,
         .lpfnWndProc = &WndProc,
         .cbClsExtra = 0,
         .cbWndExtra = 0,
         .hInstance = hInstance,
-        .hIcon = ::LoadIcon( hInstance, MAKEINTRESOURCE( 32512 ) ),
-        .hCursor = ::LoadCursor( NULL, IDC_ARROW ),
-        .hbrBackground = (HBRUSH)( COLOR_WINDOW + 1 ),
+        .hIcon = NULL,
+        .hCursor = LoadCursor( NULL, IDC_ARROW ),
+        .hbrBackground = (HBRUSH)COLOR_WINDOW,
         .lpszMenuName = NULL,
         .lpszClassName = windowClassName,
-        .hIconSm = ::LoadIcon( hInstance, MAKEINTRESOURCE( 32512 ) ),
+        .hIconSm = NULL,
     };
 
-    static ATOM atom = ::RegisterClassExW( &windowClass );
+    static ATOM atom = RegisterClassEx( &windowClass );
     assert( atom > 0 );
 
-    int screenWidth = ::GetSystemMetrics( SM_CXSCREEN );
-    int screenHeight = ::GetSystemMetrics( SM_CYSCREEN );
+    int screenWidth = GetSystemMetrics( SM_CXSCREEN );
+    int screenHeight = GetSystemMetrics( SM_CYSCREEN );
 
-    RECT windowRect = { 0, 0, static_cast<LONG>( 1280 ), static_cast<LONG>( 720 ) };
-    //AdjustWindowRect( &windowRect, WS_OVERLAPPEDWINDOW, FALSE );
+    LONG desiredClientWidth = 1280;
+    LONG desiredClientHeight = 720;
+    RECT windowRect = { 0, 0, desiredClientWidth, desiredClientHeight };
+    AdjustWindowRect( &windowRect, WS_OVERLAPPEDWINDOW, false );
 
     int windowWidth = windowRect.right - windowRect.left;
     int windowHeight = windowRect.bottom - windowRect.top;
@@ -128,7 +147,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     int windowX = std::max<int>( 0, ( screenWidth - windowWidth ) / 2 );
     int windowY = std::max<int>( 0, ( screenHeight - windowHeight ) / 2 );
 
-    HWND hWnd = CreateWindowExW(
+    HWND hWnd = CreateWindowEx(
         NULL,
         windowClassName,
         L"DX12 Renderer Demo",
@@ -137,15 +156,15 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         windowY,
         windowWidth,
         windowHeight,
-        NULL,
-        NULL,
+        nullptr,
+        nullptr,
         hInstance,
         nullptr
     );
     assert( hWnd );
-    ShowWindow( hWnd, SW_SHOW );
+    ShowWindow( hWnd, nCmdShow );
 
-    Renderer renderer( hWnd, windowRect );
+    Renderer renderer( hWnd, RECT{ 0, 0, desiredClientWidth, desiredClientHeight } );
 
     std::string inputfile = "resource/sponza/sponza.obj";
     std::string mtlDir = "resource/sponza/";
@@ -318,6 +337,15 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     ResourceManager::it().createSampler(L"globalSampler");
 
     renderer.setCurrentScene( *scene );
+
+    bool show_demo_window = true;
+    renderer.registerImguiCallback( [&show_demo_window] ()
+                                    {
+                                        if ( show_demo_window )
+                                        {
+                                            ImGui::ShowDemoWindow( &show_demo_window );
+                                        }
+                                    } );
 
     MSG msg{};
     while ( msg.message != WM_QUIT )

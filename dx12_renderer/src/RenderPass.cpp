@@ -160,12 +160,6 @@ void RenderPass::record( Scene const& scene )
         currentMesh->record( m_commandList );
     }
 
-    if ( m_renderTargetName == L"backbuffer" )
-    {
-        CD3DX12_RESOURCE_BARRIER renderTargetBarrier = renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
-        m_commandList->ResourceBarrier( 1, &renderTargetBarrier );
-    }
-
     PIXEndEvent( m_commandList.Get() );
 
     Profiler::it().endQuery( m_commandList.Get(), m_profilerQueryIndex );

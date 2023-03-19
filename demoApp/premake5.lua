@@ -1,6 +1,12 @@
 project "demoApp"
 	kind "WindowedApp"
-	files { "src/**.h", "src/**.cpp", "external/meshoptimizer/src/**" }
+	files
+	{
+		"src/**.h",
+		"src/**.cpp",
+		"external/meshoptimizer/src/**", 
+		"../dx12_renderer/external/imgui/*.cpp",
+	}
 	libdirs "external/"
 	links { "dx12_renderer" }
 	defines { "NOMINMAX", "WIN32_LEAN_AND_MEAN" }
@@ -9,6 +15,7 @@ project "demoApp"
 		"external", 
 		"external/meshoptimizer/src",
 		"../dx12_renderer/src",
+		"../dx12_renderer/external/imgui",
 	}
 	prebuildcommands {
 		"{COPYDIR} " .. _WORKING_DIR .. "/demoApp/shader %{cfg.buildtarget.directory}shader",

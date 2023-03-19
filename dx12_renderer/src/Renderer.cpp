@@ -1,6 +1,11 @@
 #include "Renderer.h"
 
+#include <imgui.h>
+#include <imgui_impl_win32.h>
+#include <imgui_impl_dx12.h>
+
 #include <resource/ResourceManager.h>
+#include <resource/DescriptorHeap.h>
 
 RECT Renderer::s_windowRect;
 ComPtr<ID3D12Device2> Renderer::s_device{ nullptr };
@@ -14,6 +19,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     , m_frameFence( nullptr )
     , m_graphicsCmdQueue( nullptr )
     , m_computeCmdQueue( nullptr )
+    , m_imguiCallbackRegistered( false )
     , m_currentScene( nullptr )
 {
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i ) m_fenceValues[ i ] = 0;
@@ -170,6 +176,43 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     s_rootSignature->SetName( L"Global Root Signature" );
 
     m_graphicsCmdQueue->GetTimestampFrequency( &s_timestampFrequency );
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsLight();
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplWin32_Init( hWnd );
+    ImGui_ImplDX12_Init( device().Get(),
+                         RendererConstants::sc_numBackBuffers,
+                         DXGI_FORMAT_R8G8B8A8_UNORM,
+                         DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap().Get(),
+                         DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap().Get()->GetCPUDescriptorHandleForHeapStart(),
+                         DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap().Get()->GetGPUDescriptorHandleForHeapStart() );
+
+    for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
+    {
+        Renderer::device()->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_imguiCommandAllocators[ i ] ) );
+    }
+
+    HRESULT result = Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_imguiCommandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_imguiCommandList ) );
+    m_imguiCommandList->Close();
+    std::wstring commandListName = L"imgui_commandList";
+    m_imguiCommandList->SetName( commandListName.c_str() );
+}
+
+Renderer::~Renderer()
+{
+    ImGui_ImplDX12_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 }
 
 static auto start = std::chrono::high_resolution_clock::now();
@@ -183,6 +226,10 @@ void Renderer::beginFrame()
 
     gpuTime = 0;
 
+    ImGui_ImplDX12_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
     start = std::chrono::high_resolution_clock::now();
 }
 
@@ -195,8 +242,15 @@ void Renderer::submitRenderPass( RenderPass& pass )
 
 void Renderer::endFrame()
 {
+    recordImguiCommandList();
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( end - start );
+    OutputDebugStringA( std::string( "CPU time: " + std::to_string( elapsed.count() ) + "ms\n" ).c_str() );
+    OutputDebugStringA( std::string( "GPU time: " + std::to_string( gpuTime ) + "ms\n" ).c_str() );
+
     m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>( commandLists.size() ), commandLists.data() );
-    m_swapChain->Present( 0, 0 );
+    m_swapChain->Present( 1, 0 );
 
     // Schedule a Signal command in the queue.
     uint64_t const currentFenceValue = m_fenceValues[ s_currentBackBufferIndex ];
@@ -210,11 +264,6 @@ void Renderer::endFrame()
 
     // Set the fence value for the next frame.
     m_fenceValues[ s_currentBackBufferIndex ] = currentFenceValue + 1;
-
-    auto end = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( end - start );
-    OutputDebugStringA( std::string( "CPU time: " + std::to_string( elapsed.count() ) + "ms\n" ).c_str() );
-    OutputDebugStringA( std::string( "GPU time: " + std::to_string( gpuTime ) + "ms\n" ).c_str() );
 }
 
 void Renderer::waitForIdleGPU()
@@ -228,4 +277,39 @@ void Renderer::waitForIdleGPU()
 UINT Renderer::getPreviousBackbufferIndex()
 {
     return std::clamp( s_currentBackBufferIndex - 1, 0u, RendererConstants::sc_numBackBuffers - 1 );
+}
+
+void Renderer::recordImguiCommandList()
+{
+    if ( m_imguiCallbackRegistered )
+    {
+        m_imguiUserCallback();
+    }
+    ImGui::Render();
+
+    ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_imguiCommandAllocators[ getCurrentBackbufferIndex() ];
+    currentCommandAllocator->Reset();
+    m_imguiCommandList->Reset( currentCommandAllocator.Get(), nullptr );
+
+    PIXBeginEvent( m_imguiCommandList.Get(), PIX_COLOR_DEFAULT, "Imgui" );
+
+    ID3D12DescriptorHeap* descriptorHeaps[] =
+    {
+        DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap().Get(),
+    };
+    m_imguiCommandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
+
+    Resource* renderTarget = ResourceManager::it().getCurrentBackbufferResource();
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv = renderTarget->getRenderTargetView()->getView();
+    m_imguiCommandList->OMSetRenderTargets( 1, &rtv, false, nullptr );
+
+    ImGui_ImplDX12_RenderDrawData( ImGui::GetDrawData(), m_imguiCommandList.Get() );
+
+    CD3DX12_RESOURCE_BARRIER renderTargetBarrier = renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
+    m_imguiCommandList->ResourceBarrier( 1, &renderTargetBarrier );
+
+    PIXEndEvent();
+
+    m_imguiCommandList->Close();
+    commandLists.push_back( m_imguiCommandList.Get() );
 }

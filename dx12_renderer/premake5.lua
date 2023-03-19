@@ -1,6 +1,12 @@
 project "dx12_renderer"
 	kind "StaticLib"
-	files { "src/**.h", "src/**.cpp" }
+	files {
+		"src/**.h",
+		"src/**.cpp",
+		"external/imgui/*.cpp",
+		"external/imgui/backends/imgui_impl_win32.cpp",
+		"external/imgui/backends/imgui_impl_dx12.cpp",
+	}
 	libdirs { "external/dxc/lib/x64", "external/WinPixEventRuntime/bin/x64" }
 	links { "d3d12", "dxgi", "dxguid", "dxcompiler", "WinPixEventRuntime" }
 	defines { "NOMINMAX", "WIN32_LEAN_AND_MEAN" }
@@ -8,7 +14,9 @@ project "dx12_renderer"
 		"src",
 		"external",
 		"external/dxc/inc",
-		"external/WinPixEventRuntime/Include/WinPixEventRuntime"
+		"external/WinPixEventRuntime/Include/WinPixEventRuntime",
+		"external/imgui",
+		"external/imgui/backends",
 	}
 	prebuildcommands {
 		"{COPYFILE} " .. _WORKING_DIR .. "/dx12_renderer/external/dxc/bin/x64/dxcompiler.dll %{cfg.buildtarget.directory}",

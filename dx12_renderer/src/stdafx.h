@@ -14,6 +14,7 @@ using namespace Microsoft::WRL;
 
 // Utilities
 #include <chrono>
+#include <functional>
 #include <memory>
 
 // Numeric
