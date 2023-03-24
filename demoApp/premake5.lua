@@ -4,8 +4,7 @@ project "demoApp"
 	{
 		"src/**.h",
 		"src/**.cpp",
-		"external/meshoptimizer/src/**", 
-		"../dx12_renderer/external/imgui/*.cpp",
+		"external/meshoptimizer/src/**",
 	}
 	libdirs "external/"
 	links { "dx12_renderer" }

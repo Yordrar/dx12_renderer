@@ -16,13 +16,11 @@ public:
 
     static ComPtr<ID3D12Device2> device() { return s_device; }
 
-    void setCurrentScene( Scene const& scene ) { m_currentScene = &scene; }
-
     using ImguiCallback = std::function<void( void )>;
     void registerImguiCallback( ImguiCallback const& callback ) { m_imguiUserCallback = callback; m_imguiCallbackRegistered = true; }
 
     void beginFrame();
-    void submitRenderPass( RenderPass& pass );
+    void submitRenderPass( RenderPass& pass, Scene const& scene, std::vector<Camera*> const& cameras );
     void endFrame();
 
     void waitForIdleGPU();
@@ -56,7 +54,5 @@ private:
     ComPtr<ID3D12CommandAllocator> m_imguiCommandAllocators[ RendererConstants::sc_numBackBuffers ];
     bool m_imguiCallbackRegistered;
     ImguiCallback m_imguiUserCallback;
-
-    Scene const* m_currentScene;
 };
 

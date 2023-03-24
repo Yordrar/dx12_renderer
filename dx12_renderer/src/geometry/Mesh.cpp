@@ -1,7 +1,6 @@
 #include "Mesh.h"
 
 #include <geometry/ShaderManager.h>
-#include <geometry/PSOManager.h>
 #include <resource/Resource.h>
 
 Mesh::Mesh( wchar_t const* name, wchar_t const* materialName, D3D_PRIMITIVE_TOPOLOGY primitiveTopology )

@@ -4,16 +4,16 @@
 
 Camera::Camera( wchar_t const* name, DirectX::XMVECTOR position, float fov, float aspect_ratio, float nearZ, float farZ )
 	: m_name( name )
-	, m_rightBasisVector( DirectX::XMVectorSet( 1, 0, 0, 0 ) )
-	, m_upBasisVector( DirectX::XMVectorSet( 0, 1, 0, 0 ) )
-	, m_forwardBasisVector( DirectX::XMVectorSet( 0, 0, 1, 0 ) )
+	, m_localRightVector( DirectX::XMVectorSet( 1, 0, 0, 0 ) )
+	, m_localUpVector( DirectX::XMVectorSet( 0, 1, 0, 0 ) )
+	, m_localForwardVector( DirectX::XMVectorSet( 0, 0, 1, 0 ) )
 	, m_aspectRatio( aspect_ratio )
 	, m_fov( fov )
 	, m_nearZ( nearZ )
 	, m_farZ( farZ )
 {
 	m_cameraData.m_position = position;
-	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookToRH( m_cameraData.m_position, m_forwardBasisVector, m_upBasisVector ) * DirectX::XMMatrixPerspectiveFovRH( fov, aspect_ratio, m_nearZ, m_farZ ) );
+	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookToRH( m_cameraData.m_position, m_localForwardVector, m_localUpVector ) * DirectX::XMMatrixPerspectiveFovRH( fov, aspect_ratio, m_nearZ, m_farZ ) );
 	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
 
 	m_cameraBuffer = ResourceManager::it().createResource( std::wstring(m_name + L"_buffer").c_str(), CD3DX12_RESOURCE_DESC::Buffer( sizeof( m_cameraData ) ), D3D12_SUBRESOURCE_DATA{ &m_cameraData, sizeof( m_cameraData ), 0 } );
@@ -25,7 +25,7 @@ void Camera::move( float delta_x, float delta_y, float delta_z )
 	m_cameraData.m_position.m128_f32[1] += delta_y;
 	m_cameraData.m_position.m128_f32[2] += delta_z;
 
-	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookToRH( m_cameraData.m_position, m_forwardBasisVector, m_upBasisVector ) * DirectX::XMMatrixPerspectiveFovRH( m_fov, m_aspectRatio, m_nearZ, m_farZ ));
+	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookToRH( m_cameraData.m_position, m_localForwardVector, m_localUpVector ) * DirectX::XMMatrixPerspectiveFovRH( m_fov, m_aspectRatio, m_nearZ, m_farZ ));
 	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
 
 	m_cameraBuffer->setNeedsCopyToGPU( true );
@@ -35,7 +35,7 @@ void Camera::rotate( float delta_angles_x, float delta_angles_y )
 {
 	// Create rotation quaternion for x axis
 	float angle_x_rad = DirectX::XMConvertToRadians( delta_angles_x / 2.0f);
-	DirectX::XMFLOAT3 quaternion_x_imaginary(sinf(angle_x_rad) * m_rightBasisVector.m128_f32[0], sinf(angle_x_rad) * m_rightBasisVector.m128_f32[1], sinf(angle_x_rad) * m_rightBasisVector.m128_f32[2]);
+	DirectX::XMFLOAT3 quaternion_x_imaginary(sinf(angle_x_rad) * m_localRightVector.m128_f32[0], sinf(angle_x_rad) * m_localRightVector.m128_f32[1], sinf(angle_x_rad) * m_localRightVector.m128_f32[2]);
 	float quaternion_x_real = cosf(angle_x_rad);
 	DirectX::XMVECTOR quaternion_x = DirectX::XMVectorSet(quaternion_x_imaginary.x, quaternion_x_imaginary.y, quaternion_x_imaginary.z, quaternion_x_real);
 
@@ -55,22 +55,22 @@ void Camera::rotate( float delta_angles_x, float delta_angles_y )
 		m_cameraData.m_position = intermediate_result;
 	}
 	{
-		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion, m_forwardBasisVector );
+		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion, m_localForwardVector );
 		intermediate_result = DirectX::XMQuaternionMultiply( intermediate_result, DirectX::XMQuaternionConjugate( quaternion ) );
-		m_forwardBasisVector = intermediate_result;
+		m_localForwardVector = intermediate_result;
 	}
 	{
-		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion_y, m_rightBasisVector );
+		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion_y, m_localRightVector );
 		intermediate_result = DirectX::XMQuaternionMultiply( intermediate_result, DirectX::XMQuaternionConjugate( quaternion_y ) );
-		m_rightBasisVector = intermediate_result;
+		m_localRightVector = intermediate_result;
 	}
 	{
-		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion, m_upBasisVector );
+		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion, m_localUpVector );
 		intermediate_result = DirectX::XMQuaternionMultiply( intermediate_result, DirectX::XMQuaternionConjugate( quaternion ) );
-		m_upBasisVector = intermediate_result;
+		m_localUpVector = intermediate_result;
 	}
 
-	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookToRH( m_cameraData.m_position, m_forwardBasisVector, m_upBasisVector ) * DirectX::XMMatrixPerspectiveFovRH( m_fov, m_aspectRatio, m_nearZ, m_farZ ));
+	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookToRH( m_cameraData.m_position, m_localForwardVector, m_localUpVector ) * DirectX::XMMatrixPerspectiveFovRH( m_fov, m_aspectRatio, m_nearZ, m_farZ ));
 	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
 
 	m_cameraBuffer->setNeedsCopyToGPU( true );
@@ -93,7 +93,7 @@ bool Camera::isAABBVisible( Mesh::AABB const& aabb ) const
 	bool visible = false;
 	for ( size_t i = 0; i < 8; i++ )
 	{
-		visible = visible || DirectX::XMVector3Dot( DirectX::XMVector3Normalize( DirectX::XMVectorSubtract( aabbCorners[i], m_cameraData.m_position ) ), m_forwardBasisVector ).m128_f32[ 0 ] > 0.0f;
+		visible = visible || DirectX::XMVector3Dot( DirectX::XMVector3Normalize( DirectX::XMVectorSubtract( aabbCorners[i], m_cameraData.m_position ) ), m_localForwardVector ).m128_f32[ 0 ] > 0.0f;
 	}
 	return visible;
 }

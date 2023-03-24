@@ -32,9 +32,9 @@ public:
 	Resource* m_cameraBuffer;
 
 	std::wstring m_name;
-	DirectX::XMVECTOR m_rightBasisVector;
-	DirectX::XMVECTOR m_upBasisVector;
-	DirectX::XMVECTOR m_forwardBasisVector;
+	DirectX::XMVECTOR m_localRightVector;
+	DirectX::XMVECTOR m_localUpVector;
+	DirectX::XMVECTOR m_localForwardVector;
 	float m_aspectRatio;
 	float m_fov;
 	float m_nearZ;

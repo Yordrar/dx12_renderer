@@ -5,7 +5,6 @@
 #include <DirectXMath.h>
 
 #include <geometry/Material.h>
-#include <geometry/PSOManager.h>
 #include <geometry/VertexBuffer.h>
 #include <geometry/IndexBuffer.h>
 

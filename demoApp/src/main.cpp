@@ -137,6 +137,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     LONG desiredClientWidth = 1280;
     LONG desiredClientHeight = 720;
+    RECT clientRect = { 0, 0, desiredClientWidth, desiredClientHeight };
     RECT windowRect = { 0, 0, desiredClientWidth, desiredClientHeight };
     AdjustWindowRect( &windowRect, WS_OVERLAPPEDWINDOW, false );
 
@@ -164,7 +165,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     assert( hWnd );
     ShowWindow( hWnd, nCmdShow );
 
-    Renderer renderer( hWnd, RECT{ 0, 0, desiredClientWidth, desiredClientHeight } );
+    Renderer renderer( hWnd, clientRect );
 
     std::string inputfile = "resource/sponza/sponza.obj";
     std::string mtlDir = "resource/sponza/";
@@ -328,15 +329,13 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         scene->addMesh( mesh );
     }
 
-    ResourceManager::it().createResource( L"mainRenderTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) );
-    ResourceManager::it().createResource( L"mainDepthStencilTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, windowWidth, windowHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) );
+    ResourceManager::it().createResource( L"mainRenderTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, desiredClientWidth, desiredClientHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) );
+    ResourceManager::it().createResource( L"mainDepthStencilTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, desiredClientWidth, desiredClientHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) );
 
     RenderPass depthPass(L"Depth Prepass", L"depth", L"", L"mainDepthStencilTarget");
     RenderPass mainPass(L"Main Pass", L"main", L"backbuffer", L"mainDepthStencilTarget");
 
     ResourceManager::it().createSampler(L"globalSampler");
-
-    renderer.setCurrentScene( *scene );
 
     bool show_demo_window = true;
     renderer.registerImguiCallback( [&show_demo_window] ()
@@ -357,8 +356,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         }
 
         renderer.beginFrame();
-        renderer.submitRenderPass( depthPass );
-        renderer.submitRenderPass( mainPass );
+        renderer.submitRenderPass( depthPass, *scene, { &scene->getCamera() } );
+        renderer.submitRenderPass( mainPass, *scene, { &scene->getCamera() } );
         renderer.endFrame();
     }
 

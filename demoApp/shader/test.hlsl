@@ -18,7 +18,7 @@ struct VSOut
     float3 m_bitangent : BITANGENT;
 };
 
-VSOut main_vs( VSIn vertexData )
+VSOut commonVertexProcessing(VSIn vertexData)
 {
     VSOut vsOut;
     vsOut.m_position = mul(float4(vertexData.m_position, 1.0f), viewProjMatrix);
@@ -29,13 +29,26 @@ VSOut main_vs( VSIn vertexData )
     return vsOut;
 }
 
+#if defined(depth)
+
 VSOut depth_vs( VSIn vertexData )
 {
-    return main_vs( vertexData );
+    return commonVertexProcessing( vertexData );
 }
 
 
+void depth_ps(VSOut vsOut)
+{
+}
 
+#endif
+
+#if defined(main)
+
+VSOut main_vs( VSIn vertexData )
+{
+    return commonVertexProcessing( vertexData );
+}
 
 
 struct ResourceIndices
@@ -51,6 +64,4 @@ float4 main_ps(VSOut vsOut) : SV_Target
     return col;
 }
 
-void depth_ps(VSOut vsOut)
-{
-}
+#endif

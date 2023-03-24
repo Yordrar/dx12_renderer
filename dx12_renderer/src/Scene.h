@@ -15,7 +15,6 @@ public:
 
     Camera& getCamera() { return m_camera; }
     Resource const* getCameraBufferResource() const { return m_camera.getGPUBufferResource(); }
-    bool isAABBVisible( Mesh::AABB const& aabb ) const { return m_camera.isAABBVisible( aabb ); }
 
     std::vector< std::shared_ptr<Mesh> > const& getMeshes() const { return m_meshes; }
 

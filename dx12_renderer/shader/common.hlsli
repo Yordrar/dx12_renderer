@@ -1,18 +1,23 @@
 #define DESCRIPTORS_IN_HEAPS 100000
 
-cbuffer sceneBuffer : register(b0, space0)
+cbuffer passBuffer : register(b0, space0)
+{
+    uint passBufferIndex;
+};
+
+cbuffer cameraBuffer : register(b1, space0)
 {
     float4x4 viewProjMatrix;
     float4x4 inverseViewProjMatrix;
     float4 cameraPosition;
 };
 
-cbuffer materialBuffer : register(b1, space0)
+cbuffer materialBuffer : register(b2, space0)
 {
     uint bindlessIndicesBufferIndex;
 };
 
-cbuffer geometryBuffer : register(b2, space0)
+cbuffer geometryBuffer : register(b3, space0)
 {
     float4x4 modelMatrix;
     float4x4 inverseModelMatrix;
@@ -34,4 +39,10 @@ template<typename buffer_type>
 buffer_type getBindlessIndicesBuffer()
 {
     return getBuffer<buffer_type>(bindlessIndicesBufferIndex);
+}
+
+template<typename buffer_type>
+buffer_type getPassIndicesBuffer()
+{
+    return getBuffer<buffer_type>(passBufferIndex);
 }

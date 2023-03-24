@@ -16,9 +16,15 @@ public:
     ID3D12GraphicsCommandList* getCommandList() const { return m_commandList.Get(); }
     double getExecutionTimeMilliseconds() const { return m_executionTimeInMilliseconds; }
 
-    void record( Scene const& scene );
+    void record( Scene const& scene, std::vector<Camera*> const& cameras );
+    void addResourceView( Descriptor const& descriptor );
 
 private:
+    struct PassBufferData
+    {
+        uint32_t passResourceIndicesBufferIndex;
+    };
+
     std::wstring m_name;
     std::wstring m_techniqueName;
 
@@ -34,5 +40,11 @@ private:
 
     uint64_t m_profilerQueryIndex;
     double m_executionTimeInMilliseconds;
+
+    Resource* m_passBuffer;
+    PassBufferData m_passBufferData;
+
+    Resource* m_passResourceIndicesBuffer;
+    std::vector<UINT> m_passResourceIndicesBufferData;
 };
 

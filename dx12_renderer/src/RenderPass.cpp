@@ -4,7 +4,6 @@
 #include <Profiler.h>
 #include <resource/ResourceManager.h>
 #include <resource/Descriptor.h>
-#include <geometry/PSOManager.h>
 #include <geometry/MaterialManager.h>
 
 RenderPass::RenderPass( wchar_t const* name,
@@ -21,6 +20,8 @@ RenderPass::RenderPass( wchar_t const* name,
     , m_scissorRect( Renderer::getWindowRect() )
     , m_profilerQueryIndex( Profiler::it().allocateQueryIndex() )
     , m_executionTimeInMilliseconds( 0 )
+    , m_passBuffer( nullptr )
+    , m_passResourceIndicesBuffer( nullptr )
 {
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
     {
@@ -44,7 +45,7 @@ RenderPass::~RenderPass()
 
 }
 
-void RenderPass::record( Scene const& scene )
+void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras )
 {
     // Reset command list and allocator
     ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentBackbufferIndex() ];
@@ -56,6 +57,20 @@ void RenderPass::record( Scene const& scene )
     if ( m_renderTargetName == L"backbuffer" )
     {
         renderTarget = ResourceManager::it().getCurrentBackbufferResource();
+    }
+
+    if ( !m_passResourceIndicesBuffer )
+    {
+        m_passResourceIndicesBuffer = ResourceManager::it().createResource( ( m_name + L"_passResourceIndicesBuffer" ).c_str(),
+                                                                            CD3DX12_RESOURCE_DESC::Buffer( std::max( m_passResourceIndicesBufferData.size() * sizeof( UINT ), 1Ui64 ) ),
+                                                                            D3D12_SUBRESOURCE_DATA{ m_passResourceIndicesBufferData.data(), static_cast<LONG_PTR>( m_passResourceIndicesBufferData.size() * sizeof( UINT ) ), 0 } );
+    }
+    if ( !m_passBuffer )
+    {
+        m_passBufferData.passResourceIndicesBufferIndex = m_passResourceIndicesBuffer->getShaderResourceView()->getDescriptorIndex();
+        m_passBuffer = ResourceManager::it().createResource( ( m_name + L"_passBuffer" ).c_str(),
+                                                             CD3DX12_RESOURCE_DESC::Buffer( std::max( sizeof( m_passBufferData ), 1Ui64 ) ),
+                                                             D3D12_SUBRESOURCE_DATA{ &m_passBufferData, static_cast<LONG_PTR>( sizeof( m_passBufferData ) ), 0 } );
     }
 
     Profiler::it().startQuery( m_commandList.Get(), m_profilerQueryIndex );
@@ -84,10 +99,10 @@ void RenderPass::record( Scene const& scene )
     m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
 
     // Set descriptor tables in root signature
-    m_commandList->SetGraphicsRootDescriptorTable( 3, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetGraphicsRootDescriptorTable( 4, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetGraphicsRootDescriptorTable( 5, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 6, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 6, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 7, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
 
     // Clear and set render targets
     std::vector<CD3DX12_RESOURCE_BARRIER> barriers;
@@ -128,7 +143,7 @@ void RenderPass::record( Scene const& scene )
 
     // Record scenes
     std::wstring currentMaterialName;
-    m_commandList->SetGraphicsRootConstantBufferView( 0, scene.getCameraBufferResource()->getGPUVirtualAddress() );
+    m_commandList->SetGraphicsRootConstantBufferView( 0, m_passBuffer->getGPUVirtualAddress() );
     for ( std::shared_ptr<Mesh> const& currentMesh : scene.getMeshes() )
     {
         if ( !currentMesh->hasVertexBuffer() )
@@ -136,28 +151,32 @@ void RenderPass::record( Scene const& scene )
             continue;
         }
 
-        if ( currentMesh->isAABBValid() && !scene.isAABBVisible( currentMesh->getAABB() ) )
+        for ( Camera* camera : cameras )
         {
-            continue;
-        }
-
-        std::wstring const& currentMeshMaterialName = currentMesh->getMaterialName();
-        if ( currentMaterialName != currentMeshMaterialName )
-        {
-            Material* currentMeshMaterial = MaterialManager::it().getMaterial( currentMeshMaterialName.c_str() );
-            if ( currentMeshMaterial && currentMeshMaterial->hasTechnique( m_techniqueName.c_str() ) )
-            {
-                m_commandList->SetGraphicsRootConstantBufferView( 1, currentMeshMaterial->getMaterialBufferResource()->getGPUVirtualAddress() );
-                m_commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
-                currentMaterialName = currentMeshMaterialName;
-            }
-            else
+            m_commandList->SetGraphicsRootConstantBufferView( 1, camera->getGPUBufferResource()->getGPUVirtualAddress() );
+            if ( currentMesh->isAABBValid() && !camera->isAABBVisible( currentMesh->getAABB() ) )
             {
                 continue;
             }
-        }
 
-        currentMesh->record( m_commandList );
+            std::wstring const& currentMeshMaterialName = currentMesh->getMaterialName();
+            if ( currentMaterialName != currentMeshMaterialName )
+            {
+                Material* currentMeshMaterial = MaterialManager::it().getMaterial( currentMeshMaterialName.c_str() );
+                if ( currentMeshMaterial && currentMeshMaterial->hasTechnique( m_techniqueName.c_str() ) )
+                {
+                    m_commandList->SetGraphicsRootConstantBufferView( 2, currentMeshMaterial->getMaterialBufferResource()->getGPUVirtualAddress() );
+                    m_commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
+                    currentMaterialName = currentMeshMaterialName;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            currentMesh->record( m_commandList );
+        }
     }
 
     PIXEndEvent( m_commandList.Get() );
@@ -166,4 +185,9 @@ void RenderPass::record( Scene const& scene )
     m_executionTimeInMilliseconds = Profiler::it().getResolvedQuery( m_profilerQueryIndex );
 
     m_commandList->Close();
+}
+
+void RenderPass::addResourceView( Descriptor const& descriptor )
+{
+    m_passResourceIndicesBufferData.push_back( descriptor.getDescriptorIndex() );
 }

@@ -4,6 +4,7 @@
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx12.h>
 
+#include <RendererConstants.h>
 #include <resource/ResourceManager.h>
 #include <resource/DescriptorHeap.h>
 
@@ -20,7 +21,6 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     , m_graphicsCmdQueue( nullptr )
     , m_computeCmdQueue( nullptr )
     , m_imguiCallbackRegistered( false )
-    , m_currentScene( nullptr )
 {
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i ) m_fenceValues[ i ] = 0;
     m_fenceValues[ 0 ] = 1;
@@ -113,43 +113,52 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     }
 
     // Create root signature
-    CD3DX12_ROOT_PARAMETER slotRootParameters[ 7 ] = {};
+    CD3DX12_ROOT_PARAMETER slotRootParameters[ 8 ] = {};
 
-    slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Scene buffer
-    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Material buffer
-    slotRootParameters[ 2 ].InitAsConstantBufferView( 2, 0 ); // Geometry buffer
+    slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Render Pass buffer
+    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Camera buffer
+    slotRootParameters[ 2 ].InitAsConstantBufferView( 2, 0 ); // Material buffer
+    slotRootParameters[ 3 ].InitAsConstantBufferView( 3, 0 ); // Geometry buffer
 
-    D3D12_DESCRIPTOR_RANGE srvRangeBuffer{};
-    srvRangeBuffer.BaseShaderRegister = 0;
-    srvRangeBuffer.RegisterSpace = 0;
-    srvRangeBuffer.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
-    srvRangeBuffer.OffsetInDescriptorsFromTableStart = 0;
-    srvRangeBuffer.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    slotRootParameters[ 3 ].InitAsDescriptorTable( 1, &srvRangeBuffer );
+    D3D12_DESCRIPTOR_RANGE srvRangeBuffer =
+    {
+        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
+        .BaseShaderRegister = 0,
+        .RegisterSpace = 0,
+        .OffsetInDescriptorsFromTableStart = 0,
+    };
+    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeBuffer );
 
-    D3D12_DESCRIPTOR_RANGE srvRangeTexture2D{};
-    srvRangeTexture2D.BaseShaderRegister = 0;
-    srvRangeTexture2D.RegisterSpace = 1;
-    srvRangeTexture2D.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
-    srvRangeTexture2D.OffsetInDescriptorsFromTableStart = 0;
-    srvRangeTexture2D.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeTexture2D );
+    D3D12_DESCRIPTOR_RANGE srvRangeTexture2D =
+    {
+        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
+        .BaseShaderRegister = 0,
+        .RegisterSpace = 1,
+        .OffsetInDescriptorsFromTableStart = 0,
+    };
+    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeTexture2D );
 
-    D3D12_DESCRIPTOR_RANGE srvRangeTextureCube{};
-    srvRangeTextureCube.BaseShaderRegister = 0;
-    srvRangeTextureCube.RegisterSpace = 2;
-    srvRangeTextureCube.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
-    srvRangeTextureCube.OffsetInDescriptorsFromTableStart = 0;
-    srvRangeTextureCube.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeTextureCube );
+    D3D12_DESCRIPTOR_RANGE srvRangeTextureCube =
+    {
+        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
+        .BaseShaderRegister = 0,
+        .RegisterSpace = 2,
+        .OffsetInDescriptorsFromTableStart = 0,
+    };
+    slotRootParameters[ 6 ].InitAsDescriptorTable( 1, &srvRangeTextureCube );
 
-    D3D12_DESCRIPTOR_RANGE srvRangeSampler{};
-    srvRangeSampler.BaseShaderRegister = 0;
-    srvRangeSampler.RegisterSpace = 0;
-    srvRangeSampler.NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps;
-    srvRangeSampler.OffsetInDescriptorsFromTableStart = 0;
-    srvRangeSampler.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-    slotRootParameters[ 6 ].InitAsDescriptorTable( 1, &srvRangeSampler );
+    D3D12_DESCRIPTOR_RANGE srvRangeSampler =
+    {
+        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
+        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
+        .BaseShaderRegister = 0,
+        .RegisterSpace = 0,
+        .OffsetInDescriptorsFromTableStart = 0,
+    };
+    slotRootParameters[ 7 ].InitAsDescriptorTable( 1, &srvRangeSampler );
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( _countof(slotRootParameters), slotRootParameters, 0, nullptr,
                                              D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -220,8 +229,6 @@ static std::vector<ID3D12CommandList*> commandLists;
 static double gpuTime = 0;
 void Renderer::beginFrame()
 {
-    assert( m_currentScene );
-
     commandLists.clear();
 
     gpuTime = 0;
@@ -233,9 +240,9 @@ void Renderer::beginFrame()
     start = std::chrono::high_resolution_clock::now();
 }
 
-void Renderer::submitRenderPass( RenderPass& pass )
+void Renderer::submitRenderPass( RenderPass& pass, Scene const& scene, std::vector<Camera*> const& cameras )
 {
-    pass.record( *m_currentScene );
+    pass.record( scene, cameras );
     gpuTime += pass.getExecutionTimeMilliseconds();
     commandLists.push_back( pass.getCommandList() );
 }
