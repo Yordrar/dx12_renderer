@@ -29,7 +29,7 @@ VSOut commonVertexProcessing(VSIn vertexData)
     return vsOut;
 }
 
-#if defined(depth)
+#if defined(DEPTH)
 
 VSOut depth_vs( VSIn vertexData )
 {
@@ -43,7 +43,7 @@ void depth_ps(VSOut vsOut)
 
 #endif
 
-#if defined(main)
+#if defined(MAIN)
 
 VSOut main_vs( VSIn vertexData )
 {
@@ -60,7 +60,7 @@ struct ResourceIndices
 float4 main_ps(VSOut vsOut) : SV_Target
 {
     ResourceIndices indices = getBindlessIndicesBuffer<ResourceIndices>();
-    float4 col = texture2DResources[indices.textureIdx].Sample(sampler2DResources[0], vsOut.m_uvs);
+    float4 col = texture2DResources[indices.textureIdx].Sample(samplerResources[0], vsOut.m_uvs);
     return col;
 }
 

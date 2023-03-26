@@ -63,29 +63,6 @@ private:
         CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY m_topologyType;
         CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS m_rtFormats;
         CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT m_dsFormat;
-
-        bool operator==( PipelineStateStream const& other ) const
-        {
-            return memcmp( this, &other, sizeof( PipelineStateStream ) ) == 0;
-        }
-
-        struct Hasher
-        {
-            size_t operator()( PipelineStateStream const& pipelineStateStream ) const noexcept
-            {
-                // FNV-1a hash
-                std::size_t hash = 0xcbf29ce484222325;
-                char const* data = reinterpret_cast<char const*>( &pipelineStateStream );
-
-                for ( int i = 0; i < sizeof( pipelineStateStream ); ++i )
-                {
-                    hash ^= data[ i ];
-                    hash *= 0x100000001b3;
-                }
-
-                return hash;
-            }
-        };
     };
 
     MaterialDesc m_desc;

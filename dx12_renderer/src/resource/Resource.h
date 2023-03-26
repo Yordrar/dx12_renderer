@@ -28,7 +28,7 @@ public:
 	bool getNeedsCopyToGPU() const { return m_needsCopyToGPU; }
 	Descriptor const* getShaderResourceView();
 	Descriptor const* getConstantBufferView();
-	Descriptor const* getUniformAccessView();
+	Descriptor const* getUniformAccessView( UINT mipSlice );
 	Descriptor const* getRenderTargetView();
 	Descriptor const* getDepthStencilView();
 	D3D12_RESOURCE_STATES getResourceState() const { return m_resourceState; }
@@ -46,7 +46,7 @@ private:
 
 	std::unique_ptr<Descriptor> m_srv;
 	std::unique_ptr<Descriptor> m_cbv;
-	std::unique_ptr<Descriptor> m_uav;
+	std::vector< std::unique_ptr<Descriptor> > m_uavs;
 	std::unique_ptr<Descriptor> m_rtv;
 	std::unique_ptr<Descriptor> m_dsv;
 

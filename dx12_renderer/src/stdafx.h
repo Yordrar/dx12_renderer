@@ -22,6 +22,8 @@ using namespace Microsoft::WRL;
 
 // Strings
 #include <string>
+#include <cctype>
+#include <cwctype>
 
 // Containers
 #include <vector>

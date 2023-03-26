@@ -9,13 +9,16 @@ Material::Material( MaterialDesc const& materialDesc )
 {
     for ( Technique const& technique : m_desc.m_techniques )
     {
+        std::wstring passNameDefine;
+        passNameDefine.resize( technique.m_name.size() );
+        std::transform( technique.m_name.begin(), technique.m_name.end(), passNameDefine.begin(), std::towupper );
         ShaderManager::ShaderDesc vertexShaderDesc =
         {
             .m_filename = technique.m_shaderFilename,
             .m_entryPoint = technique.m_name + L"_vs",
             .m_shaderType = ShaderManager::ShaderType::VertexShader,
             .m_enableDebug = true,
-            .m_defines = {technique.m_name},
+            .m_defines = {passNameDefine},
         };
 
         ShaderManager::ShaderDesc pixelShaderDesc =
@@ -24,7 +27,7 @@ Material::Material( MaterialDesc const& materialDesc )
             .m_entryPoint = technique.m_name + L"_ps",
             .m_shaderType = ShaderManager::ShaderType::PixelShader,
             .m_enableDebug = true,
-            .m_defines = {technique.m_name},
+            .m_defines = {passNameDefine},
         };
 
         PipelineStateStream pipelineStateStream =

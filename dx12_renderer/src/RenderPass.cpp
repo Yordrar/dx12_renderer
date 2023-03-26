@@ -102,7 +102,13 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
     m_commandList->SetGraphicsRootDescriptorTable( 4, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetGraphicsRootDescriptorTable( 5, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetGraphicsRootDescriptorTable( 6, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 7, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 7, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 8, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 9, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 10, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 11, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 12, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    m_commandList->SetGraphicsRootDescriptorTable( 13, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
 
     // Clear and set render targets
     std::vector<CD3DX12_RESOURCE_BARRIER> barriers;
@@ -190,4 +196,21 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
 void RenderPass::addResourceView( Descriptor const& descriptor )
 {
     m_passResourceIndicesBufferData.push_back( descriptor.getDescriptorIndex() );
+}
+
+void RenderPass::addComputePassToWaitOn( ComputePass* computePass )
+{
+    m_computePassesToWaitOn.push_back( computePass );
+    m_computePassFenceCounters.push_back( 0 );
+}
+
+void RenderPass::waitOnComputePasses( ComPtr<ID3D12CommandQueue> cmdQueue, std::vector<ComputePass*> const& submittedComputePasses )
+{
+    for ( size_t i = 0; i < m_computePassesToWaitOn.size(); ++i )
+    {
+        if ( std::find( submittedComputePasses.begin(), submittedComputePasses.end(), m_computePassesToWaitOn[ i ] ) != submittedComputePasses.end() )
+        {
+            m_computePassesToWaitOn[ i ]->getFence().GPUWait( cmdQueue, ++m_computePassFenceCounters[ i ] );
+        }
+    }
 }

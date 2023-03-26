@@ -4,6 +4,7 @@
 
 #include <RendererConstants.h>
 #include <RenderPass.h>
+#include <ComputePass.h>
 #include <Fence.h>
 
 class Scene;
@@ -21,6 +22,7 @@ public:
 
     void beginFrame();
     void submitRenderPass( RenderPass& pass, Scene const& scene, std::vector<Camera*> const& cameras );
+    void submitComputePass( ComputePass& pass );
     void endFrame();
 
     void waitForIdleGPU();
@@ -30,6 +32,8 @@ public:
     static RECT getWindowRect() { return s_windowRect; }
     static ComPtr<ID3D12RootSignature> getRootSignature() { return s_rootSignature; }
     static uint64_t getTimestampFrequency() { return s_timestampFrequency; }
+    double getCPUFrameTime() const { return m_cpuFrameTime; }
+    double getGPUFrameTime() const { return m_gpuFrameTime; }
 
 private:
     void recordImguiCommandList();
@@ -54,5 +58,8 @@ private:
     ComPtr<ID3D12CommandAllocator> m_imguiCommandAllocators[ RendererConstants::sc_numBackBuffers ];
     bool m_imguiCallbackRegistered;
     ImguiCallback m_imguiUserCallback;
+
+    double m_cpuFrameTime;
+    double m_gpuFrameTime;
 };
 

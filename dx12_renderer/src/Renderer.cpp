@@ -113,7 +113,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     }
 
     // Create root signature
-    CD3DX12_ROOT_PARAMETER slotRootParameters[ 8 ] = {};
+    CD3DX12_ROOT_PARAMETER slotRootParameters[ 14 ] = {};
 
     slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Render Pass buffer
     slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Camera buffer
@@ -130,7 +130,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     };
     slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeBuffer );
 
-    D3D12_DESCRIPTOR_RANGE srvRangeTexture2D =
+    D3D12_DESCRIPTOR_RANGE srvRangeTexture1D =
     {
         .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
         .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
@@ -138,9 +138,9 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
         .RegisterSpace = 1,
         .OffsetInDescriptorsFromTableStart = 0,
     };
-    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeTexture2D );
+    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeTexture1D );
 
-    D3D12_DESCRIPTOR_RANGE srvRangeTextureCube =
+    D3D12_DESCRIPTOR_RANGE srvRangeTexture2D =
     {
         .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
         .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
@@ -148,7 +148,71 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
         .RegisterSpace = 2,
         .OffsetInDescriptorsFromTableStart = 0,
     };
-    slotRootParameters[ 6 ].InitAsDescriptorTable( 1, &srvRangeTextureCube );
+    slotRootParameters[ 6 ].InitAsDescriptorTable( 1, &srvRangeTexture2D );
+
+    D3D12_DESCRIPTOR_RANGE srvRangeTexture3D =
+    {
+        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
+        .BaseShaderRegister = 0,
+        .RegisterSpace = 3,
+        .OffsetInDescriptorsFromTableStart = 0,
+    };
+    slotRootParameters[ 7 ].InitAsDescriptorTable( 1, &srvRangeTexture3D );
+
+    D3D12_DESCRIPTOR_RANGE srvRangeTextureCube =
+    {
+        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
+        .BaseShaderRegister = 0,
+        .RegisterSpace = 4,
+        .OffsetInDescriptorsFromTableStart = 0,
+    };
+    slotRootParameters[ 8 ].InitAsDescriptorTable( 1, &srvRangeTextureCube );
+
+
+
+    D3D12_DESCRIPTOR_RANGE srvRangeRWBuffer =
+    {
+        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
+        .BaseShaderRegister = 0,
+        .RegisterSpace = 0,
+        .OffsetInDescriptorsFromTableStart = 0,
+    };
+    slotRootParameters[ 9 ].InitAsDescriptorTable( 1, &srvRangeRWBuffer );
+
+    D3D12_DESCRIPTOR_RANGE srvRangeRWTexture1D =
+    {
+        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
+        .BaseShaderRegister = 0,
+        .RegisterSpace = 1,
+        .OffsetInDescriptorsFromTableStart = 0,
+    };
+    slotRootParameters[ 10 ].InitAsDescriptorTable( 1, &srvRangeRWTexture1D );
+
+    D3D12_DESCRIPTOR_RANGE srvRangeRWTexture2D =
+    {
+        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
+        .BaseShaderRegister = 0,
+        .RegisterSpace = 2,
+        .OffsetInDescriptorsFromTableStart = 0,
+    };
+    slotRootParameters[ 11 ].InitAsDescriptorTable( 1, &srvRangeRWTexture2D );
+
+    D3D12_DESCRIPTOR_RANGE srvRangeRWTexture3D =
+    {
+        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
+        .BaseShaderRegister = 0,
+        .RegisterSpace = 3,
+        .OffsetInDescriptorsFromTableStart = 0,
+    };
+    slotRootParameters[ 12 ].InitAsDescriptorTable( 1, &srvRangeRWTexture3D );
+
+
 
     D3D12_DESCRIPTOR_RANGE srvRangeSampler =
     {
@@ -158,7 +222,9 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
         .RegisterSpace = 0,
         .OffsetInDescriptorsFromTableStart = 0,
     };
-    slotRootParameters[ 7 ].InitAsDescriptorTable( 1, &srvRangeSampler );
+    slotRootParameters[ 13 ].InitAsDescriptorTable( 1, &srvRangeSampler );
+
+
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( _countof(slotRootParameters), slotRootParameters, 0, nullptr,
                                              D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -225,13 +291,14 @@ Renderer::~Renderer()
 }
 
 static auto start = std::chrono::high_resolution_clock::now();
-static std::vector<ID3D12CommandList*> commandLists;
-static double gpuTime = 0;
+static std::vector<RenderPass*> submittedRenderPasses;
+static std::vector<ComputePass*> submittedComputePasses;
 void Renderer::beginFrame()
 {
-    commandLists.clear();
+    submittedRenderPasses.clear();
+    submittedComputePasses.clear();
 
-    gpuTime = 0;
+    m_gpuFrameTime = 0;
 
     ImGui_ImplDX12_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -243,8 +310,15 @@ void Renderer::beginFrame()
 void Renderer::submitRenderPass( RenderPass& pass, Scene const& scene, std::vector<Camera*> const& cameras )
 {
     pass.record( scene, cameras );
-    gpuTime += pass.getExecutionTimeMilliseconds();
-    commandLists.push_back( pass.getCommandList() );
+    m_gpuFrameTime += pass.getExecutionTimeMilliseconds();
+    submittedRenderPasses.push_back( &pass );
+}
+
+void Renderer::submitComputePass( ComputePass& pass )
+{
+    pass.record();
+    m_gpuFrameTime += pass.getExecutionTimeMilliseconds();
+    submittedComputePasses.push_back( &pass );
 }
 
 void Renderer::endFrame()
@@ -253,10 +327,24 @@ void Renderer::endFrame()
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( end - start );
-    OutputDebugStringA( std::string( "CPU time: " + std::to_string( elapsed.count() ) + "ms\n" ).c_str() );
-    OutputDebugStringA( std::string( "GPU time: " + std::to_string( gpuTime ) + "ms\n" ).c_str() );
+    m_cpuFrameTime = static_cast<double>( elapsed.count() );
 
-    m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>( commandLists.size() ), commandLists.data() );
+    for ( RenderPass* pass : submittedRenderPasses )
+    {
+        pass->waitOnComputePasses( m_graphicsCmdQueue, submittedComputePasses );
+        ID3D12CommandList* commandList = pass->getCommandList();
+        m_graphicsCmdQueue->ExecuteCommandLists( 1, &commandList );
+    }
+    ID3D12CommandList* imguiCmdList = m_imguiCommandList.Get();
+    m_graphicsCmdQueue->ExecuteCommandLists( 1, &imguiCmdList );
+
+    for ( ComputePass* pass : submittedComputePasses )
+    {
+        ID3D12CommandList* commandList = pass->getCommandList();
+        m_computeCmdQueue->ExecuteCommandLists( 1, &commandList );
+        pass->getFence().GPUSignal( m_graphicsCmdQueue, pass->getFence().getCompletedValue() + 1 );
+    }
+
     m_swapChain->Present( 1, 0 );
 
     // Schedule a Signal command in the queue.
@@ -318,5 +406,4 @@ void Renderer::recordImguiCommandList()
     PIXEndEvent();
 
     m_imguiCommandList->Close();
-    commandLists.push_back( m_imguiCommandList.Get() );
 }

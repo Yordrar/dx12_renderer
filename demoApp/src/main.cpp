@@ -337,12 +337,15 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     ResourceManager::it().createSampler(L"globalSampler");
 
-    bool show_demo_window = true;
-    renderer.registerImguiCallback( [&show_demo_window] ()
+    bool show_window = true;
+    renderer.registerImguiCallback( [&show_window, &renderer] ()
                                     {
-                                        if ( show_demo_window )
+                                        if ( show_window )
                                         {
-                                            ImGui::ShowDemoWindow( &show_demo_window );
+                                            ImGui::Begin( "Stats", &show_window );
+                                            ImGui::LabelText( "", "CPU Time: %f ms", renderer.getCPUFrameTime() );
+                                            ImGui::LabelText( "", "GPU Time: %f ms", renderer.getGPUFrameTime() );
+                                            ImGui::End();
                                         }
                                     } );
 

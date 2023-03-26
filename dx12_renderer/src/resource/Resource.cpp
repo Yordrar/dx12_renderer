@@ -11,7 +11,7 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC const& resourceDesc
     , m_subresourceData( subresourceData )
     , m_srv( nullptr )
     , m_cbv( nullptr )
-    , m_uav( nullptr )
+    , m_uavs()
     , m_rtv( nullptr )
     , m_dsv( nullptr )
     , m_resourceState( D3D12_RESOURCE_STATE_GENERIC_READ )
@@ -49,6 +49,8 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC const& resourceDesc
                                                  nullptr,
                                                  IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
     setDebugName( name );
+
+    m_uavs.resize( getResourceDesc().MipLevels );
 }
 
 Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
@@ -58,7 +60,7 @@ Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
     , m_subresourceData( D3D12_SUBRESOURCE_DATA{ nullptr, 0, 0 } )
     , m_srv( nullptr )
     , m_cbv( nullptr )
-    , m_uav( nullptr )
+    , m_uavs()
     , m_rtv( nullptr )
     , m_dsv( nullptr )
     , m_resourceState( D3D12_RESOURCE_STATE_COMMON )
@@ -74,6 +76,8 @@ Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
                                                  nullptr,
                                                  IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
     setDebugName( name );
+
+    m_uavs.resize( getResourceDesc().MipLevels );
 }
 
 Resource::~Resource()
@@ -88,9 +92,12 @@ Resource::~Resource()
         DescriptorHeap::getDescriptorHeapCbvSrvUav().removeDescriptor( *m_srv );
     }
 
-    if ( m_uav )
+    for ( std::unique_ptr<Descriptor> const& uav : m_uavs )
     {
-        DescriptorHeap::getDescriptorHeapCbvSrvUav().removeDescriptor( *m_uav );
+        if ( uav )
+        {
+            DescriptorHeap::getDescriptorHeapCbvSrvUav().removeDescriptor( *uav );
+        }
     }
 
     if ( m_rtv )
@@ -143,7 +150,9 @@ Descriptor const* Resource::getShaderResourceView()
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
         UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addSRV( getResource(), &srvDesc );
-        m_srv = std::move( std::make_unique<Descriptor>( DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+        m_srv = std::move( std::make_unique<Descriptor>( this,
+                                                         Descriptor::Type::ShaderResourceView,
+                                                         DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
                                                          descriptorIndex,
                                                          DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() ) );
     }
@@ -153,14 +162,16 @@ Descriptor const* Resource::getShaderResourceView()
 
 Descriptor const* Resource::getConstantBufferView()
 {
-    if ( !m_cbv && ( getResourceDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER ) )
+    if ( !m_cbv && getResourceDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER )
     {
         D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
         cbvDesc.BufferLocation = getGPUVirtualAddress();
         cbvDesc.SizeInBytes = static_cast<UINT>( getResourceDesc().Width );
 
         UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addCBV( &cbvDesc );
-        m_cbv = std::move( std::make_unique<Descriptor>( DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+        m_cbv = std::move( std::make_unique<Descriptor>( this,
+                                                         Descriptor::Type::ConstantBufferView,
+                                                         DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
                                                          descriptorIndex,
                                                          DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() ) );
     }
@@ -168,9 +179,51 @@ Descriptor const* Resource::getConstantBufferView()
     return m_cbv.get();
 }
 
-Descriptor const* Resource::getUniformAccessView()
+Descriptor const* Resource::getUniformAccessView( UINT mipSlice )
 {
-    return nullptr;
+    assert( mipSlice < getResourceDesc().MipLevels );
+    if ( !m_uavs[ mipSlice ] && ( getResourceDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS ) )
+    {
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+        uavDesc.Format = getResourceDesc().Format;
+        switch ( getResourceDesc().Dimension )
+        {
+            case D3D12_RESOURCE_DIMENSION_BUFFER:
+                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+                uavDesc.Buffer.FirstElement = 0;
+                uavDesc.Buffer.NumElements = 1;
+                uavDesc.Buffer.StructureByteStride = static_cast<UINT>( getResourceDesc().Width );
+                uavDesc.Buffer.CounterOffsetInBytes = 0;
+                uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+                break;
+            case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
+                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
+                uavDesc.Texture1D.MipSlice = mipSlice;
+                break;
+            case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+                uavDesc.Texture2D.MipSlice = mipSlice;
+                uavDesc.Texture2D.PlaneSlice = 0;
+                break;
+            case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+                uavDesc.Texture3D.MipSlice = mipSlice;
+                uavDesc.Texture3D.FirstWSlice = 0;
+                uavDesc.Texture3D.WSize = 0;
+                break;
+            default:
+                break;
+        }
+
+        UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addUAV( getResource(), &uavDesc );
+        m_uavs[ mipSlice ] = std::move( std::make_unique<Descriptor>( this,
+                                                                      Descriptor::Type::UniformAccessView,
+                                                                      DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                                                                      descriptorIndex,
+                                                                      DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() ) );
+    }
+
+    return m_uavs[ mipSlice ].get();
 }
 
 Descriptor const* Resource::getRenderTargetView()
@@ -184,7 +237,9 @@ Descriptor const* Resource::getRenderTargetView()
         rtvDesc.Texture2D.PlaneSlice = 0;
 
         UINT descriptorIndex = DescriptorHeap::getDescriptorHeapRtv().addRTV( getResource(), &rtvDesc );
-        m_rtv = std::move( std::make_unique<Descriptor>( DescriptorHeap::getDescriptorHeapRtv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+        m_rtv = std::move( std::make_unique<Descriptor>( this,
+                                                         Descriptor::Type::RenderTargetView,
+                                                         DescriptorHeap::getDescriptorHeapRtv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
                                                          descriptorIndex,
                                                          DescriptorHeap::getDescriptorHeapRtv().getIncrementSize() ) );
     }
@@ -202,7 +257,9 @@ Descriptor const* Resource::getDepthStencilView()
         dsvDesc.Texture2D.MipSlice = 0;
 
         UINT descriptorIndex = DescriptorHeap::getDescriptorHeapDsv().addDSV( getResource(), &dsvDesc );
-        m_dsv = std::move( std::make_unique<Descriptor>( DescriptorHeap::getDescriptorHeapDsv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+        m_dsv = std::move( std::make_unique<Descriptor>( this,
+                                                         Descriptor::Type::DepthStencilView,
+                                                         DescriptorHeap::getDescriptorHeapDsv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
                                                          descriptorIndex,
                                                          DescriptorHeap::getDescriptorHeapDsv().getIncrementSize() ) );
     }
