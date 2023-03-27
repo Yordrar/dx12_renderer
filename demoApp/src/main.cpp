@@ -195,13 +195,15 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     scene = std::make_unique<Scene>(L"mainScene");
 
+    Resource* testTexture = ResourceManager::it().createResource( L"testTexture", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, 64, 64, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS ) );
+
     std::vector<std::wstring> loadedMaterials;
     loadedMaterials.reserve( materials.size() );
     for ( tinyobj::material_t const& material : materials )
     {
         int width, height, nrChannelsInFile;
         uint8_t* data = stbi_load( ( mtlDir + material.diffuse_texname ).c_str(), &width, &height, &nrChannelsInFile, 4 );
-        CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 1, 1, 0 );
+        CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 1 );
 
         D3D12_SUBRESOURCE_DATA subresData;
         subresData.pData = data;
@@ -237,7 +239,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         newMaterialDesc.m_techniques.push_back( mainTechnique );
         if ( texture )
         {
-            newMaterialDesc.m_resourceViews.push_back( *texture->getShaderResourceView() );
+            newMaterialDesc.m_resourceViews.push_back( *testTexture->getShaderResourceView() );
         }
         newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
         newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
@@ -335,16 +337,23 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     RenderPass depthPass(L"Depth Prepass", L"depth", L"", L"mainDepthStencilTarget");
     RenderPass mainPass(L"Main Pass", L"main", L"backbuffer", L"mainDepthStencilTarget");
 
-    ResourceManager::it().createSampler(L"globalSampler");
+    ComputePass test( L"test", L"shader/testCompute.hlsl", 8, 8, 1 );
+    test.addResourceView( *testTexture->getUnorderedAccessView( 0 ) );
+
+    ResourceManager::it().createSampler( L"globalSampler" );
+
+    mainPass.addComputePassToWaitOn( &test );
 
     bool show_window = true;
-    renderer.registerImguiCallback( [&show_window, &renderer] ()
+    renderer.registerImguiCallback( [&show_window, &renderer, &depthPass, &mainPass] ()
                                     {
                                         if ( show_window )
                                         {
                                             ImGui::Begin( "Stats", &show_window );
                                             ImGui::LabelText( "", "CPU Time: %f ms", renderer.getCPUFrameTime() );
                                             ImGui::LabelText( "", "GPU Time: %f ms", renderer.getGPUFrameTime() );
+                                            ImGui::LabelText( "", "Depth Prepass Time: %f ms", depthPass.getExecutionTimeMilliseconds() );
+                                            ImGui::LabelText( "", "Main Pass Time: %f ms", mainPass.getExecutionTimeMilliseconds() );
                                             ImGui::End();
                                         }
                                     } );
@@ -359,6 +368,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         }
 
         renderer.beginFrame();
+        renderer.submitComputePass( test );
         renderer.submitRenderPass( depthPass, *scene, { &scene->getCamera() } );
         renderer.submitRenderPass( mainPass, *scene, { &scene->getCamera() } );
         renderer.endFrame();

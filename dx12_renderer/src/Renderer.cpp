@@ -264,6 +264,17 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     //ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
+    // Reserve the first descriptor for imgui's font texture
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
+    {
+        .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+        .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+        .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+    };
+    srvDesc.Texture2D.MipLevels = 1;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    // Because it's the first descriptor, we can just get a handle to heap start to get it
+    DescriptorHeap::getDescriptorHeapCbvSrvUav().addSRV( nullptr, &srvDesc );
     ImGui_ImplWin32_Init( hWnd );
     ImGui_ImplDX12_Init( device().Get(),
                          RendererConstants::sc_numBackBuffers,
@@ -342,7 +353,7 @@ void Renderer::endFrame()
     {
         ID3D12CommandList* commandList = pass->getCommandList();
         m_computeCmdQueue->ExecuteCommandLists( 1, &commandList );
-        pass->getFence().GPUSignal( m_graphicsCmdQueue, pass->getFence().getCompletedValue() + 1 );
+        pass->getFence().GPUSignal( m_computeCmdQueue, pass->getFence().getCompletedValue() + 1 );
     }
 
     m_swapChain->Present( 1, 0 );

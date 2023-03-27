@@ -16,7 +16,7 @@ ComputePass::ComputePass( wchar_t const* name,
     , m_threadGroupCountY( threadGroupCountY )
     , m_threadGroupCountZ( threadGroupCountZ )
     , m_commandList( nullptr )
-    , m_profilerQueryIndex( Profiler::it().allocateQueryIndex() )
+    , m_profilerQueryIndex( 0 )
     , m_executionTimeInMilliseconds( 0 )
     , m_passBuffer( nullptr )
     , m_passResourceIndicesBuffer( nullptr )
@@ -82,8 +82,6 @@ void ComputePass::record()
                                                              D3D12_SUBRESOURCE_DATA{ &m_passBufferData, static_cast<LONG_PTR>( sizeof( m_passBufferData ) ), 0 } );
     }
 
-    Profiler::it().startQuery( m_commandList.Get(), m_profilerQueryIndex );
-
     ResourceManager::it().copyResourcesToGPU( m_commandList );
 
     PIXBeginEvent( m_commandList.Get(), PIX_COLOR_DEFAULT, m_name.c_str() );
@@ -114,11 +112,13 @@ void ComputePass::record()
     m_commandList->SetComputeRootDescriptorTable( 12, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
     m_commandList->SetComputeRootDescriptorTable( 13, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
 
+    m_commandList->SetComputeRootConstantBufferView( 0, m_passBuffer->getGPUVirtualAddress() );
+
     // Transition UAV resources
     std::vector<CD3DX12_RESOURCE_BARRIER> uavBarriers;
     for ( Descriptor const* descriptor : m_resourceViews )
     {
-        if ( descriptor->getType() == Descriptor::Type::UniformAccessView )
+        if ( descriptor->getType() == Descriptor::Type::UniformAccessView && descriptor->getResource()->getResourceState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS )
         {
             CD3DX12_RESOURCE_BARRIER uavBarrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_UNORDERED_ACCESS );
             uavBarriers.push_back( uavBarrier );
@@ -136,7 +136,7 @@ void ComputePass::record()
     {
         if ( descriptor->getType() == Descriptor::Type::UniformAccessView )
         {
-            CD3DX12_RESOURCE_BARRIER uavBarrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_GENERIC_READ );
+            CD3DX12_RESOURCE_BARRIER uavBarrier = CD3DX12_RESOURCE_BARRIER::UAV( descriptor->getResource()->getResource().Get() );
             uavBarriers.push_back( uavBarrier );
         }
     }
@@ -146,9 +146,6 @@ void ComputePass::record()
     }
 
     PIXEndEvent( m_commandList.Get() );
-
-    Profiler::it().endQuery( m_commandList.Get(), m_profilerQueryIndex );
-    m_executionTimeInMilliseconds = Profiler::it().getResolvedQuery( m_profilerQueryIndex );
 
     m_commandList->Close();
 }

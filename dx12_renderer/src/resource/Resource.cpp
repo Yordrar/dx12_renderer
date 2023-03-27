@@ -14,7 +14,7 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC const& resourceDesc
     , m_uavs()
     , m_rtv( nullptr )
     , m_dsv( nullptr )
-    , m_resourceState( D3D12_RESOURCE_STATE_GENERIC_READ )
+    , m_resourceState( D3D12_RESOURCE_STATE_COMMON )
     , m_needsCopyToGPU( subresourceData.pData != nullptr )
 {
     FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -36,7 +36,7 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC const& resourceDesc
     Renderer::device()->CreateCommittedResource( &heapProperties,
                                                  D3D12_HEAP_FLAG_NONE,
                                                  &resourceDesc,
-                                                 D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                 D3D12_RESOURCE_STATE_COMMON,
                                                  clearValuePtr,
                                                  IID_PPV_ARGS( m_resource.GetAddressOf() ) );
 
@@ -179,7 +179,7 @@ Descriptor const* Resource::getConstantBufferView()
     return m_cbv.get();
 }
 
-Descriptor const* Resource::getUniformAccessView( UINT mipSlice )
+Descriptor const* Resource::getUnorderedAccessView( UINT mipSlice )
 {
     assert( mipSlice < getResourceDesc().MipLevels );
     if ( !m_uavs[ mipSlice ] && ( getResourceDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS ) )

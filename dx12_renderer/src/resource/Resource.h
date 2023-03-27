@@ -28,7 +28,7 @@ public:
 	bool getNeedsCopyToGPU() const { return m_needsCopyToGPU; }
 	Descriptor const* getShaderResourceView();
 	Descriptor const* getConstantBufferView();
-	Descriptor const* getUniformAccessView( UINT mipSlice );
+	Descriptor const* getUnorderedAccessView( UINT mipSlice );
 	Descriptor const* getRenderTargetView();
 	Descriptor const* getDepthStencilView();
 	D3D12_RESOURCE_STATES getResourceState() const { return m_resourceState; }
