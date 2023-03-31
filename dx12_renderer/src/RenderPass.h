@@ -10,8 +10,9 @@ class RenderPass
 public:
     RenderPass( wchar_t const* name,
                 wchar_t const* techniqueName,
-                wchar_t const* renderTargetName,
-                wchar_t const* depthStencilTargetName );
+                Descriptor const* renderTarget,
+                Descriptor const* depthStencilTarget,
+                bool useBackbufferAsRenderTarget = false );
     ~RenderPass();
 
     ID3D12GraphicsCommandList* getCommandList() const { return m_commandList.Get(); }
@@ -34,10 +35,9 @@ private:
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     ComPtr<ID3D12CommandAllocator> m_commandAllocators[ RendererConstants::sc_numBackBuffers ];
 
-    std::wstring m_renderTargetName;
-    std::wstring m_depthStencilTargetName;
-    Resource* m_renderTarget;
-    Resource* m_depthStencilTarget;
+    Descriptor const* m_renderTarget;
+    Descriptor const* m_depthStencilTarget;
+    bool m_useBackbufferAsRenderTarget;
 
     D3D12_RECT m_scissorRect;
 
@@ -49,6 +49,8 @@ private:
 
     Resource* m_passResourceIndicesBuffer;
     std::vector<UINT> m_passResourceIndicesBufferData;
+
+    std::vector<Descriptor> m_passResources;
 
     std::vector<ComputePass*> m_computePassesToWaitOn;
     std::vector<UINT> m_computePassFenceCounters;

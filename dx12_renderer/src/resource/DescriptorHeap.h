@@ -15,12 +15,12 @@ public:
     ComPtr<ID3D12DescriptorHeap> getHeap() const { return m_heap; }
     UINT getIncrementSize() const { return Renderer::device()->GetDescriptorHandleIncrementSize( m_type ); }
 
-    UINT addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC* cbv );
-    UINT addSRV( ComPtr<ID3D12Resource> resource, D3D12_SHADER_RESOURCE_VIEW_DESC* srv );
-    UINT addUAV( ComPtr<ID3D12Resource> resource, D3D12_UNORDERED_ACCESS_VIEW_DESC* uav );
+    UINT addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC const* cbv );
+    UINT addSRV( ComPtr<ID3D12Resource> resource, D3D12_SHADER_RESOURCE_VIEW_DESC const* srv );
+    UINT addUAV( ComPtr<ID3D12Resource> resource, D3D12_UNORDERED_ACCESS_VIEW_DESC const* uav );
     UINT addSampler( D3D12_SAMPLER_DESC* samplerDesc );
-    UINT addRTV( ComPtr<ID3D12Resource> resource, D3D12_RENDER_TARGET_VIEW_DESC* rtv );
-    UINT addDSV( ComPtr<ID3D12Resource> resource, D3D12_DEPTH_STENCIL_VIEW_DESC* dsv );
+    UINT addRTV( ComPtr<ID3D12Resource> resource, D3D12_RENDER_TARGET_VIEW_DESC const* rtv );
+    UINT addDSV( ComPtr<ID3D12Resource> resource, D3D12_DEPTH_STENCIL_VIEW_DESC const* dsv );
 
     void removeDescriptor( Descriptor const& descriptor );
 

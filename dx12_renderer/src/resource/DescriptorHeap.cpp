@@ -15,7 +15,7 @@ DescriptorHeap::DescriptorHeap( D3D12_DESCRIPTOR_HEAP_DESC heapDesc )
     Renderer::device()->CreateDescriptorHeap( &heapDesc, IID_PPV_ARGS( m_heap.GetAddressOf() ) );
 }
 
-UINT DescriptorHeap::addSRV( ComPtr<ID3D12Resource> resource, D3D12_SHADER_RESOURCE_VIEW_DESC* srv )
+UINT DescriptorHeap::addSRV( ComPtr<ID3D12Resource> resource, D3D12_SHADER_RESOURCE_VIEW_DESC const* srv )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
 
@@ -27,7 +27,7 @@ UINT DescriptorHeap::addSRV( ComPtr<ID3D12Resource> resource, D3D12_SHADER_RESOU
     return slot;
 }
 
-UINT DescriptorHeap::addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC* cbv )
+UINT DescriptorHeap::addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC const* cbv )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
 
@@ -39,7 +39,7 @@ UINT DescriptorHeap::addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC* cbv )
     return slot;
 }
 
-UINT DescriptorHeap::addUAV( ComPtr<ID3D12Resource> resource, D3D12_UNORDERED_ACCESS_VIEW_DESC* uav )
+UINT DescriptorHeap::addUAV( ComPtr<ID3D12Resource> resource, D3D12_UNORDERED_ACCESS_VIEW_DESC const* uav )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
 
@@ -63,7 +63,7 @@ UINT DescriptorHeap::addSampler( D3D12_SAMPLER_DESC* samplerDesc )
     return slot;
 }
 
-UINT DescriptorHeap::addRTV( ComPtr<ID3D12Resource> resource, D3D12_RENDER_TARGET_VIEW_DESC* rtv )
+UINT DescriptorHeap::addRTV( ComPtr<ID3D12Resource> resource, D3D12_RENDER_TARGET_VIEW_DESC const* rtv )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_RTV );
 
@@ -75,7 +75,7 @@ UINT DescriptorHeap::addRTV( ComPtr<ID3D12Resource> resource, D3D12_RENDER_TARGE
     return slot;
 }
 
-UINT DescriptorHeap::addDSV( ComPtr<ID3D12Resource> resource, D3D12_DEPTH_STENCIL_VIEW_DESC* dsv )
+UINT DescriptorHeap::addDSV( ComPtr<ID3D12Resource> resource, D3D12_DEPTH_STENCIL_VIEW_DESC const* dsv )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_DSV );
 

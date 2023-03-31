@@ -73,10 +73,20 @@ void ComputePass::record()
         m_passResourceIndicesBuffer = ResourceManager::it().createResource( ( m_name + L"_passResourceIndicesBuffer" ).c_str(),
                                                                             CD3DX12_RESOURCE_DESC::Buffer( std::max( m_passResourceIndicesBufferData.size() * sizeof( UINT ), 1Ui64 ) ),
                                                                             D3D12_SUBRESOURCE_DATA{ m_passResourceIndicesBufferData.data(), static_cast<LONG_PTR>( m_passResourceIndicesBufferData.size() * sizeof( UINT ) ), 0 } );
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
+        {
+            .Format = m_passResourceIndicesBuffer->getResourceDesc().Format,
+            .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+        };
+        srvDesc.Buffer.FirstElement = 0;
+        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+        srvDesc.Buffer.NumElements = 1;
+        srvDesc.Buffer.StructureByteStride = m_passResourceIndicesBuffer->getResourceDesc().Width;
+        m_passBufferData.passResourceIndicesBufferIndex = m_passResourceIndicesBuffer->getShaderResourceView( srvDesc )->getDescriptorIndex();
     }
     if ( !m_passBuffer )
     {
-        m_passBufferData.passResourceIndicesBufferIndex = m_passResourceIndicesBuffer->getShaderResourceView()->getDescriptorIndex();
         m_passBuffer = ResourceManager::it().createResource( ( m_name + L"_passBuffer" ).c_str(),
                                                              CD3DX12_RESOURCE_DESC::Buffer( std::max( sizeof( m_passBufferData ), 1Ui64 ) ),
                                                              D3D12_SUBRESOURCE_DATA{ &m_passBufferData, static_cast<LONG_PTR>( sizeof( m_passBufferData ) ), 0 } );
@@ -118,7 +128,8 @@ void ComputePass::record()
     std::vector<CD3DX12_RESOURCE_BARRIER> uavBarriers;
     for ( Descriptor const* descriptor : m_resourceViews )
     {
-        if ( descriptor->getType() == Descriptor::Type::UniformAccessView && descriptor->getResource()->getResourceState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS )
+        if ( descriptor->getType() == Descriptor::Type::UnorderedAccessView &&
+             descriptor->getResource()->getResourceState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS )
         {
             CD3DX12_RESOURCE_BARRIER uavBarrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_UNORDERED_ACCESS );
             uavBarriers.push_back( uavBarrier );
@@ -134,9 +145,9 @@ void ComputePass::record()
     uavBarriers.clear();
     for ( Descriptor const* descriptor : m_resourceViews )
     {
-        if ( descriptor->getType() == Descriptor::Type::UniformAccessView )
+        if ( descriptor->getType() == Descriptor::Type::UnorderedAccessView )
         {
-            CD3DX12_RESOURCE_BARRIER uavBarrier = CD3DX12_RESOURCE_BARRIER::UAV( descriptor->getResource()->getResource().Get() );
+            CD3DX12_RESOURCE_BARRIER uavBarrier = CD3DX12_RESOURCE_BARRIER::UAV( descriptor->getResource()->getD3DResource().Get() );
             uavBarriers.push_back( uavBarrier );
         }
     }
@@ -150,8 +161,8 @@ void ComputePass::record()
     m_commandList->Close();
 }
 
-void ComputePass::addResourceView( Descriptor const& descriptor )
+void ComputePass::addResourceView( Descriptor const* descriptor )
 {
-    m_passResourceIndicesBufferData.push_back( descriptor.getDescriptorIndex() );
-    m_resourceViews.push_back( &descriptor );
+    m_passResourceIndicesBufferData.push_back( descriptor->getDescriptorIndex() );
+    m_resourceViews.push_back( descriptor );
 }

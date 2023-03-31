@@ -83,7 +83,7 @@ void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> comm
     std::vector<Resource*> resourcesToCopy;
     for ( ResourceMap::value_type& resource_pair : m_resources )
     {
-        if ( resource_pair.second->getNeedsCopyToGPU() )
+        if ( resource_pair.second->getNeedsCopyToGPU() && resource_pair.second->getResourceState() != D3D12_RESOURCE_STATE_COPY_DEST )
         {
             CD3DX12_RESOURCE_BARRIER preCopyBarrier = resource_pair.second->getTransitionBarrier( D3D12_RESOURCE_STATE_COPY_DEST );
             preCopyBarriers.push_back( preCopyBarrier );
@@ -99,16 +99,5 @@ void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> comm
     for ( Resource* resource : resourcesToCopy )
     {
         resource->copyDataToGPU( commandList );
-    }
-
-    std::vector<CD3DX12_RESOURCE_BARRIER> postCopyBarriers;
-    for ( Resource* resource : resourcesToCopy )
-    {
-        CD3DX12_RESOURCE_BARRIER postCopyBarrier = resource->getTransitionBarrier( D3D12_RESOURCE_STATE_COMMON );
-        postCopyBarriers.push_back( postCopyBarrier );
-    }
-    if ( postCopyBarriers.size() > 0 )
-    {
-        commandList->ResourceBarrier( static_cast<UINT>( postCopyBarriers.size() ), postCopyBarriers.data() );
     }
 }

@@ -37,8 +37,9 @@ VSOut depth_vs( VSIn vertexData )
 }
 
 
-void depth_ps(VSOut vsOut)
+float4 depth_ps(VSOut vsOut) : SV_Target
 {
+    return float4(0.0, 1.0, 0.0, 1.0);
 }
 
 #endif

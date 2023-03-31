@@ -9,11 +9,6 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC const& resourceDesc
     , m_resource( nullptr )
     , m_intermediateUploadBuffer( nullptr )
     , m_subresourceData( subresourceData )
-    , m_srv( nullptr )
-    , m_cbv( nullptr )
-    , m_uavs()
-    , m_rtv( nullptr )
-    , m_dsv( nullptr )
     , m_resourceState( D3D12_RESOURCE_STATE_COMMON )
     , m_needsCopyToGPU( subresourceData.pData != nullptr )
 {
@@ -49,8 +44,6 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC const& resourceDesc
                                                  nullptr,
                                                  IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
     setDebugName( name );
-
-    m_uavs.resize( getResourceDesc().MipLevels );
 }
 
 Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
@@ -58,11 +51,6 @@ Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
     , m_resource( resource )
     , m_intermediateUploadBuffer( nullptr )
     , m_subresourceData( D3D12_SUBRESOURCE_DATA{ nullptr, 0, 0 } )
-    , m_srv( nullptr )
-    , m_cbv( nullptr )
-    , m_uavs()
-    , m_rtv( nullptr )
-    , m_dsv( nullptr )
     , m_resourceState( D3D12_RESOURCE_STATE_COMMON )
     , m_needsCopyToGPU( false )
 {
@@ -76,195 +64,62 @@ Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
                                                  nullptr,
                                                  IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
     setDebugName( name );
-
-    m_uavs.resize( getResourceDesc().MipLevels );
 }
 
 Resource::~Resource()
 {
-    if ( m_cbv )
-    {
-        DescriptorHeap::getDescriptorHeapCbvSrvUav().removeDescriptor( *m_cbv );
-    }
-
-    if ( m_srv )
-    {
-        DescriptorHeap::getDescriptorHeapCbvSrvUav().removeDescriptor( *m_srv );
-    }
-
-    for ( std::unique_ptr<Descriptor> const& uav : m_uavs )
-    {
-        if ( uav )
-        {
-            DescriptorHeap::getDescriptorHeapCbvSrvUav().removeDescriptor( *uav );
-        }
-    }
-
-    if ( m_rtv )
-    {
-        DescriptorHeap::getDescriptorHeapRtv().removeDescriptor( *m_rtv );
-    }
-
-    if ( m_dsv )
-    {
-        DescriptorHeap::getDescriptorHeapDsv().removeDescriptor( *m_dsv );
-    }
 }
 
-Descriptor const* Resource::getShaderResourceView()
+Descriptor const* Resource::getConstantBufferView( D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc )
 {
-    if ( !m_srv )
-    {
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-        srvDesc.Format = getResourceDesc().Format;
-        switch ( getResourceDesc().Dimension )
-        {
-            case D3D12_RESOURCE_DIMENSION_BUFFER:
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-                srvDesc.Buffer.FirstElement = 0;
-                srvDesc.Buffer.NumElements = 1;
-                srvDesc.Buffer.StructureByteStride = static_cast<UINT>( getResourceDesc().Width );
-                break;
-            case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE1D;
-                srvDesc.Texture1D.MipLevels = getResourceDesc().MipLevels;
-                srvDesc.Texture1D.MostDetailedMip = 0;
-                srvDesc.Texture1D.ResourceMinLODClamp = 0;
-                break;
-            case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-                srvDesc.Texture2D.MipLevels = getResourceDesc().MipLevels;
-                srvDesc.Texture2D.MostDetailedMip = 0;
-                srvDesc.Texture2D.PlaneSlice = 0;
-                srvDesc.Texture2D.ResourceMinLODClamp = 0;
-                break;
-            case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
-                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-                srvDesc.Texture3D.MipLevels = getResourceDesc().MipLevels;
-                srvDesc.Texture3D.MostDetailedMip = 0;
-                srvDesc.Texture3D.ResourceMinLODClamp = 0;
-                break;
-            default:
-                break;
-        }
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-        UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addSRV( getResource(), &srvDesc );
-        m_srv = std::move( std::make_unique<Descriptor>( this,
-                                                         Descriptor::Type::ShaderResourceView,
-                                                         DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                                         descriptorIndex,
-                                                         DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() ) );
-    }
-
-    return m_srv.get();
+    cbvDesc.SizeInBytes = getSizeAligned256( cbvDesc.SizeInBytes );
+    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addCBV( &cbvDesc );
+    return new Descriptor( Descriptor::Type::ConstantBufferView, 
+                           this,
+                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                           descriptorIndex,
+                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() );
 }
 
-Descriptor const* Resource::getConstantBufferView()
+Descriptor const* Resource::getShaderResourceView( D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc )
 {
-    if ( !m_cbv && getResourceDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER )
-    {
-        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-        cbvDesc.BufferLocation = getGPUVirtualAddress();
-        cbvDesc.SizeInBytes = static_cast<UINT>( getResourceDesc().Width );
-
-        UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addCBV( &cbvDesc );
-        m_cbv = std::move( std::make_unique<Descriptor>( this,
-                                                         Descriptor::Type::ConstantBufferView,
-                                                         DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                                         descriptorIndex,
-                                                         DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() ) );
-    }
-
-    return m_cbv.get();
+    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addSRV( getD3DResource(), &srvDesc );
+    return new Descriptor( Descriptor::Type::ShaderResourceView,
+                           this,
+                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                           descriptorIndex,
+                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() );
 }
 
-Descriptor const* Resource::getUnorderedAccessView( UINT mipSlice )
+Descriptor const* Resource::getUnorderedAccessView( D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc )
 {
-    assert( mipSlice < getResourceDesc().MipLevels );
-    if ( !m_uavs[ mipSlice ] && ( getResourceDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS ) )
-    {
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-        uavDesc.Format = getResourceDesc().Format;
-        switch ( getResourceDesc().Dimension )
-        {
-            case D3D12_RESOURCE_DIMENSION_BUFFER:
-                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-                uavDesc.Buffer.FirstElement = 0;
-                uavDesc.Buffer.NumElements = 1;
-                uavDesc.Buffer.StructureByteStride = static_cast<UINT>( getResourceDesc().Width );
-                uavDesc.Buffer.CounterOffsetInBytes = 0;
-                uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-                break;
-            case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
-                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
-                uavDesc.Texture1D.MipSlice = mipSlice;
-                break;
-            case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
-                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-                uavDesc.Texture2D.MipSlice = mipSlice;
-                uavDesc.Texture2D.PlaneSlice = 0;
-                break;
-            case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
-                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
-                uavDesc.Texture3D.MipSlice = mipSlice;
-                uavDesc.Texture3D.FirstWSlice = 0;
-                uavDesc.Texture3D.WSize = 0;
-                break;
-            default:
-                break;
-        }
-
-        UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addUAV( getResource(), &uavDesc );
-        m_uavs[ mipSlice ] = std::move( std::make_unique<Descriptor>( this,
-                                                                      Descriptor::Type::UniformAccessView,
-                                                                      DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                                                      descriptorIndex,
-                                                                      DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() ) );
-    }
-
-    return m_uavs[ mipSlice ].get();
+    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addUAV( getD3DResource(), &uavDesc );
+    return new Descriptor( Descriptor::Type::UnorderedAccessView,
+                           this,
+                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                           descriptorIndex,
+                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() );
 }
 
-Descriptor const* Resource::getRenderTargetView()
+Descriptor const* Resource::getRenderTargetView( D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc )
 {
-    if ( !m_rtv && ( getResourceDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) )
-    {
-        D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-        rtvDesc.Format = getResourceDesc().Format;
-        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-        rtvDesc.Texture2D.MipSlice = 0;
-        rtvDesc.Texture2D.PlaneSlice = 0;
-
-        UINT descriptorIndex = DescriptorHeap::getDescriptorHeapRtv().addRTV( getResource(), &rtvDesc );
-        m_rtv = std::move( std::make_unique<Descriptor>( this,
-                                                         Descriptor::Type::RenderTargetView,
-                                                         DescriptorHeap::getDescriptorHeapRtv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                                         descriptorIndex,
-                                                         DescriptorHeap::getDescriptorHeapRtv().getIncrementSize() ) );
-    }
-
-    return m_rtv.get();
+    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapRtv().addRTV( getD3DResource(), &rtvDesc );
+    return new Descriptor( Descriptor::Type::RenderTargetView,
+                           this,
+                           DescriptorHeap::getDescriptorHeapRtv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                           descriptorIndex,
+                           DescriptorHeap::getDescriptorHeapRtv().getIncrementSize() );
 }
 
-Descriptor const* Resource::getDepthStencilView()
+Descriptor const* Resource::getDepthStencilView( D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc )
 {
-    if ( !m_dsv && ( getResourceDesc().Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL ) )
-    {
-        D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-        dsvDesc.Format = getResourceDesc().Format;
-        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-        dsvDesc.Texture2D.MipSlice = 0;
-
-        UINT descriptorIndex = DescriptorHeap::getDescriptorHeapDsv().addDSV( getResource(), &dsvDesc );
-        m_dsv = std::move( std::make_unique<Descriptor>( this,
-                                                         Descriptor::Type::DepthStencilView,
-                                                         DescriptorHeap::getDescriptorHeapDsv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                                                         descriptorIndex,
-                                                         DescriptorHeap::getDescriptorHeapDsv().getIncrementSize() ) );
-    }
-
-    return m_dsv.get();
+    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapDsv().addDSV( getD3DResource(), &dsvDesc );
+    return new Descriptor( Descriptor::Type::DepthStencilView,
+                           this,
+                           DescriptorHeap::getDescriptorHeapDsv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+                           descriptorIndex,
+                           DescriptorHeap::getDescriptorHeapDsv().getIncrementSize(),
+                           dsvDesc.Flags );
 }
 
 CD3DX12_RESOURCE_BARRIER Resource::getTransitionBarrier( D3D12_RESOURCE_STATES newState )

@@ -29,7 +29,7 @@ public:
     {
         std::wstring m_name;
         std::vector<Technique> m_techniques;
-        std::vector<Descriptor> m_resourceViews;
+        std::vector<Descriptor const*> m_resourceViews;
         std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
     };
 
@@ -43,6 +43,7 @@ public:
     ComPtr<ID3D12PipelineState> getPSOForTechnique( wchar_t const* techniqueName ) const;
     Resource const* getMaterialBufferResource() const { return m_materialBuffer; }
     Resource const* getBindlessIndicesBufferResource() const { return m_bindlessIndicesBuffer; }
+    std::vector<Descriptor const*> const& getResourceViews() const { return m_desc.m_resourceViews; }
 
     bool hasTechnique( wchar_t const* techniqueName ) const;
 

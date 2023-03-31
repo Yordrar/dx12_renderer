@@ -1,5 +1,7 @@
 #include "MaterialManager.h"
 
+#include <resource/Resource.h>
+
 MaterialManager::MaterialManager()
 {
 

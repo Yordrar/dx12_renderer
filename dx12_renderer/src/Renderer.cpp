@@ -13,6 +13,7 @@ ComPtr<ID3D12Device2> Renderer::s_device{ nullptr };
 UINT Renderer::s_currentBackBufferIndex = 0;
 uint64_t Renderer::s_timestampFrequency = 0;
 ComPtr<ID3D12RootSignature> Renderer::s_rootSignature{ nullptr };
+Descriptor const* Renderer::s_backBufferRTVs[ RendererConstants::sc_numBackBuffers ];
 
 Renderer::Renderer( HWND hWnd, RECT windowRect )
     : m_hWnd(hWnd)
@@ -70,7 +71,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     {
         pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE );
         pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_ERROR, TRUE );
-        pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_WARNING, FALSE );
+        pInfoQueue->SetBreakOnSeverity( D3D12_MESSAGE_SEVERITY_WARNING, TRUE );
     }
 #endif
 
@@ -81,9 +82,11 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     cmdQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     cmdQueueDesc.NodeMask = 0;
     s_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_graphicsCmdQueue ) );
+    m_graphicsCmdQueue->SetName( L"Graphics Queue" );
 
     cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
     s_device->CreateCommandQueue( &cmdQueueDesc, IID_PPV_ARGS( &m_computeCmdQueue ) );
+    m_computeCmdQueue->SetName( L"Compute Queue" );
 
     // Create swap chain
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
@@ -108,8 +111,16 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     {
         ComPtr<ID3D12Resource> backBuffer;
         m_swapChain->GetBuffer( i, IID_PPV_ARGS( &backBuffer ) );
-        ResourceManager::it().createResource( ( L"backbuffer" + std::to_wstring( i ) ).c_str(), backBuffer );
-
+        m_backBuffers[ i ] = backBuffer;
+        Resource* backbufferResource = ResourceManager::it().createResource( ( L"backbuffer" + std::to_wstring( i ) ).c_str(), backBuffer );
+        D3D12_RENDER_TARGET_VIEW_DESC rtvDesc =
+        {
+            .Format = backBuffer->GetDesc().Format,
+            .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
+        };
+        rtvDesc.Texture2D.MipSlice = 0;
+        rtvDesc.Texture2D.PlaneSlice = 0;
+        s_backBufferRTVs[ i ] = backbufferResource->getRenderTargetView( rtvDesc );
     }
 
     // Create root signature
@@ -340,6 +351,13 @@ void Renderer::endFrame()
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( end - start );
     m_cpuFrameTime = static_cast<double>( elapsed.count() );
 
+    for ( ComputePass* pass : submittedComputePasses )
+    {
+        ID3D12CommandList* commandList = pass->getCommandList();
+        m_computeCmdQueue->ExecuteCommandLists( 1, &commandList );
+        pass->getFence().GPUSignal( m_computeCmdQueue, pass->getFence().getCompletedValue() + 1 );
+    }
+
     for ( RenderPass* pass : submittedRenderPasses )
     {
         pass->waitOnComputePasses( m_graphicsCmdQueue, submittedComputePasses );
@@ -348,13 +366,6 @@ void Renderer::endFrame()
     }
     ID3D12CommandList* imguiCmdList = m_imguiCommandList.Get();
     m_graphicsCmdQueue->ExecuteCommandLists( 1, &imguiCmdList );
-
-    for ( ComputePass* pass : submittedComputePasses )
-    {
-        ID3D12CommandList* commandList = pass->getCommandList();
-        m_computeCmdQueue->ExecuteCommandLists( 1, &commandList );
-        pass->getFence().GPUSignal( m_computeCmdQueue, pass->getFence().getCompletedValue() + 1 );
-    }
 
     m_swapChain->Present( 1, 0 );
 
@@ -406,7 +417,7 @@ void Renderer::recordImguiCommandList()
     m_imguiCommandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
 
     Resource* renderTarget = ResourceManager::it().getCurrentBackbufferResource();
-    D3D12_CPU_DESCRIPTOR_HANDLE rtv = renderTarget->getRenderTargetView()->getView();
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv = Renderer::getCurrentBackbufferRTV()->getView();
     m_imguiCommandList->OMSetRenderTargets( 1, &rtv, false, nullptr );
 
     ImGui_ImplDX12_RenderDrawData( ImGui::GetDrawData(), m_imguiCommandList.Get() );

@@ -20,7 +20,7 @@ public:
     Fence& getFence() { return m_fence; }
 
     void record();
-    void addResourceView( Descriptor const& descriptor );
+    void addResourceView( Descriptor const* descriptor );
 
 private:
     struct PipelineStateStream

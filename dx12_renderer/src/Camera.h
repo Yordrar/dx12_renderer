@@ -20,7 +20,7 @@ public:
 
 	bool isAABBVisible( Mesh::AABB const& aabb ) const;
 
-	Resource const* getGPUBufferResource() const { return m_cameraBuffer; }
+	Resource* getGPUBufferResource() const { return m_cameraBuffer; }
 
 	struct
 	{

@@ -11,6 +11,7 @@ public:
 	void bind( ComPtr<ID3D12GraphicsCommandList> commandList );
 
 	size_t getVertexCount() const { return m_vertexCount; }
+	Resource* getResource() const { return m_resource; }
 
 private:
 	void* m_vertices;

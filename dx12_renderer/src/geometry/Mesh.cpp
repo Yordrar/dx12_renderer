@@ -29,6 +29,22 @@ bool Mesh::isAABBValid() const
 
 void Mesh::record( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
+    std::vector<CD3DX12_RESOURCE_BARRIER> barriers;
+    if ( m_vertexBuffer && m_vertexBuffer->getResource()->getResourceState() != D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER )
+    {
+        CD3DX12_RESOURCE_BARRIER barrier = m_vertexBuffer->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER );
+        barriers.push_back( barrier );
+    }
+    if ( m_indexBuffer && m_indexBuffer->getResource()->getResourceState() != D3D12_RESOURCE_STATE_INDEX_BUFFER )
+    {
+        CD3DX12_RESOURCE_BARRIER barrier = m_indexBuffer->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_INDEX_BUFFER );
+        barriers.push_back( barrier );
+    }
+    if ( barriers.size() > 0 )
+    {
+        commandList->ResourceBarrier( static_cast<UINT>( barriers.size() ), barriers.data() );
+    }
+
     commandList->IASetPrimitiveTopology( m_primitiveTopology );
     m_vertexBuffer->bind( commandList );
 

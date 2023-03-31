@@ -32,6 +32,7 @@ public:
     static RECT getWindowRect() { return s_windowRect; }
     static ComPtr<ID3D12RootSignature> getRootSignature() { return s_rootSignature; }
     static uint64_t getTimestampFrequency() { return s_timestampFrequency; }
+    static Descriptor const* getCurrentBackbufferRTV() { return s_backBufferRTVs[ getCurrentBackbufferIndex() ]; }
     double getCPUFrameTime() const { return m_cpuFrameTime; }
     double getGPUFrameTime() const { return m_gpuFrameTime; }
 
@@ -48,6 +49,7 @@ private:
 
     ComPtr<IDXGISwapChain4> m_swapChain;
     ComPtr<ID3D12Resource> m_backBuffers[ RendererConstants::sc_numBackBuffers ];
+    static Descriptor const* s_backBufferRTVs[ RendererConstants::sc_numBackBuffers ];
     std::unique_ptr<Fence> m_frameFence;
     uint64_t m_fenceValues[ RendererConstants::sc_numBackBuffers ];
 
