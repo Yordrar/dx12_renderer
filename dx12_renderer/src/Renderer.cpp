@@ -358,14 +358,22 @@ void Renderer::endFrame()
         pass->getFence().GPUSignal( m_computeCmdQueue, pass->getFence().getCompletedValue() + 1 );
     }
 
+    std::vector<ID3D12CommandList*> batchedRenderPassCmdLists;
     for ( RenderPass* pass : submittedRenderPasses )
     {
-        pass->waitOnComputePasses( m_graphicsCmdQueue, submittedComputePasses );
-        ID3D12CommandList* commandList = pass->getCommandList();
-        m_graphicsCmdQueue->ExecuteCommandLists( 1, &commandList );
+        if ( pass->hasToWaitOnCompute() )
+        {
+            m_graphicsCmdQueue->ExecuteCommandLists( batchedRenderPassCmdLists.size(), batchedRenderPassCmdLists.data() );
+            pass->waitOnComputePasses( m_graphicsCmdQueue, submittedComputePasses );
+            batchedRenderPassCmdLists.clear();
+        }
+        batchedRenderPassCmdLists.push_back( pass->getCommandList() );
     }
-    ID3D12CommandList* imguiCmdList = m_imguiCommandList.Get();
-    m_graphicsCmdQueue->ExecuteCommandLists( 1, &imguiCmdList );
+    batchedRenderPassCmdLists.push_back( m_imguiCommandList.Get() );
+    if ( batchedRenderPassCmdLists.size() > 0 )
+    {
+        m_graphicsCmdQueue->ExecuteCommandLists( batchedRenderPassCmdLists.size(), batchedRenderPassCmdLists.data() );
+    }
 
     m_swapChain->Present( 1, 0 );
 

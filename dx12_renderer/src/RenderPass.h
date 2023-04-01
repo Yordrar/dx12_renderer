@@ -21,6 +21,7 @@ public:
     void record( Scene const& scene, std::vector<Camera*> const& cameras );
     void addResourceView( Descriptor const& descriptor );
     void addComputePassToWaitOn( ComputePass* computePass );
+    bool hasToWaitOnCompute() const { return m_computePassesToWaitOn.size() > 0; }
     void waitOnComputePasses( ComPtr<ID3D12CommandQueue> cmdQueue, std::vector<ComputePass*> const& submittedComputePasses );
 
 private:
