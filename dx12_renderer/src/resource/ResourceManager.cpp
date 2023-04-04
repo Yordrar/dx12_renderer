@@ -77,8 +77,6 @@ void ResourceManager::createSampler( wchar_t const* resourceName )
 
 void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
-    PIXScopedEvent( commandList.Get(), PIX_COLOR_DEFAULT, "Copy resources to GPU" );
-
     std::vector<CD3DX12_RESOURCE_BARRIER> preCopyBarriers;
     std::vector<Resource*> resourcesToCopy;
     for ( ResourceMap::value_type& resource_pair : m_resources )
@@ -93,11 +91,13 @@ void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> comm
 
     if ( preCopyBarriers.size() > 0 )
     {
-        commandList->ResourceBarrier( static_cast<UINT>( preCopyBarriers.size() ), preCopyBarriers.data() );
-    }
+        PIXScopedEvent(commandList.Get(), PIX_COLOR_DEFAULT, "Copy resources to GPU");
 
-    for ( Resource* resource : resourcesToCopy )
-    {
-        resource->copyDataToGPU( commandList );
+        commandList->ResourceBarrier( static_cast<UINT>( preCopyBarriers.size() ), preCopyBarriers.data() );
+
+        for (Resource* resource : resourcesToCopy)
+        {
+            resource->copyDataToGPU(commandList);
+        }
     }
 }
