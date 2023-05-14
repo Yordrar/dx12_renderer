@@ -56,6 +56,9 @@ private:
     ComPtr<ID3D12CommandQueue> m_graphicsCmdQueue;
     ComPtr<ID3D12CommandQueue> m_computeCmdQueue;
 
+    ComPtr<ID3D12GraphicsCommandList> m_preFrameCommandList;
+    ComPtr<ID3D12CommandAllocator> m_preFrameCommandAllocators[ RendererConstants::sc_numBackBuffers ];
+
     ComPtr<ID3D12GraphicsCommandList> m_imguiCommandList;
     ComPtr<ID3D12CommandAllocator> m_imguiCommandAllocators[ RendererConstants::sc_numBackBuffers ];
     bool m_imguiCallbackRegistered;

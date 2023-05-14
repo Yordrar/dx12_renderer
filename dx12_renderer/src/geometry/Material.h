@@ -1,7 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
-#include <d3dx12.h>
+#include <d3dx12/d3dx12.h>
 #include <dxgi1_6.h>
 
 #include <unordered_map>
@@ -16,7 +16,8 @@ public:
     struct Technique
     {
         std::wstring m_name;
-        std::wstring m_shaderFilename;
+        std::wstring m_vertexShaderFilename;
+        std::wstring m_pixelShaderFilename;
         CD3DX12_BLEND_DESC m_blendState = CD3DX12_BLEND_DESC( CD3DX12_DEFAULT{} );
         CD3DX12_RASTERIZER_DESC m_rasterizerState = CD3DX12_RASTERIZER_DESC( CD3DX12_DEFAULT{} );
         CD3DX12_DEPTH_STENCIL_DESC m_depthStencilState = CD3DX12_DEPTH_STENCIL_DESC( CD3DX12_DEFAULT{} );

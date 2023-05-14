@@ -75,14 +75,14 @@ void ComputePass::record()
                                                                             D3D12_SUBRESOURCE_DATA{ m_passResourceIndicesBufferData.data(), static_cast<LONG_PTR>( m_passResourceIndicesBufferData.size() * sizeof( UINT ) ), 0 } );
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
         {
-            .Format = m_passResourceIndicesBuffer->getResourceDesc().Format,
+            .Format = DXGI_FORMAT_R32_TYPELESS,
             .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
         };
         srvDesc.Buffer.FirstElement = 0;
-        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-        srvDesc.Buffer.NumElements = 1;
-        srvDesc.Buffer.StructureByteStride = m_passResourceIndicesBuffer->getResourceDesc().Width;
+        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+        srvDesc.Buffer.NumElements = static_cast<UINT>( m_passResourceIndicesBufferData.size() );
+        srvDesc.Buffer.StructureByteStride = 0;
         m_passBufferData.passResourceIndicesBufferIndex = m_passResourceIndicesBuffer->getShaderResourceView( srvDesc )->getDescriptorIndex();
     }
     if ( !m_passBuffer )
@@ -99,9 +99,6 @@ void ComputePass::record()
     // Set PSO
     m_commandList->SetPipelineState( m_pso.Get() );
 
-    // Set root signature
-    m_commandList->SetComputeRootSignature( Renderer::getRootSignature().Get() );
-
     // Set descriptor heaps
     ID3D12DescriptorHeap* descriptorHeaps[] =
     {
@@ -110,28 +107,19 @@ void ComputePass::record()
     };
     m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
 
-    // Set descriptor tables in root signature
-    m_commandList->SetComputeRootDescriptorTable( 4, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetComputeRootDescriptorTable( 5, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetComputeRootDescriptorTable( 6, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetComputeRootDescriptorTable( 7, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetComputeRootDescriptorTable( 8, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetComputeRootDescriptorTable( 9, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetComputeRootDescriptorTable( 10, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetComputeRootDescriptorTable( 11, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetComputeRootDescriptorTable( 12, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetComputeRootDescriptorTable( 13, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    // Set root signature
+    m_commandList->SetComputeRootSignature(Renderer::getRootSignature().Get());
 
     m_commandList->SetComputeRootConstantBufferView( 0, m_passBuffer->getGPUVirtualAddress() );
 
     // Transition UAV resources
-    std::vector<CD3DX12_RESOURCE_BARRIER> uavBarriers;
+    std::vector<D3D12_RESOURCE_BARRIER> uavBarriers;
     for ( Descriptor const* descriptor : m_resourceViews )
     {
         if ( descriptor->getType() == Descriptor::Type::UnorderedAccessView &&
              descriptor->getResource()->getResourceState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS )
         {
-            CD3DX12_RESOURCE_BARRIER uavBarrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_UNORDERED_ACCESS );
+            D3D12_RESOURCE_BARRIER uavBarrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_UNORDERED_ACCESS );
             uavBarriers.push_back( uavBarrier );
         }
     }
@@ -165,4 +153,20 @@ void ComputePass::addResourceView( Descriptor const* descriptor )
 {
     m_passResourceIndicesBufferData.push_back( descriptor->getDescriptorIndex() );
     m_resourceViews.push_back( descriptor );
+}
+
+void ComputePass::setResourceView( UINT index, Descriptor const* descriptor )
+{
+    assert( index >= 0 && index < m_passResourceIndicesBufferData.size() );
+    assert( index >= 0 && index < m_resourceViews.size() );
+    m_passResourceIndicesBufferData[ index ] = descriptor->getDescriptorIndex();
+    m_resourceViews[ index ] = descriptor;
+    m_passResourceIndicesBuffer->setNeedsCopyToGPU( true );
+}
+
+void ComputePass::setThreadGroupCounts( UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ )
+{
+    setThreadGroupCountX( threadGroupCountX );
+    setThreadGroupCountY( threadGroupCountY );
+    setThreadGroupCountZ( threadGroupCountZ );
 }

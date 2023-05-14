@@ -1,7 +1,6 @@
 #pragma once
 
 #include <d3d12.h>
-#include <d3dx12.h>
 #include <wrl.h>
 using namespace Microsoft::WRL;
 
@@ -33,7 +32,7 @@ public:
 	Descriptor const* getDepthStencilView( D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc );
 	D3D12_RESOURCE_STATES getResourceState() const { return m_resourceState; }
 
-	CD3DX12_RESOURCE_BARRIER getTransitionBarrier( D3D12_RESOURCE_STATES newState );
+	D3D12_RESOURCE_BARRIER getTransitionBarrier( D3D12_RESOURCE_STATES newState );
 	void copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList );
 	void setDebugName( wchar_t const* debugName );
 

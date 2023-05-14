@@ -3,6 +3,7 @@
 #include <Windowsx.h>
 
 // DirectX 12
+#include <d3dx12/d3dx12.h>
 #include <DirectXMath.h>
 
 #include <string>
@@ -195,8 +196,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     scene = std::make_unique<Scene>(L"mainScene");
 
-    ComputePass test( L"test", L"shader/testCompute.hlsl", 8, 8, 1 );
-
     std::vector<std::wstring> loadedMaterials;
     loadedMaterials.reserve( materials.size() );
     for ( tinyobj::material_t const& material : materials )
@@ -229,7 +228,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         Material::Technique depthTechnique =
         {
             .m_name = L"depth",
-            .m_shaderFilename = L"shader/test.hlsl",
+            .m_vertexShaderFilename = L"shader/test.hlsl",
+            .m_pixelShaderFilename = L"",
             .m_rtFormats = CD3DX12_RT_FORMAT_ARRAY{ rtformats, 1 },
             .m_dsFormat = DXGI_FORMAT_D32_FLOAT
         };
@@ -237,7 +237,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         Material::Technique mainTechnique =
         {
             .m_name = L"main",
-            .m_shaderFilename = L"shader/test.hlsl",
+            .m_vertexShaderFilename = L"shader/test.hlsl",
+            .m_pixelShaderFilename = L"shader/test.hlsl",
             .m_rtFormats = CD3DX12_RT_FORMAT_ARRAY{ rtformats, 1 },
             .m_dsFormat = DXGI_FORMAT_D32_FLOAT,
         };
@@ -368,8 +369,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     ResourceManager::it().createSampler( L"globalSampler" );
 
-    //mainPass.addComputePassToWaitOn( &test );
-
     bool show_window = true;
     renderer.registerImguiCallback( [&show_window, &renderer, &depthPass, &mainPass] ()
                                     {
@@ -384,6 +383,68 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
                                         }
                                     } );
 
+    int width, height, nrChannelsInFile;
+    uint8_t* data = stbi_load( "resource/demoTex.jpeg", &width, &height, &nrChannelsInFile, 4 );
+    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 3, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS );
+
+    D3D12_SUBRESOURCE_DATA subresData;
+    subresData.pData = data;
+    subresData.RowPitch = width * 4;
+    subresData.SlicePitch = 0;
+    Resource* testTexture = ResourceManager::it().createResource( L"computeTestTexture", resourceDesc, subresData );
+
+    ComputePass mipMapGeneratorPass( L"mipmap_generator", L"shader/testCompute.hlsl", width / 16, height / 16, 1 );
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDescMip0 =
+    {
+        .Format = testTexture->getResourceDesc().Format,
+        .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+        .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+    };
+    srvDescMip0.Texture2D.MipLevels = 3;
+    srvDescMip0.Texture2D.MostDetailedMip = 0;
+    srvDescMip0.Texture2D.PlaneSlice = 0;
+    srvDescMip0.Texture2D.ResourceMinLODClamp = 0;
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDescMip1 =
+    {
+        .Format = testTexture->getResourceDesc().Format,
+        .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+        .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+    };
+    srvDescMip1.Texture2D.MipLevels = 2;
+    srvDescMip1.Texture2D.MostDetailedMip = 1;
+    srvDescMip1.Texture2D.PlaneSlice = 0;
+    srvDescMip1.Texture2D.ResourceMinLODClamp = 0;
+
+    D3D12_UNORDERED_ACCESS_VIEW_DESC uavDescMip1 =
+    {
+        .Format = testTexture->getResourceDesc().Format,
+        .ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D,
+    };
+    uavDescMip1.Texture2D.PlaneSlice = 0;
+    uavDescMip1.Texture2D.MipSlice = 1;
+
+    D3D12_UNORDERED_ACCESS_VIEW_DESC uavDescMip2 =
+    {
+        .Format = testTexture->getResourceDesc().Format,
+        .ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D,
+    };
+    uavDescMip2.Texture2D.PlaneSlice = 0;
+    uavDescMip2.Texture2D.MipSlice = 2;
+
+    mipMapGeneratorPass.addResourceView( testTexture->getShaderResourceView( srvDescMip0 ) );
+    mipMapGeneratorPass.addResourceView( testTexture->getUnorderedAccessView( uavDescMip1 ) );
+    renderer.beginFrame();
+    renderer.submitComputePass( mipMapGeneratorPass );
+    renderer.endFrame();
+
+    mipMapGeneratorPass.setResourceView( 0, testTexture->getShaderResourceView( srvDescMip1 ) );
+    mipMapGeneratorPass.setResourceView( 1, testTexture->getUnorderedAccessView( uavDescMip2 ) );
+    mipMapGeneratorPass.setThreadGroupCounts( width / 32, height / 32, 1 );
+    renderer.beginFrame();
+    renderer.submitComputePass( mipMapGeneratorPass );
+    renderer.endFrame();
+
     MSG msg{};
     while ( msg.message != WM_QUIT )
     {
@@ -394,7 +455,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         }
 
         renderer.beginFrame();
-        //renderer.submitComputePass( test );
         renderer.submitRenderPass( depthPass, *scene, { &scene->getCamera() } );
         renderer.submitRenderPass( mainPass, *scene, { &scene->getCamera() } );
         renderer.endFrame();

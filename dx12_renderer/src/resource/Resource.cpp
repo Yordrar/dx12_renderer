@@ -122,14 +122,20 @@ Descriptor const* Resource::getDepthStencilView( D3D12_DEPTH_STENCIL_VIEW_DESC c
                            dsvDesc.Flags );
 }
 
-CD3DX12_RESOURCE_BARRIER Resource::getTransitionBarrier( D3D12_RESOURCE_STATES newState )
+D3D12_RESOURCE_BARRIER Resource::getTransitionBarrier( D3D12_RESOURCE_STATES newState )
 {
-    CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition
-    (
-        m_resource.Get(),
-        m_resourceState,
-        newState
-    );
+    D3D12_RESOURCE_BARRIER barrier =
+    {
+        .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+        .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+        .Transition =
+        {
+            .pResource = m_resource.Get(),
+            .Subresource = 0,
+            .StateBefore = m_resourceState,
+            .StateAfter = newState,
+        },
+    };
 
     m_resourceState = newState;
 

@@ -14,7 +14,7 @@ Material::Material( MaterialDesc const& materialDesc )
         std::transform( technique.m_name.begin(), technique.m_name.end(), passNameDefine.begin(), std::towupper );
         ShaderManager::ShaderDesc vertexShaderDesc =
         {
-            .m_filename = technique.m_shaderFilename,
+            .m_filename = technique.m_vertexShaderFilename,
             .m_entryPoint = technique.m_name + L"_vs",
             .m_shaderType = ShaderManager::ShaderType::VertexShader,
             .m_enableDebug = true,
@@ -23,7 +23,7 @@ Material::Material( MaterialDesc const& materialDesc )
 
         ShaderManager::ShaderDesc pixelShaderDesc =
         {
-            .m_filename = technique.m_shaderFilename,
+            .m_filename = technique.m_pixelShaderFilename,
             .m_entryPoint = technique.m_name + L"_ps",
             .m_shaderType = ShaderManager::ShaderType::PixelShader,
             .m_enableDebug = true,
@@ -73,7 +73,7 @@ Material::Material( MaterialDesc const& materialDesc )
     srvDesc.Buffer.FirstElement = 0;
     srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     srvDesc.Buffer.NumElements = 1;
-    srvDesc.Buffer.StructureByteStride = m_bindlessIndicesBuffer->getResourceDesc().Width;
+    srvDesc.Buffer.StructureByteStride = static_cast<UINT>( m_bindlessIndicesBuffer->getResourceDesc().Width );
     m_materialBufferData.bindlessIndicesBufferIndex = m_bindlessIndicesBuffer->getShaderResourceView( srvDesc )->getDescriptorIndex();
 
     m_materialBuffer = ResourceManager::it().createResource( ( m_desc.m_name + L"_materialBuffer" ).c_str(),

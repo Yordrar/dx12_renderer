@@ -60,14 +60,14 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
                                                                             D3D12_SUBRESOURCE_DATA{ m_passResourceIndicesBufferData.data(), static_cast<LONG_PTR>( m_passResourceIndicesBufferData.size() * sizeof( UINT ) ), 0 } );
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
         {
-            .Format = m_passResourceIndicesBuffer->getResourceDesc().Format,
+            .Format = DXGI_FORMAT_R32_TYPELESS,
             .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
         };
         srvDesc.Buffer.FirstElement = 0;
-        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-        srvDesc.Buffer.NumElements = 1;
-        srvDesc.Buffer.StructureByteStride = m_passResourceIndicesBuffer->getResourceDesc().Width;
+        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+        srvDesc.Buffer.NumElements = static_cast<UINT>( std::max( m_passResourceIndicesBufferData.size(), 1Ui64 ) );
+        srvDesc.Buffer.StructureByteStride = 0;
         m_passBufferData.passResourceIndicesBufferIndex = m_passResourceIndicesBuffer->getShaderResourceView( srvDesc )->getDescriptorIndex();
     }
     if ( !m_passBuffer )
@@ -91,9 +91,6 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
     }
     m_commandList->RSSetScissorRects( 1, &m_scissorRect );
 
-    // Set root signature
-    m_commandList->SetGraphicsRootSignature( Renderer::getRootSignature().Get() );
-
     // Set descriptor heaps
     ID3D12DescriptorHeap* descriptorHeaps[] =
     {
@@ -102,35 +99,26 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
     };
     m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
 
-    // Set descriptor tables in root signature
-    m_commandList->SetGraphicsRootDescriptorTable( 4, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 5, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 6, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 7, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 8, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 9, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 10, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 11, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 12, DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetGPUDescriptorHandleForHeapStart() );
-    m_commandList->SetGraphicsRootDescriptorTable( 13, DescriptorHeap::getDescriptorHeapSampler().getHeap()->GetGPUDescriptorHandleForHeapStart() );
+    // Set root signature
+    m_commandList->SetGraphicsRootSignature(Renderer::getRootSignature().Get());
 
     // Clear and set render targets
-    std::vector<CD3DX12_RESOURCE_BARRIER> barriers;
+    std::vector<D3D12_RESOURCE_BARRIER> barriers;
     if ( m_renderTarget && m_renderTarget->getResource()->getResourceState() != D3D12_RESOURCE_STATE_RENDER_TARGET )
     {
-        CD3DX12_RESOURCE_BARRIER renderTargetBarrier = m_renderTarget->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_RENDER_TARGET );
+        D3D12_RESOURCE_BARRIER renderTargetBarrier = m_renderTarget->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_RENDER_TARGET );
         barriers.push_back( renderTargetBarrier );
     }
     if ( m_depthStencilTarget )
     {
         if ( m_depthStencilTarget->getDSVFlags() == D3D12_DSV_FLAG_NONE && m_depthStencilTarget->getResource()->getResourceState() != D3D12_RESOURCE_STATE_DEPTH_WRITE )
         {
-            CD3DX12_RESOURCE_BARRIER depthStencilBarrier = m_depthStencilTarget->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_DEPTH_WRITE );
+            D3D12_RESOURCE_BARRIER depthStencilBarrier = m_depthStencilTarget->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_DEPTH_WRITE );
             barriers.push_back( depthStencilBarrier );
         }
         else if ( m_depthStencilTarget->getDSVFlags() == D3D12_DSV_FLAG_READ_ONLY_DEPTH && m_depthStencilTarget->getResource()->getResourceState() != D3D12_RESOURCE_STATE_DEPTH_READ )
         {
-            CD3DX12_RESOURCE_BARRIER depthStencilBarrier = m_depthStencilTarget->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_DEPTH_READ );
+            D3D12_RESOURCE_BARRIER depthStencilBarrier = m_depthStencilTarget->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_DEPTH_READ );
             barriers.push_back( depthStencilBarrier );
         }
     }
@@ -138,7 +126,7 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
     {
         if ( descriptor.getResource()->getResourceState() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE )
         {
-            CD3DX12_RESOURCE_BARRIER barrier = descriptor.getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE );
+            D3D12_RESOURCE_BARRIER barrier = descriptor.getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE );
             barriers.push_back( barrier );
         }
     }
@@ -179,10 +167,10 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
 
         for ( Camera* camera : cameras )
         {
-            std::vector<CD3DX12_RESOURCE_BARRIER> barriers;
+            std::vector<D3D12_RESOURCE_BARRIER> barriers;
             if ( camera->getGPUBufferResource()->getResourceState() != D3D12_RESOURCE_STATE_COMMON )
             {
-                CD3DX12_RESOURCE_BARRIER barrier = camera->getGPUBufferResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_COMMON );
+                D3D12_RESOURCE_BARRIER barrier = camera->getGPUBufferResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_COMMON );
                 barriers.push_back( barrier );
             }
             m_commandList->SetGraphicsRootConstantBufferView( 1, camera->getGPUBufferResource()->getGPUVirtualAddress() );
@@ -204,13 +192,13 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
                         if ( descriptor->getType() == Descriptor::Type::ShaderResourceView &&
                              descriptor->getResource()->getResourceState() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE )
                         {
-                            CD3DX12_RESOURCE_BARRIER barrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE );
+                            D3D12_RESOURCE_BARRIER barrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE );
                             barriers.push_back( barrier );
                         }
                         else if ( descriptor->getType() == Descriptor::Type::UnorderedAccessView &&
                                   descriptor->getResource()->getResourceState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS )
                         {
-                            CD3DX12_RESOURCE_BARRIER barrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_UNORDERED_ACCESS );
+                            D3D12_RESOURCE_BARRIER barrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_UNORDERED_ACCESS );
                             barriers.push_back( barrier );
                         }
                     }

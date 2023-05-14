@@ -21,6 +21,11 @@ public:
 
     void record();
     void addResourceView( Descriptor const* descriptor );
+    void setResourceView( UINT index, Descriptor const* descriptor );
+    void setThreadGroupCountX( UINT threadGroupCountX ) { m_threadGroupCountX = threadGroupCountX; }
+    void setThreadGroupCountY( UINT threadGroupCountY ) { m_threadGroupCountY = threadGroupCountY; }
+    void setThreadGroupCountZ( UINT threadGroupCountZ ) { m_threadGroupCountZ = threadGroupCountZ; }
+    void setThreadGroupCounts( UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ );
 
 private:
     struct PipelineStateStream

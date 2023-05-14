@@ -56,7 +56,11 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& shaderDesc )
 
     // Open source file.
     ComPtr<IDxcBlobEncoding> sourceBlob = nullptr;
-    m_utils->LoadFile( shaderDesc.m_filename.c_str(), nullptr, &sourceBlob );
+    HRESULT result = m_utils->LoadFile( shaderDesc.m_filename.c_str(), nullptr, &sourceBlob );
+    if ( result != S_OK )
+    {
+        return D3D12_SHADER_BYTECODE{ nullptr, 0 };
+    }
     DxcBuffer sourceBuffer;
     sourceBuffer.Ptr = sourceBlob->GetBufferPointer();
     sourceBuffer.Size = sourceBlob->GetBufferSize();
@@ -113,11 +117,11 @@ LPCWSTR ShaderManager::shaderTypeToTargetString( ShaderType type )
     switch ( type )
     {
         case ShaderType::VertexShader:
-            return L"vs_6_0";
+            return L"vs_6_6";
         case ShaderType::PixelShader:
-            return L"ps_6_0";
+            return L"ps_6_6";
         case ShaderType::ComputeShader:
-            return L"cs_6_0";
+            return L"cs_6_6";
         default:
             return L"";
     }

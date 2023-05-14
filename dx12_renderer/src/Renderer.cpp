@@ -8,6 +8,10 @@
 #include <resource/ResourceManager.h>
 #include <resource/DescriptorHeap.h>
 
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 710; }
+
+extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
+
 RECT Renderer::s_windowRect;
 ComPtr<ID3D12Device2> Renderer::s_device{ nullptr };
 UINT Renderer::s_currentBackBufferIndex = 0;
@@ -124,118 +128,12 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     }
 
     // Create root signature
-    CD3DX12_ROOT_PARAMETER slotRootParameters[ 14 ] = {};
+    CD3DX12_ROOT_PARAMETER slotRootParameters[ 4 ] = {};
 
     slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Render Pass buffer
     slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Camera buffer
     slotRootParameters[ 2 ].InitAsConstantBufferView( 2, 0 ); // Material buffer
     slotRootParameters[ 3 ].InitAsConstantBufferView( 3, 0 ); // Geometry buffer
-
-    D3D12_DESCRIPTOR_RANGE srvRangeBuffer =
-    {
-        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
-        .BaseShaderRegister = 0,
-        .RegisterSpace = 0,
-        .OffsetInDescriptorsFromTableStart = 0,
-    };
-    slotRootParameters[ 4 ].InitAsDescriptorTable( 1, &srvRangeBuffer );
-
-    D3D12_DESCRIPTOR_RANGE srvRangeTexture1D =
-    {
-        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
-        .BaseShaderRegister = 0,
-        .RegisterSpace = 1,
-        .OffsetInDescriptorsFromTableStart = 0,
-    };
-    slotRootParameters[ 5 ].InitAsDescriptorTable( 1, &srvRangeTexture1D );
-
-    D3D12_DESCRIPTOR_RANGE srvRangeTexture2D =
-    {
-        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
-        .BaseShaderRegister = 0,
-        .RegisterSpace = 2,
-        .OffsetInDescriptorsFromTableStart = 0,
-    };
-    slotRootParameters[ 6 ].InitAsDescriptorTable( 1, &srvRangeTexture2D );
-
-    D3D12_DESCRIPTOR_RANGE srvRangeTexture3D =
-    {
-        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
-        .BaseShaderRegister = 0,
-        .RegisterSpace = 3,
-        .OffsetInDescriptorsFromTableStart = 0,
-    };
-    slotRootParameters[ 7 ].InitAsDescriptorTable( 1, &srvRangeTexture3D );
-
-    D3D12_DESCRIPTOR_RANGE srvRangeTextureCube =
-    {
-        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
-        .BaseShaderRegister = 0,
-        .RegisterSpace = 4,
-        .OffsetInDescriptorsFromTableStart = 0,
-    };
-    slotRootParameters[ 8 ].InitAsDescriptorTable( 1, &srvRangeTextureCube );
-
-
-
-    D3D12_DESCRIPTOR_RANGE srvRangeRWBuffer =
-    {
-        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
-        .BaseShaderRegister = 0,
-        .RegisterSpace = 0,
-        .OffsetInDescriptorsFromTableStart = 0,
-    };
-    slotRootParameters[ 9 ].InitAsDescriptorTable( 1, &srvRangeRWBuffer );
-
-    D3D12_DESCRIPTOR_RANGE srvRangeRWTexture1D =
-    {
-        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
-        .BaseShaderRegister = 0,
-        .RegisterSpace = 1,
-        .OffsetInDescriptorsFromTableStart = 0,
-    };
-    slotRootParameters[ 10 ].InitAsDescriptorTable( 1, &srvRangeRWTexture1D );
-
-    D3D12_DESCRIPTOR_RANGE srvRangeRWTexture2D =
-    {
-        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
-        .BaseShaderRegister = 0,
-        .RegisterSpace = 2,
-        .OffsetInDescriptorsFromTableStart = 0,
-    };
-    slotRootParameters[ 11 ].InitAsDescriptorTable( 1, &srvRangeRWTexture2D );
-
-    D3D12_DESCRIPTOR_RANGE srvRangeRWTexture3D =
-    {
-        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
-        .BaseShaderRegister = 0,
-        .RegisterSpace = 3,
-        .OffsetInDescriptorsFromTableStart = 0,
-    };
-    slotRootParameters[ 12 ].InitAsDescriptorTable( 1, &srvRangeRWTexture3D );
-
-
-
-    D3D12_DESCRIPTOR_RANGE srvRangeSampler =
-    {
-        .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,
-        .NumDescriptors = RendererConstants::sc_numDescriptorsInHeaps,
-        .BaseShaderRegister = 0,
-        .RegisterSpace = 0,
-        .OffsetInDescriptorsFromTableStart = 0,
-    };
-    slotRootParameters[ 13 ].InitAsDescriptorTable( 1, &srvRangeSampler );
-
-
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( _countof(slotRootParameters), slotRootParameters, 0, nullptr,
                                              D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -243,7 +141,9 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
                                              D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
                                              D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
                                              D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS |
-                                             D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS );
+                                             D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS |
+                                             D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED |
+                                             D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED );
 
     ComPtr<ID3DBlob> serializedRootSig = nullptr;
     ComPtr<ID3DBlob> errorBlob = nullptr;
@@ -297,9 +197,12 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
     {
         Renderer::device()->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_imguiCommandAllocators[ i ] ) );
+        Renderer::device()->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_preFrameCommandAllocators[ i ] ) );
     }
 
-    HRESULT result = Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_imguiCommandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_imguiCommandList ) );
+    Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_preFrameCommandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_preFrameCommandList ) );
+    Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_imguiCommandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_imguiCommandList ) );
+    m_preFrameCommandList->Close();
     m_imguiCommandList->Close();
     std::wstring commandListName = L"imgui_commandList";
     m_imguiCommandList->SetName( commandListName.c_str() );
@@ -327,6 +230,12 @@ void Renderer::beginFrame()
     ImGui::NewFrame();
 
     start = std::chrono::high_resolution_clock::now();
+
+    ComPtr<ID3D12CommandAllocator> currentPreFrameCommandAllocator = m_preFrameCommandAllocators[ getCurrentBackbufferIndex() ];
+    currentPreFrameCommandAllocator->Reset();
+    m_preFrameCommandList->Reset( currentPreFrameCommandAllocator.Get(), nullptr );
+    ResourceManager::it().copyResourcesToGPU( m_preFrameCommandList );
+    m_preFrameCommandList->Close();
 }
 
 void Renderer::submitRenderPass( RenderPass& pass, Scene const& scene, std::vector<Camera*> const& cameras )
@@ -351,19 +260,13 @@ void Renderer::endFrame()
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( end - start );
     m_cpuFrameTime = static_cast<double>( elapsed.count() );
 
-    for ( ComputePass* pass : submittedComputePasses )
-    {
-        ID3D12CommandList* commandList = pass->getCommandList();
-        m_computeCmdQueue->ExecuteCommandLists( 1, &commandList );
-        pass->getFence().GPUSignal( m_computeCmdQueue, pass->getFence().getCompletedValue() + 1 );
-    }
-
     std::vector<ID3D12CommandList*> batchedRenderPassCmdLists;
+    batchedRenderPassCmdLists.push_back( m_preFrameCommandList.Get() );
     for ( RenderPass* pass : submittedRenderPasses )
     {
         if ( pass->hasToWaitOnCompute() )
         {
-            m_graphicsCmdQueue->ExecuteCommandLists( batchedRenderPassCmdLists.size(), batchedRenderPassCmdLists.data() );
+            m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>( batchedRenderPassCmdLists.size() ), batchedRenderPassCmdLists.data() );
             pass->waitOnComputePasses( m_graphicsCmdQueue, submittedComputePasses );
             batchedRenderPassCmdLists.clear();
         }
@@ -372,7 +275,14 @@ void Renderer::endFrame()
     batchedRenderPassCmdLists.push_back( m_imguiCommandList.Get() );
     if ( batchedRenderPassCmdLists.size() > 0 )
     {
-        m_graphicsCmdQueue->ExecuteCommandLists( batchedRenderPassCmdLists.size(), batchedRenderPassCmdLists.data() );
+        m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>( batchedRenderPassCmdLists.size() ), batchedRenderPassCmdLists.data() );
+    }
+
+    for ( ComputePass* pass : submittedComputePasses )
+    {
+        ID3D12CommandList* commandList = pass->getCommandList();
+        m_computeCmdQueue->ExecuteCommandLists( 1, &commandList );
+        pass->getFence().GPUSignal( m_computeCmdQueue, pass->getFence().getCompletedValue() + 1 );
     }
 
     m_swapChain->Present( 1, 0 );
@@ -428,10 +338,19 @@ void Renderer::recordImguiCommandList()
     D3D12_CPU_DESCRIPTOR_HANDLE rtv = Renderer::getCurrentBackbufferRTV()->getView();
     m_imguiCommandList->OMSetRenderTargets( 1, &rtv, false, nullptr );
 
+    if ( renderTarget->getResourceState() != D3D12_RESOURCE_STATE_RENDER_TARGET )
+    {
+        D3D12_RESOURCE_BARRIER renderTargetBarrier = renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_RENDER_TARGET );
+        m_imguiCommandList->ResourceBarrier( 1, &renderTargetBarrier );
+    }
+
     ImGui_ImplDX12_RenderDrawData( ImGui::GetDrawData(), m_imguiCommandList.Get() );
 
-    CD3DX12_RESOURCE_BARRIER renderTargetBarrier = renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
-    m_imguiCommandList->ResourceBarrier( 1, &renderTargetBarrier );
+    if ( renderTarget->getResourceState() != D3D12_RESOURCE_STATE_PRESENT )
+    {
+        D3D12_RESOURCE_BARRIER renderTargetBarrier = renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
+        m_imguiCommandList->ResourceBarrier( 1, &renderTargetBarrier );
+    }
 
     PIXEndEvent();
 

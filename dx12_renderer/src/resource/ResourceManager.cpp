@@ -66,26 +66,33 @@ Resource* ResourceManager::getResource( wchar_t const* resourceName )
 void ResourceManager::createSampler( wchar_t const* resourceName )
 {
     D3D12_SAMPLER_DESC samplerDesc = {};
-    samplerDesc.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
     samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
     samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
     samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    samplerDesc.MipLODBias = 0.0f;
+    samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+    samplerDesc.MinLOD = 0.0f;
+    samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
+    samplerDesc.MaxAnisotropy = 0;
 
     DescriptorHeap::getDescriptorHeapSampler().addSampler( &samplerDesc );
 }
 
 void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
-    std::vector<CD3DX12_RESOURCE_BARRIER> preCopyBarriers;
+    std::vector<D3D12_RESOURCE_BARRIER> preCopyBarriers;
     std::vector<Resource*> resourcesToCopy;
     for ( ResourceMap::value_type& resource_pair : m_resources )
     {
-        if ( resource_pair.second->getNeedsCopyToGPU() && resource_pair.second->getResourceState() != D3D12_RESOURCE_STATE_COPY_DEST )
+        if ( resource_pair.second->getNeedsCopyToGPU() )
         {
-            CD3DX12_RESOURCE_BARRIER preCopyBarrier = resource_pair.second->getTransitionBarrier( D3D12_RESOURCE_STATE_COPY_DEST );
-            preCopyBarriers.push_back( preCopyBarrier );
             resourcesToCopy.push_back( resource_pair.second.get() );
+            if ( resource_pair.second->getResourceState() != D3D12_RESOURCE_STATE_COPY_DEST )
+            {
+                D3D12_RESOURCE_BARRIER preCopyBarrier = resource_pair.second->getTransitionBarrier( D3D12_RESOURCE_STATE_COPY_DEST );
+                preCopyBarriers.push_back( preCopyBarrier );
+            }
         }
     }
 
@@ -94,10 +101,10 @@ void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> comm
         PIXScopedEvent(commandList.Get(), PIX_COLOR_DEFAULT, "Copy resources to GPU");
 
         commandList->ResourceBarrier( static_cast<UINT>( preCopyBarriers.size() ), preCopyBarriers.data() );
+    }
 
-        for (Resource* resource : resourcesToCopy)
-        {
-            resource->copyDataToGPU(commandList);
-        }
+    for ( Resource* resource : resourcesToCopy )
+    {
+        resource->copyDataToGPU( commandList );
     }
 }

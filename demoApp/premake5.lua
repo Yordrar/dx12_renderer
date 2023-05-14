@@ -15,6 +15,7 @@ project "demoApp"
 		"external/meshoptimizer/src",
 		"../dx12_renderer/src",
 		"../dx12_renderer/external/imgui",
+		"../dx12_renderer/external/dx12_agility_sdk/build/native/include",
 	}
 	prebuildcommands {
 		"{COPYDIR} " .. _WORKING_DIR .. "/demoApp/shader %{cfg.buildtarget.directory}shader",
