@@ -2,6 +2,7 @@
 
 #include <Renderer.h>
 #include <Profiler.h>
+#include <BarrierRecorder.h>
 #include <resource/ResourceManager.h>
 #include <resource/Descriptor.h>
 #include <geometry/ShaderManager.h>
@@ -18,8 +19,6 @@ ComputePass::ComputePass( wchar_t const* name,
     , m_commandList( nullptr )
     , m_profilerQueryIndex( 0 )
     , m_executionTimeInMilliseconds( 0 )
-    , m_passBuffer( nullptr )
-    , m_passResourceIndicesBuffer( nullptr )
     , m_fence( (m_name + L"_fence").c_str() )
 {
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
@@ -68,7 +67,7 @@ void ComputePass::record()
     currentCommandAllocator->Reset();
     m_commandList->Reset( currentCommandAllocator.Get(), nullptr );
 
-    if ( !m_passResourceIndicesBuffer )
+    if ( !m_passResourceIndicesBuffer.isValid() )
     {
         m_passResourceIndicesBuffer = ResourceManager::it().createResource( ( m_name + L"_passResourceIndicesBuffer" ).c_str(),
                                                                             CD3DX12_RESOURCE_DESC::Buffer( std::max( m_passResourceIndicesBufferData.size() * sizeof( UINT ), 1Ui64 ) ),
@@ -83,9 +82,9 @@ void ComputePass::record()
         srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
         srvDesc.Buffer.NumElements = static_cast<UINT>( m_passResourceIndicesBufferData.size() );
         srvDesc.Buffer.StructureByteStride = 0;
-        m_passBufferData.passResourceIndicesBufferIndex = m_passResourceIndicesBuffer->getShaderResourceView( srvDesc )->getDescriptorIndex();
+        m_passBufferData.passResourceIndicesBufferIndex = ResourceManager::it().getShaderResourceView( m_passResourceIndicesBuffer, srvDesc ).getDescriptorIndex();
     }
-    if ( !m_passBuffer )
+    if ( !m_passBuffer.isValid() )
     {
         m_passBuffer = ResourceManager::it().createResource( ( m_name + L"_passBuffer" ).c_str(),
                                                              CD3DX12_RESOURCE_DESC::Buffer( std::max( sizeof( m_passBufferData ), 1Ui64 ) ),
@@ -110,58 +109,48 @@ void ComputePass::record()
     // Set root signature
     m_commandList->SetComputeRootSignature(Renderer::getRootSignature().Get());
 
-    m_commandList->SetComputeRootConstantBufferView( 0, m_passBuffer->getGPUVirtualAddress() );
+    m_commandList->SetComputeRootConstantBufferView( 0, ResourceManager::it().getD3DResource(m_passBuffer)->GetGPUVirtualAddress() );
 
     // Transition UAV resources
-    std::vector<D3D12_RESOURCE_BARRIER> uavBarriers;
-    for ( Descriptor const* descriptor : m_resourceViews )
+    BarrierRecorder br;
+    for ( Descriptor const& descriptor : m_resourceViews )
     {
-        if ( descriptor->getType() == Descriptor::Type::UnorderedAccessView &&
-             descriptor->getResource()->getResourceState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS )
+        if ( descriptor.getType() == Descriptor::Type::UnorderedAccessView )
         {
-            D3D12_RESOURCE_BARRIER uavBarrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_UNORDERED_ACCESS );
-            uavBarriers.push_back( uavBarrier );
+            br.recordBarrierTransition(descriptor.getResourceHandle(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
     }
-    if ( uavBarriers.size() > 0 )
-    {
-        m_commandList->ResourceBarrier( static_cast<UINT>( uavBarriers.size() ), uavBarriers.data() );
-    }
+    br.submitBarriers(m_commandList);
 
     m_commandList->Dispatch( m_threadGroupCountX, m_threadGroupCountY, m_threadGroupCountZ );
 
-    uavBarriers.clear();
-    for ( Descriptor const* descriptor : m_resourceViews )
+    for ( Descriptor const& descriptor : m_resourceViews )
     {
-        if ( descriptor->getType() == Descriptor::Type::UnorderedAccessView )
+        if ( descriptor.getType() == Descriptor::Type::UnorderedAccessView )
         {
-            CD3DX12_RESOURCE_BARRIER uavBarrier = CD3DX12_RESOURCE_BARRIER::UAV( descriptor->getResource()->getD3DResource().Get() );
-            uavBarriers.push_back( uavBarrier );
+            br.recordBarrierUAV(descriptor.getResourceHandle());
         }
     }
-    if ( uavBarriers.size() > 0 )
-    {
-        m_commandList->ResourceBarrier( static_cast<UINT>( uavBarriers.size() ), uavBarriers.data() );
-    }
+    br.submitBarriers(m_commandList);
 
     PIXEndEvent( m_commandList.Get() );
 
     m_commandList->Close();
 }
 
-void ComputePass::addResourceView( Descriptor const* descriptor )
+void ComputePass::addResourceView( Descriptor const descriptor )
 {
-    m_passResourceIndicesBufferData.push_back( descriptor->getDescriptorIndex() );
+    m_passResourceIndicesBufferData.push_back( descriptor.getDescriptorIndex() );
     m_resourceViews.push_back( descriptor );
 }
 
-void ComputePass::setResourceView( UINT index, Descriptor const* descriptor )
+void ComputePass::setResourceView( UINT index, Descriptor const descriptor )
 {
     assert( index >= 0 && index < m_passResourceIndicesBufferData.size() );
     assert( index >= 0 && index < m_resourceViews.size() );
-    m_passResourceIndicesBufferData[ index ] = descriptor->getDescriptorIndex();
+    m_passResourceIndicesBufferData[ index ] = descriptor.getDescriptorIndex();
     m_resourceViews[ index ] = descriptor;
-    m_passResourceIndicesBuffer->setNeedsCopyToGPU( true );
+    ResourceManager::it().setResourceNeedsCopyToGPU(m_passResourceIndicesBuffer);
 }
 
 void ComputePass::setThreadGroupCounts( UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ )
@@ -169,4 +158,14 @@ void ComputePass::setThreadGroupCounts( UINT threadGroupCountX, UINT threadGroup
     setThreadGroupCountX( threadGroupCountX );
     setThreadGroupCountY( threadGroupCountY );
     setThreadGroupCountZ( threadGroupCountZ );
+}
+
+void ComputePass::transitionResourcesForNextFrame( ComPtr<ID3D12GraphicsCommandList> commandList )
+{
+    BarrierRecorder br;
+    for( Descriptor const& descriptor : m_resourceViews )
+    {
+        br.recordBarrierTransition(descriptor.getResourceHandle(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    }
+    br.submitBarriers(commandList);
 }

@@ -4,7 +4,7 @@
 #include <resource/Descriptor.h>
 #include <resource/DescriptorHeap.h>
 
-Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC const& resourceDesc, D3D12_SUBRESOURCE_DATA const& subresourceData )
+Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc, D3D12_SUBRESOURCE_DATA const& subresourceData )
     : m_name( name )
     , m_resource( nullptr )
     , m_intermediateUploadBuffer( nullptr )
@@ -12,6 +12,11 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC const& resourceDesc
     , m_resourceState( D3D12_RESOURCE_STATE_COMMON )
     , m_needsCopyToGPU( subresourceData.pData != nullptr )
 {
+    if (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+    {
+        resourceDesc.Width = Resource::getSizeAligned256(static_cast<UINT>(resourceDesc.Width));
+    }
+
     FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
     CD3DX12_CLEAR_VALUE clearValue;
     CD3DX12_CLEAR_VALUE* clearValuePtr = nullptr;
@@ -43,7 +48,7 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC const& resourceDesc
                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
                                                  nullptr,
                                                  IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
-    setDebugName( name );
+    m_resource->SetName(name);
 }
 
 Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
@@ -63,63 +68,11 @@ Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
                                                  nullptr,
                                                  IID_PPV_ARGS( m_intermediateUploadBuffer.GetAddressOf() ) );
-    setDebugName( name );
+    m_resource->SetName(name);
 }
 
 Resource::~Resource()
 {
-}
-
-Descriptor const* Resource::getConstantBufferView( D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc )
-{
-    cbvDesc.SizeInBytes = getSizeAligned256( cbvDesc.SizeInBytes );
-    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addCBV( &cbvDesc );
-    return new Descriptor( Descriptor::Type::ConstantBufferView, 
-                           this,
-                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                           descriptorIndex,
-                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() );
-}
-
-Descriptor const* Resource::getShaderResourceView( D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc )
-{
-    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addSRV( getD3DResource(), &srvDesc );
-    return new Descriptor( Descriptor::Type::ShaderResourceView,
-                           this,
-                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                           descriptorIndex,
-                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() );
-}
-
-Descriptor const* Resource::getUnorderedAccessView( D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc )
-{
-    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addUAV( getD3DResource(), &uavDesc );
-    return new Descriptor( Descriptor::Type::UnorderedAccessView,
-                           this,
-                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                           descriptorIndex,
-                           DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize() );
-}
-
-Descriptor const* Resource::getRenderTargetView( D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc )
-{
-    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapRtv().addRTV( getD3DResource(), &rtvDesc );
-    return new Descriptor( Descriptor::Type::RenderTargetView,
-                           this,
-                           DescriptorHeap::getDescriptorHeapRtv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                           descriptorIndex,
-                           DescriptorHeap::getDescriptorHeapRtv().getIncrementSize() );
-}
-
-Descriptor const* Resource::getDepthStencilView( D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc )
-{
-    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapDsv().addDSV( getD3DResource(), &dsvDesc );
-    return new Descriptor( Descriptor::Type::DepthStencilView,
-                           this,
-                           DescriptorHeap::getDescriptorHeapDsv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
-                           descriptorIndex,
-                           DescriptorHeap::getDescriptorHeapDsv().getIncrementSize(),
-                           dsvDesc.Flags );
 }
 
 D3D12_RESOURCE_BARRIER Resource::getTransitionBarrier( D3D12_RESOURCE_STATES newState )
@@ -148,9 +101,4 @@ void Resource::copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )
     assert( m_subresourceData.pData );
     UpdateSubresources<1>( commandList.Get(), m_resource.Get(), m_intermediateUploadBuffer.Get(), 0, 0, 1, &m_subresourceData );
     m_needsCopyToGPU = false;
-}
-
-void Resource::setDebugName( wchar_t const* debugName )
-{
-    m_resource->SetName( debugName );
 }

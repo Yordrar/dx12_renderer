@@ -3,25 +3,30 @@
 #include <resource/Resource.h>
 #include <resource/DescriptorHeap.h>
 
+Descriptor::Descriptor()
+    : m_type(Type::InvalidView)
+    , m_descriptorIndex(0)
+{
+    m_descriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(CD3DX12_DEFAULT{});
+}
+
 Descriptor::Descriptor( Type type,
-                        Resource* resource,
+                        ResourceHandle handle,
                         D3D12_CPU_DESCRIPTOR_HANDLE const& cpuDescriptorHandleForHeapStart,
                         UINT offsetInDescriptors,
-                        UINT descriptorIncrementSize,
-                        D3D12_DSV_FLAGS dsvFlags )
-    : m_resource( resource )
-    , m_type( type )
+                        UINT descriptorIncrementSize )
+    : m_type( type )
+    , m_handle( handle )
     , m_descriptorIndex( offsetInDescriptors )
-    , m_dsvFlags( dsvFlags )
 {
-    m_descriptor = CD3DX12_CPU_DESCRIPTOR_HANDLE( cpuDescriptorHandleForHeapStart,
+    m_descriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE( cpuDescriptorHandleForHeapStart,
                                                   offsetInDescriptors,
                                                   descriptorIncrementSize );
 }
 
 Descriptor::~Descriptor()
 {
-    switch ( m_type )
+    /*switch ( m_type )
     {
         case Type::ConstantBufferView:
         case Type::ShaderResourceView:
@@ -36,5 +41,5 @@ Descriptor::~Descriptor()
             break;
         default:
             break;
-    }
+    }*/
 }

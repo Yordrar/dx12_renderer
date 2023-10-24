@@ -1,6 +1,6 @@
 #pragma once
 
-class Resource;
+#include <resource/ResourceHandle.h>
 
 class IndexBuffer
 {
@@ -11,10 +11,10 @@ public:
 	void bind( ComPtr<ID3D12GraphicsCommandList> commandList );
 
 	UINT getIndexCount() const { return m_indexCount; }
-	Resource* getResource() const { return m_resource; }
+	ResourceHandle getResource() const { return m_resource; }
 
 private:
 	UINT* m_indices;
 	UINT m_indexCount;
-	Resource* m_resource;
+	ResourceHandle m_resource;
 };

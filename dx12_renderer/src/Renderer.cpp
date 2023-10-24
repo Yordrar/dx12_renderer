@@ -5,6 +5,8 @@
 #include <imgui_impl_dx12.h>
 
 #include <RendererConstants.h>
+#include <BarrierRecorder.h>
+#include <Profiler.h>
 #include <resource/ResourceManager.h>
 #include <resource/DescriptorHeap.h>
 
@@ -14,10 +16,12 @@ extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\
 
 RECT Renderer::s_windowRect;
 ComPtr<ID3D12Device2> Renderer::s_device{ nullptr };
+UINT Renderer::s_previousBackBufferIndex = 0;
 UINT Renderer::s_currentBackBufferIndex = 0;
 uint64_t Renderer::s_timestampFrequency = 0;
 ComPtr<ID3D12RootSignature> Renderer::s_rootSignature{ nullptr };
-Descriptor const* Renderer::s_backBufferRTVs[ RendererConstants::sc_numBackBuffers ];
+Descriptor Renderer::s_backBufferRTVs[RendererConstants::sc_numBackBuffers];
+ResourceHandle Renderer::s_backBufferHandles[RendererConstants::sc_numBackBuffers];
 
 Renderer::Renderer( HWND hWnd, RECT windowRect )
     : m_hWnd(hWnd)
@@ -50,7 +54,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     ComPtr<IDXGIAdapter1> currentAdapter;
     ComPtr<IDXGIAdapter1> selectedAdapter;
     SIZE_T maxDedicatedVideoMemory = 0;
-    while ( dxgiFactory->EnumAdapters1( i, &currentAdapter ) == S_OK )
+    while ( SUCCEEDED( dxgiFactory->EnumAdapters1( i, &currentAdapter ) ) )
     {
         DXGI_ADAPTER_DESC1 dxgiAdapterDesc;
         currentAdapter->GetDesc1( &dxgiAdapterDesc );
@@ -66,7 +70,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     }
 
     // Create dx12 device
-    D3D12CreateDevice( selectedAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS( &s_device ) );
+    HRESULT result = D3D12CreateDevice( selectedAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS( &s_device ) );
 
     // Debug break on error
 #if defined(_DEBUG)
@@ -115,8 +119,8 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     {
         ComPtr<ID3D12Resource> backBuffer;
         m_swapChain->GetBuffer( i, IID_PPV_ARGS( &backBuffer ) );
-        m_backBuffers[ i ] = backBuffer;
-        Resource* backbufferResource = ResourceManager::it().createResource( ( L"backbuffer" + std::to_wstring( i ) ).c_str(), backBuffer );
+        m_backBuffers[i] = backBuffer;
+        ResourceHandle backbufferResource = ResourceManager::it().createResource( ( L"backbuffer" + std::to_wstring( i ) ).c_str(), backBuffer );
         D3D12_RENDER_TARGET_VIEW_DESC rtvDesc =
         {
             .Format = backBuffer->GetDesc().Format,
@@ -124,7 +128,8 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
         };
         rtvDesc.Texture2D.MipSlice = 0;
         rtvDesc.Texture2D.PlaneSlice = 0;
-        s_backBufferRTVs[ i ] = backbufferResource->getRenderTargetView( rtvDesc );
+        s_backBufferRTVs[i] = ResourceManager::it().getRenderTargetView( backbufferResource, rtvDesc );
+        s_backBufferHandles[i] = backbufferResource;
     }
 
     // Create root signature
@@ -196,16 +201,16 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
 
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
     {
-        Renderer::device()->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_imguiCommandAllocators[ i ] ) );
+        Renderer::device()->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_postFrameCommandAllocators[ i ] ) );
         Renderer::device()->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_preFrameCommandAllocators[ i ] ) );
     }
 
     Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_preFrameCommandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_preFrameCommandList ) );
-    Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_imguiCommandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_imguiCommandList ) );
+    Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_postFrameCommandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_postFrameCommandList ) );
     m_preFrameCommandList->Close();
-    m_imguiCommandList->Close();
-    std::wstring commandListName = L"imgui_commandList";
-    m_imguiCommandList->SetName( commandListName.c_str() );
+    m_postFrameCommandList->Close();
+    m_preFrameCommandList->SetName(L"preFrameCommandList");
+    m_postFrameCommandList->SetName(L"postFrameCommandList");
 }
 
 Renderer::~Renderer()
@@ -254,7 +259,12 @@ void Renderer::submitComputePass( ComputePass& pass )
 
 void Renderer::endFrame()
 {
-    recordImguiCommandList();
+    recordImgui();
+
+    for (ComputePass* computePass : submittedComputePasses)
+    {
+        computePass->transitionResourcesForNextFrame(m_postFrameCommandList);
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( end - start );
@@ -272,11 +282,8 @@ void Renderer::endFrame()
         }
         batchedRenderPassCmdLists.push_back( pass->getCommandList() );
     }
-    batchedRenderPassCmdLists.push_back( m_imguiCommandList.Get() );
-    if ( batchedRenderPassCmdLists.size() > 0 )
-    {
-        m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>( batchedRenderPassCmdLists.size() ), batchedRenderPassCmdLists.data() );
-    }
+    batchedRenderPassCmdLists.push_back( m_postFrameCommandList.Get() );
+    m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>( batchedRenderPassCmdLists.size() ), batchedRenderPassCmdLists.data() );
 
     for ( ComputePass* pass : submittedComputePasses )
     {
@@ -287,17 +294,18 @@ void Renderer::endFrame()
 
     m_swapChain->Present( 1, 0 );
 
-    // Schedule a Signal command in the queue.
+    // Schedule a Signal command in the queue
     uint64_t const currentFenceValue = m_fenceValues[ s_currentBackBufferIndex ];
     m_frameFence->GPUSignal( m_graphicsCmdQueue, currentFenceValue );
 
-    // Update the frame index.
+    // Update the frame index
+    s_previousBackBufferIndex = s_currentBackBufferIndex;
     s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
 
-    // If the next frame is not ready to be rendered yet, wait until it is ready.
+    // If the next frame is not ready to be rendered yet, wait until it is ready
     m_frameFence->CPUWait( m_fenceValues[ s_currentBackBufferIndex ] );
 
-    // Set the fence value for the next frame.
+    // Set the fence value for the next frame
     m_fenceValues[ s_currentBackBufferIndex ] = currentFenceValue + 1;
 }
 
@@ -305,16 +313,11 @@ void Renderer::waitForIdleGPU()
 {
     uint64_t const currentFenceValue = m_fenceValues[ s_currentBackBufferIndex ];
     m_frameFence->GPUSignal( m_graphicsCmdQueue, currentFenceValue );
-    m_frameFence->CPUWait( m_fenceValues[ s_currentBackBufferIndex ] );
+    m_frameFence->CPUWait( currentFenceValue );
     m_fenceValues[ s_currentBackBufferIndex ]++;
 }
 
-UINT Renderer::getPreviousBackbufferIndex()
-{
-    return std::clamp( s_currentBackBufferIndex - 1, 0u, RendererConstants::sc_numBackBuffers - 1 );
-}
-
-void Renderer::recordImguiCommandList()
+void Renderer::recordImgui()
 {
     if ( m_imguiCallbackRegistered )
     {
@@ -322,37 +325,31 @@ void Renderer::recordImguiCommandList()
     }
     ImGui::Render();
 
-    ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_imguiCommandAllocators[ getCurrentBackbufferIndex() ];
+    ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_postFrameCommandAllocators[ getCurrentBackbufferIndex() ];
     currentCommandAllocator->Reset();
-    m_imguiCommandList->Reset( currentCommandAllocator.Get(), nullptr );
+    m_postFrameCommandList->Reset( currentCommandAllocator.Get(), nullptr );
 
-    PIXBeginEvent( m_imguiCommandList.Get(), PIX_COLOR_DEFAULT, "Imgui" );
+    PIXBeginEvent( m_postFrameCommandList.Get(), PIX_COLOR_DEFAULT, "Imgui" );
 
     ID3D12DescriptorHeap* descriptorHeaps[] =
     {
         DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap().Get(),
     };
-    m_imguiCommandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
+    m_postFrameCommandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
 
-    Resource* renderTarget = ResourceManager::it().getCurrentBackbufferResource();
-    D3D12_CPU_DESCRIPTOR_HANDLE rtv = Renderer::getCurrentBackbufferRTV()->getView();
-    m_imguiCommandList->OMSetRenderTargets( 1, &rtv, false, nullptr );
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv = Renderer::getCurrentBackbufferRTV().getDescriptorHandle();
+    m_postFrameCommandList->OMSetRenderTargets( 1, &rtv, false, nullptr );
 
-    if ( renderTarget->getResourceState() != D3D12_RESOURCE_STATE_RENDER_TARGET )
-    {
-        D3D12_RESOURCE_BARRIER renderTargetBarrier = renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_RENDER_TARGET );
-        m_imguiCommandList->ResourceBarrier( 1, &renderTargetBarrier );
-    }
+    BarrierRecorder br;
+    br.recordBarrierTransition(Renderer::getCurrentBackbufferHandle(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+    br.submitBarriers(m_postFrameCommandList);
 
-    ImGui_ImplDX12_RenderDrawData( ImGui::GetDrawData(), m_imguiCommandList.Get() );
+    ImGui_ImplDX12_RenderDrawData( ImGui::GetDrawData(), m_postFrameCommandList.Get() );
 
-    if ( renderTarget->getResourceState() != D3D12_RESOURCE_STATE_PRESENT )
-    {
-        D3D12_RESOURCE_BARRIER renderTargetBarrier = renderTarget->getTransitionBarrier( D3D12_RESOURCE_STATE_PRESENT );
-        m_imguiCommandList->ResourceBarrier( 1, &renderTargetBarrier );
-    }
+    br.recordBarrierTransition(Renderer::getCurrentBackbufferHandle(), D3D12_RESOURCE_STATE_PRESENT);
+    br.submitBarriers(m_postFrameCommandList);
 
     PIXEndEvent();
 
-    m_imguiCommandList->Close();
+    m_postFrameCommandList->Close();
 }

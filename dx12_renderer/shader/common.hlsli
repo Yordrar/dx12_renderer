@@ -1,5 +1,3 @@
-#define DESCRIPTORS_IN_HEAPS 100000
-
 cbuffer passBuffer : register(b0, space0)
 {
     uint passBufferIndex;

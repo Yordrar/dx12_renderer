@@ -20,12 +20,13 @@ public:
     Fence& getFence() { return m_fence; }
 
     void record();
-    void addResourceView( Descriptor const* descriptor );
-    void setResourceView( UINT index, Descriptor const* descriptor );
+    void addResourceView( Descriptor const descriptor );
+    void setResourceView( UINT index, Descriptor const descriptor );
     void setThreadGroupCountX( UINT threadGroupCountX ) { m_threadGroupCountX = threadGroupCountX; }
     void setThreadGroupCountY( UINT threadGroupCountY ) { m_threadGroupCountY = threadGroupCountY; }
     void setThreadGroupCountZ( UINT threadGroupCountZ ) { m_threadGroupCountZ = threadGroupCountZ; }
     void setThreadGroupCounts( UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ );
+    void transitionResourcesForNextFrame( ComPtr<ID3D12GraphicsCommandList> commandList );
 
 private:
     struct PipelineStateStream
@@ -51,13 +52,13 @@ private:
     uint64_t m_profilerQueryIndex;
     double m_executionTimeInMilliseconds;
 
-    Resource* m_passBuffer;
+    ResourceHandle m_passBuffer;
     PassBufferData m_passBufferData;
 
-    Resource* m_passResourceIndicesBuffer;
+    ResourceHandle m_passResourceIndicesBuffer;
     std::vector<UINT> m_passResourceIndicesBufferData;
 
-    std::vector<Descriptor const*> m_resourceViews;
+    std::vector<Descriptor> m_resourceViews;
 
     Fence m_fence;
 };

@@ -1,5 +1,6 @@
 #include "Mesh.h"
 
+#include <BarrierRecorder.h>
 #include <geometry/ShaderManager.h>
 #include <resource/Resource.h>
 
@@ -29,21 +30,10 @@ bool Mesh::isAABBValid() const
 
 void Mesh::record( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
-    std::vector<D3D12_RESOURCE_BARRIER> barriers;
-    if ( m_vertexBuffer && m_vertexBuffer->getResource()->getResourceState() != D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER )
-    {
-        D3D12_RESOURCE_BARRIER barrier = m_vertexBuffer->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER );
-        barriers.push_back( barrier );
-    }
-    if ( m_indexBuffer && m_indexBuffer->getResource()->getResourceState() != D3D12_RESOURCE_STATE_INDEX_BUFFER )
-    {
-        D3D12_RESOURCE_BARRIER barrier = m_indexBuffer->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_INDEX_BUFFER );
-        barriers.push_back( barrier );
-    }
-    if ( barriers.size() > 0 )
-    {
-        commandList->ResourceBarrier( static_cast<UINT>( barriers.size() ), barriers.data() );
-    }
+    BarrierRecorder br;
+    br.recordBarrierTransition(m_vertexBuffer->getResource(), D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+    br.recordBarrierTransition(m_indexBuffer->getResource(), D3D12_RESOURCE_STATE_INDEX_BUFFER);
+    br.submitBarriers(commandList);
 
     commandList->IASetPrimitiveTopology( m_primitiveTopology );
     m_vertexBuffer->bind( commandList );

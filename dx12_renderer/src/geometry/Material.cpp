@@ -56,25 +56,26 @@ Material::Material( MaterialDesc const& materialDesc )
         m_psoCache[ technique.m_name ]->SetName( ( m_desc.m_name + L"/" + technique.m_name ).c_str() );
     }
 
-    for ( Descriptor const* resourceView : m_desc.m_resourceViews )
+    for ( Descriptor const& resourceView : m_desc.m_resourceViews )
     {
-        m_bindlessIndices.push_back( resourceView->getDescriptorIndex() );
+        m_bindlessIndices.push_back( resourceView.getDescriptorIndex() );
     }
     m_bindlessIndicesBuffer = ResourceManager::it().createResource( ( m_desc.m_name + L"_bindlessIndicesBuffer" ).c_str(),
                                                                       CD3DX12_RESOURCE_DESC::Buffer( std::max( m_bindlessIndices.size() * sizeof( UINT ), 1Ui64 ) ),
                                                                       D3D12_SUBRESOURCE_DATA{ m_bindlessIndices.data(), static_cast<LONG_PTR>( m_bindlessIndices.size() * sizeof( UINT ) ), 0 } );
     
+    D3D12_RESOURCE_DESC bindlessIndicesBufferResourceDesc = ResourceManager::it().getResourceDesc(m_bindlessIndicesBuffer);
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
     {
-        .Format = m_bindlessIndicesBuffer->getResourceDesc().Format,
+        .Format = bindlessIndicesBufferResourceDesc.Format,
         .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
         .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
     };
     srvDesc.Buffer.FirstElement = 0;
     srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     srvDesc.Buffer.NumElements = 1;
-    srvDesc.Buffer.StructureByteStride = static_cast<UINT>( m_bindlessIndicesBuffer->getResourceDesc().Width );
-    m_materialBufferData.bindlessIndicesBufferIndex = m_bindlessIndicesBuffer->getShaderResourceView( srvDesc )->getDescriptorIndex();
+    srvDesc.Buffer.StructureByteStride = static_cast<UINT>(bindlessIndicesBufferResourceDesc.Width );
+    m_materialBufferData.bindlessIndicesBufferIndex = ResourceManager::it().getShaderResourceView(m_bindlessIndicesBuffer, srvDesc).getDescriptorIndex();
 
     m_materialBuffer = ResourceManager::it().createResource( ( m_desc.m_name + L"_materialBuffer" ).c_str(),
                                                              CD3DX12_RESOURCE_DESC::Buffer( std::max( sizeof( m_materialBufferData ), 1Ui64 ) ),

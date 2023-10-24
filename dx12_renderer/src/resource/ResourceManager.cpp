@@ -9,58 +9,42 @@ ResourceManager::ResourceManager()
 {
 }
 
-Resource* ResourceManager::createResource( wchar_t const* resourceName, D3D12_RESOURCE_DESC const& resDesc, D3D12_SUBRESOURCE_DATA subresourceData )
+ResourceHandle ResourceManager::createResource(wchar_t const* name, D3D12_RESOURCE_DESC resourceDesc, D3D12_SUBRESOURCE_DATA const& subresourceData)
 {
-    if ( wmemcmp( resourceName, L"", wcslen( resourceName ) ) == 0 )
+    if (m_freeResourceSlots.empty())
     {
-        return nullptr;
+        m_resources.push_back(ResourceContainerEntry{ std::move(Resource(name, resourceDesc, subresourceData)), 0 });
+        return ResourceHandle{ static_cast<unsigned int>(m_resources.size()) - 1, 0 };
     }
-
-    D3D12_RESOURCE_DESC resourceDesc = resDesc;
-
-    // For buffers, size has to be aligned to 256
-    if ( resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER )
+    else
     {
-        resourceDesc.Width = Resource::getSizeAligned256( static_cast<UINT>( resourceDesc.Width ) );
-    }
-
-    m_resources[ resourceName ] = std::make_unique<Resource>( resourceName, resourceDesc, subresourceData );
-
-    return m_resources[ resourceName ].get();
-}
-
-Resource* ResourceManager::createResource( wchar_t const* resourceName, ComPtr<ID3D12Resource> resource )
-{
-    if ( wmemcmp( resourceName, L"", wcslen( resourceName ) ) == 0 )
-    {
-        return nullptr;
-    }
-
-    std::unique_ptr<Resource> newResource = std::make_unique<Resource>( resourceName, resource );
-
-    m_resources[ resourceName ] = std::move( newResource );
-
-    return m_resources[ resourceName ].get();
-}
-
-void ResourceManager::destroyResource( wchar_t const* resourceName )
-{
-    Resource* resource = getResource( resourceName );
-    if ( resource )
-    {
-        m_resources.erase( resourceName );
+        unsigned int slot = m_freeResourceSlots.front();
+        m_freeResourceSlots.pop();
+        m_resources[slot].m_resource = std::move(Resource(name, resourceDesc, subresourceData));
+        return ResourceHandle{ slot, ++m_resources[slot].m_generation };
     }
 }
 
-Resource* ResourceManager::getResource( wchar_t const* resourceName )
+ResourceHandle ResourceManager::createResource(wchar_t const* name, ComPtr<ID3D12Resource> resource)
 {
-    ResourceMap::iterator it = m_resources.find( resourceName );
-
-    if ( it != m_resources.end() )
+    if (m_freeResourceSlots.empty())
     {
-        return it->second.get();
+        m_resources.push_back(ResourceContainerEntry{ std::move(Resource(name, resource)), 0 });
+        return ResourceHandle{ static_cast<unsigned int>(m_resources.size()) - 1, 0 };
     }
-    return nullptr;
+    else
+    {
+        unsigned int slot = m_freeResourceSlots.front();
+        m_freeResourceSlots.pop();
+        m_resources[slot].m_resource = std::move(Resource(name, resource));
+        return ResourceHandle{ slot, ++m_resources[slot].m_generation };
+    }
+}
+
+void ResourceManager::destroyResource(ResourceHandle handle)
+{
+    m_freeResourceSlots.push(handle.m_index);
+    m_resources[handle.m_index].m_generation++;
 }
 
 void ResourceManager::createSampler( wchar_t const* resourceName )
@@ -79,18 +63,173 @@ void ResourceManager::createSampler( wchar_t const* resourceName )
     DescriptorHeap::getDescriptorHeapSampler().addSampler( &samplerDesc );
 }
 
+Descriptor const ResourceManager::getConstantBufferView(ResourceHandle handle, D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc)
+{
+    for (Descriptor const& descriptor : m_cbvs)
+    {
+        if (memcmp(&descriptor.m_cbvDesc, &cbvDesc, sizeof(D3D12_CONSTANT_BUFFER_VIEW_DESC)) == 0 &&
+            descriptor.getResourceHandle() == handle)
+        {
+            return descriptor;
+        }
+    }
+
+    cbvDesc.SizeInBytes = Resource::getSizeAligned256(cbvDesc.SizeInBytes);
+    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addCBV(&cbvDesc);
+    Descriptor newCBV = Descriptor(Descriptor::Type::ConstantBufferView,
+        handle,
+        DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+        descriptorIndex,
+        DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize());
+    newCBV.m_cbvDesc = cbvDesc;
+    m_cbvs.push_back(newCBV);
+    return newCBV;
+}
+
+Descriptor const ResourceManager::getShaderResourceView(ResourceHandle handle, D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc)
+{
+    for (Descriptor const& descriptor : m_srvs)
+    {
+        if (memcmp(&descriptor.m_srvDesc, &srvDesc, sizeof(D3D12_SHADER_RESOURCE_VIEW_DESC)) == 0 &&
+            descriptor.getResourceHandle() == handle)
+        {
+            return descriptor;
+        }
+    }
+
+    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addSRV(m_resources[handle.m_index].m_resource.getD3DResource(), &srvDesc);
+    Descriptor newSRV = Descriptor(Descriptor::Type::ShaderResourceView,
+        handle,
+        DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+        descriptorIndex,
+        DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize());
+    newSRV.m_srvDesc = srvDesc;
+    m_srvs.push_back(newSRV);
+    return newSRV;
+}
+
+Descriptor const ResourceManager::getUnorderedAccessView(ResourceHandle handle, D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc)
+{
+    for (Descriptor const& descriptor : m_uavs)
+    {
+        if (memcmp(&descriptor.m_uavDesc, &uavDesc, sizeof(D3D12_UNORDERED_ACCESS_VIEW_DESC)) == 0 &&
+            descriptor.getResourceHandle() == handle)
+        {
+            return descriptor;
+        }
+    }
+
+    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapCbvSrvUav().addUAV(m_resources[handle.m_index].m_resource.getD3DResource(), &uavDesc);
+    Descriptor newUAV = Descriptor(Descriptor::Type::UnorderedAccessView,
+        handle,
+        DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+        descriptorIndex,
+        DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize());
+    newUAV.m_uavDesc = uavDesc;
+    m_uavs.push_back(newUAV);
+    return newUAV;
+}
+
+Descriptor const ResourceManager::getRenderTargetView(ResourceHandle handle, D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc)
+{
+    for (Descriptor const& descriptor : m_rtvs)
+    {
+        if (memcmp(&descriptor.m_rtvDesc, &rtvDesc, sizeof(D3D12_RENDER_TARGET_VIEW_DESC)) == 0 &&
+            descriptor.getResourceHandle() == handle)
+        {
+            return descriptor;
+        }
+    }
+
+    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapRtv().addRTV(m_resources[handle.m_index].m_resource.getD3DResource(), &rtvDesc);
+    Descriptor newRTV = Descriptor(Descriptor::Type::RenderTargetView,
+        handle,
+        DescriptorHeap::getDescriptorHeapRtv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+        descriptorIndex,
+        DescriptorHeap::getDescriptorHeapRtv().getIncrementSize());
+    newRTV.m_rtvDesc = rtvDesc;
+    m_rtvs.push_back(newRTV);
+    return newRTV;
+}
+
+Descriptor const ResourceManager::getDepthStencilView(ResourceHandle handle, D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc)
+{
+    for (Descriptor const& descriptor : m_dsvs)
+    {
+        if (memcmp(&descriptor.m_dsvDesc, &dsvDesc, sizeof(D3D12_DEPTH_STENCIL_VIEW_DESC)) == 0 &&
+            descriptor.getResourceHandle() == handle)
+        {
+            return descriptor;
+        }
+    }
+
+    UINT descriptorIndex = DescriptorHeap::getDescriptorHeapDsv().addDSV(m_resources[handle.m_index].m_resource.getD3DResource(), &dsvDesc);
+    Descriptor newDSV = Descriptor(Descriptor::Type::DepthStencilView,
+        handle,
+        DescriptorHeap::getDescriptorHeapDsv().getHeap()->GetCPUDescriptorHandleForHeapStart(),
+        descriptorIndex,
+        DescriptorHeap::getDescriptorHeapDsv().getIncrementSize());
+    newDSV.m_dsvDesc = dsvDesc;
+    m_dsvs.push_back(newDSV);
+    return newDSV;
+}
+
+ComPtr<ID3D12Resource> ResourceManager::getD3DResource(ResourceHandle handle) const
+{
+    if (isHandleValid(handle))
+    {
+        return m_resources[handle.m_index].m_resource.getD3DResource();
+    }
+    return nullptr;
+}
+
+D3D12_RESOURCE_STATES ResourceManager::getResourceState(ResourceHandle handle) const
+{
+    if (isHandleValid(handle))
+    {
+        return m_resources[handle.m_index].m_resource.getResourceState();
+    }
+    return D3D12_RESOURCE_STATE_COMMON;
+}
+
+D3D12_RESOURCE_BARRIER ResourceManager::getTransitionBarrier(ResourceHandle handle, D3D12_RESOURCE_STATES newState)
+{
+    if (isHandleValid(handle))
+    {
+        return m_resources[handle.m_index].m_resource.getTransitionBarrier(newState);
+    }
+    return D3D12_RESOURCE_BARRIER();
+}
+
+D3D12_RESOURCE_DESC ResourceManager::getResourceDesc(ResourceHandle handle) const
+{
+    if (isHandleValid(handle))
+    {
+        return m_resources[handle.m_index].m_resource.getResourceDesc();
+    }
+    return D3D12_RESOURCE_DESC();
+}
+
+void ResourceManager::setResourceNeedsCopyToGPU(ResourceHandle handle)
+{
+    if (isHandleValid(handle))
+    {
+        m_resources[handle.m_index].m_resource.setNeedsCopyToGPU(true);
+    }
+}
+
 void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
     std::vector<D3D12_RESOURCE_BARRIER> preCopyBarriers;
     std::vector<Resource*> resourcesToCopy;
-    for ( ResourceMap::value_type& resource_pair : m_resources )
+    for ( ResourceContainer::value_type& resourceEntry : m_resources )
     {
-        if ( resource_pair.second->getNeedsCopyToGPU() )
+        if (resourceEntry.m_resource.getNeedsCopyToGPU() )
         {
-            resourcesToCopy.push_back( resource_pair.second.get() );
-            if ( resource_pair.second->getResourceState() != D3D12_RESOURCE_STATE_COPY_DEST )
+            resourcesToCopy.push_back( &resourceEntry.m_resource );
+            if (resourceEntry.m_resource.getResourceState() != D3D12_RESOURCE_STATE_COPY_DEST )
             {
-                D3D12_RESOURCE_BARRIER preCopyBarrier = resource_pair.second->getTransitionBarrier( D3D12_RESOURCE_STATE_COPY_DEST );
+                D3D12_RESOURCE_BARRIER preCopyBarrier = resourceEntry.m_resource.getTransitionBarrier( D3D12_RESOURCE_STATE_COPY_DEST );
                 preCopyBarriers.push_back( preCopyBarrier );
             }
         }

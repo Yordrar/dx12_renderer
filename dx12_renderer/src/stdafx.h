@@ -44,6 +44,9 @@ using namespace Microsoft::WRL;
 #include <thread>
 #include <mutex>
 
+// Metaprogramming
+#include <type_traits>
+
 // External Libraries
 #include <dxcapi.h>
 #include <pix3.h>

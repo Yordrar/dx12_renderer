@@ -28,7 +28,7 @@ void Camera::move( float delta_x, float delta_y, float delta_z )
 	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookToRH( m_cameraData.m_position, m_localForwardVector, m_localUpVector ) * DirectX::XMMatrixPerspectiveFovRH( m_fov, m_aspectRatio, m_nearZ, m_farZ ));
 	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
 
-	m_cameraBuffer->setNeedsCopyToGPU( true );
+	ResourceManager::it().setResourceNeedsCopyToGPU(m_cameraBuffer);
 }
 
 void Camera::rotate( float delta_angles_x, float delta_angles_y )
@@ -73,7 +73,7 @@ void Camera::rotate( float delta_angles_x, float delta_angles_y )
 	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookToRH( m_cameraData.m_position, m_localForwardVector, m_localUpVector ) * DirectX::XMMatrixPerspectiveFovRH( m_fov, m_aspectRatio, m_nearZ, m_farZ ));
 	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
 
-	m_cameraBuffer->setNeedsCopyToGPU( true );
+	ResourceManager::it().setResourceNeedsCopyToGPU(m_cameraBuffer);
 }
 
 bool Camera::isAABBVisible( Mesh::AABB const& aabb ) const

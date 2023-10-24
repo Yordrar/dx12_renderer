@@ -28,28 +28,31 @@ public:
     void waitForIdleGPU();
 
     static UINT getCurrentBackbufferIndex() { return s_currentBackBufferIndex; }
-    static UINT getPreviousBackbufferIndex();
+    static UINT getPreviousBackbufferIndex() { return s_previousBackBufferIndex; }
     static RECT getWindowRect() { return s_windowRect; }
     static ComPtr<ID3D12RootSignature> getRootSignature() { return s_rootSignature; }
     static uint64_t getTimestampFrequency() { return s_timestampFrequency; }
-    static Descriptor const* getCurrentBackbufferRTV() { return s_backBufferRTVs[ getCurrentBackbufferIndex() ]; }
+    static Descriptor const getCurrentBackbufferRTV() { return s_backBufferRTVs[getCurrentBackbufferIndex()]; }
+    static ResourceHandle const getCurrentBackbufferHandle() { return s_backBufferHandles[getCurrentBackbufferIndex()]; }
     double getCPUFrameTime() const { return m_cpuFrameTime; }
     double getGPUFrameTime() const { return m_gpuFrameTime; }
 
 private:
-    void recordImguiCommandList();
+    void recordImgui();
 
     HWND m_hWnd;
     static RECT s_windowRect;
 
     static ComPtr<ID3D12Device2> s_device;
     static ComPtr<ID3D12RootSignature> s_rootSignature;
+    static UINT s_previousBackBufferIndex;
     static UINT s_currentBackBufferIndex;
     static uint64_t s_timestampFrequency;
 
     ComPtr<IDXGISwapChain4> m_swapChain;
-    ComPtr<ID3D12Resource> m_backBuffers[ RendererConstants::sc_numBackBuffers ];
-    static Descriptor const* s_backBufferRTVs[ RendererConstants::sc_numBackBuffers ];
+    ComPtr<ID3D12Resource> m_backBuffers[RendererConstants::sc_numBackBuffers];
+    static Descriptor s_backBufferRTVs[RendererConstants::sc_numBackBuffers];
+    static ResourceHandle s_backBufferHandles[RendererConstants::sc_numBackBuffers];
     std::unique_ptr<Fence> m_frameFence;
     uint64_t m_fenceValues[ RendererConstants::sc_numBackBuffers ];
 
@@ -59,8 +62,9 @@ private:
     ComPtr<ID3D12GraphicsCommandList> m_preFrameCommandList;
     ComPtr<ID3D12CommandAllocator> m_preFrameCommandAllocators[ RendererConstants::sc_numBackBuffers ];
 
-    ComPtr<ID3D12GraphicsCommandList> m_imguiCommandList;
-    ComPtr<ID3D12CommandAllocator> m_imguiCommandAllocators[ RendererConstants::sc_numBackBuffers ];
+    ComPtr<ID3D12GraphicsCommandList> m_postFrameCommandList;
+    ComPtr<ID3D12CommandAllocator> m_postFrameCommandAllocators[ RendererConstants::sc_numBackBuffers ];
+
     bool m_imguiCallbackRegistered;
     ImguiCallback m_imguiUserCallback;
 

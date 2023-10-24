@@ -14,7 +14,7 @@ public:
     std::wstring const& getName() const { return m_name; }
 
     Camera& getCamera() { return m_camera; }
-    Resource const* getCameraBufferResource() const { return m_camera.getGPUBufferResource(); }
+    ResourceHandle getCameraBufferResource() const { return m_camera.getGPUBufferResource(); }
 
     std::vector< std::shared_ptr<Mesh> > const& getMeshes() const { return m_meshes; }
 

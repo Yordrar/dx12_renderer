@@ -7,7 +7,6 @@ VertexBuffer::VertexBuffer( wchar_t const* name, void* vertices, size_t vertexSi
 	: m_vertices( new uint8_t[ vertexCount * vertexSize ] )
 	, m_vertexSize( vertexSize )
 	, m_vertexCount( vertexCount )
-	, m_resource( nullptr )
 {
 	memcpy( m_vertices, vertices, m_vertexCount * m_vertexSize );
 
@@ -30,7 +29,7 @@ void VertexBuffer::bind( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
 	D3D12_VERTEX_BUFFER_VIEW view =
 	{
-		.BufferLocation = m_resource->getGPUVirtualAddress(),
+		.BufferLocation = ResourceManager::it().getD3DResource(m_resource)->GetGPUVirtualAddress(),
 		.SizeInBytes = static_cast<UINT>( m_vertexSize * m_vertexCount ),
 		.StrideInBytes = static_cast<UINT>( m_vertexSize ),
 	};

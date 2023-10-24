@@ -2,26 +2,23 @@
 
 #include <Renderer.h>
 #include <Profiler.h>
+#include <BarrierRecorder.h>
 #include <resource/ResourceManager.h>
 #include <resource/Descriptor.h>
 #include <geometry/MaterialManager.h>
 
 RenderPass::RenderPass( wchar_t const* name,
                         wchar_t const* techniqueName,
-                        Descriptor const* renderTarget,
-                        Descriptor const* depthStencilTarget,
-                        bool useBackbufferAsRenderTarget )
+                        Descriptor renderTarget,
+                        Descriptor depthStencilTarget )
     : m_name( name )
     , m_techniqueName( techniqueName )
     , m_commandList( nullptr )
-    , m_renderTarget( std::move( renderTarget ) )
-    , m_depthStencilTarget( std::move( depthStencilTarget ) )
-    , m_useBackbufferAsRenderTarget( useBackbufferAsRenderTarget )
+    , m_renderTarget( renderTarget )
+    , m_depthStencilTarget( depthStencilTarget )
     , m_scissorRect( Renderer::getWindowRect() )
     , m_profilerQueryIndex( Profiler::it().allocateQueryIndex() )
     , m_executionTimeInMilliseconds( 0 )
-    , m_passBuffer( nullptr )
-    , m_passResourceIndicesBuffer( nullptr )
 {
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
     {
@@ -46,14 +43,19 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
     currentCommandAllocator->Reset();
     m_commandList->Reset( currentCommandAllocator.Get(), nullptr );
 
-    static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
-
-    if ( m_useBackbufferAsRenderTarget )
+    Descriptor renderTarget;
+    if (m_renderTarget.isValid())
     {
-        m_renderTarget = Renderer::getCurrentBackbufferRTV();
+        renderTarget = m_renderTarget;
+    }
+    else
+    {
+        renderTarget = Renderer::getCurrentBackbufferRTV();
     }
 
-    if ( !m_passResourceIndicesBuffer )
+    static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    if ( !m_passResourceIndicesBuffer.isValid() )
     {
         m_passResourceIndicesBuffer = ResourceManager::it().createResource( ( m_name + L"_passResourceIndicesBuffer" ).c_str(),
                                                                             CD3DX12_RESOURCE_DESC::Buffer( std::max( m_passResourceIndicesBufferData.size() * sizeof( UINT ), 1Ui64 ) ),
@@ -68,9 +70,9 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
         srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
         srvDesc.Buffer.NumElements = static_cast<UINT>( std::max( m_passResourceIndicesBufferData.size(), 1Ui64 ) );
         srvDesc.Buffer.StructureByteStride = 0;
-        m_passBufferData.passResourceIndicesBufferIndex = m_passResourceIndicesBuffer->getShaderResourceView( srvDesc )->getDescriptorIndex();
+        m_passBufferData.passResourceIndicesBufferIndex = ResourceManager::it().getShaderResourceView( m_passResourceIndicesBuffer, srvDesc ).getDescriptorIndex();
     }
-    if ( !m_passBuffer )
+    if ( !m_passBuffer.isValid() )
     {
         m_passBuffer = ResourceManager::it().createResource( ( m_name + L"_passBuffer" ).c_str(),
                                                              CD3DX12_RESOURCE_DESC::Buffer( std::max( sizeof( m_passBufferData ), 1Ui64 ) ),
@@ -84,11 +86,8 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
     PIXBeginEvent( m_commandList.Get(), PIX_COLOR_DEFAULT, m_name.c_str() );
 
     // Set viewport
-    if ( m_renderTarget )
-    {
-        D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT( m_renderTarget->getResource()->getD3DResource().Get() );
-        m_commandList->RSSetViewports( 1, &viewport );
-    }
+    D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(ResourceManager::it().getD3DResource(renderTarget.getResourceHandle()).Get() );
+    m_commandList->RSSetViewports( 1, &viewport );
     m_commandList->RSSetScissorRects( 1, &m_scissorRect );
 
     // Set descriptor heaps
@@ -103,61 +102,35 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
     m_commandList->SetGraphicsRootSignature(Renderer::getRootSignature().Get());
 
     // Clear and set render targets
-    std::vector<D3D12_RESOURCE_BARRIER> barriers;
-    if ( m_renderTarget && m_renderTarget->getResource()->getResourceState() != D3D12_RESOURCE_STATE_RENDER_TARGET )
+    BarrierRecorder br;
+    br.recordBarrierTransition(renderTarget.getResourceHandle(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+    if (m_depthStencilTarget.getDSVDesc().Flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH)
     {
-        D3D12_RESOURCE_BARRIER renderTargetBarrier = m_renderTarget->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_RENDER_TARGET );
-        barriers.push_back( renderTargetBarrier );
-    }
-    if ( m_depthStencilTarget )
-    {
-        if ( m_depthStencilTarget->getDSVFlags() == D3D12_DSV_FLAG_NONE && m_depthStencilTarget->getResource()->getResourceState() != D3D12_RESOURCE_STATE_DEPTH_WRITE )
-        {
-            D3D12_RESOURCE_BARRIER depthStencilBarrier = m_depthStencilTarget->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_DEPTH_WRITE );
-            barriers.push_back( depthStencilBarrier );
-        }
-        else if ( m_depthStencilTarget->getDSVFlags() == D3D12_DSV_FLAG_READ_ONLY_DEPTH && m_depthStencilTarget->getResource()->getResourceState() != D3D12_RESOURCE_STATE_DEPTH_READ )
-        {
-            D3D12_RESOURCE_BARRIER depthStencilBarrier = m_depthStencilTarget->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_DEPTH_READ );
-            barriers.push_back( depthStencilBarrier );
-        }
-    }
-    for ( Descriptor const& descriptor : m_passResources )
-    {
-        if ( descriptor.getResource()->getResourceState() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE )
-        {
-            D3D12_RESOURCE_BARRIER barrier = descriptor.getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE );
-            barriers.push_back( barrier );
-        }
-    }
-    if ( barriers.size() > 0 )
-    {
-        m_commandList->ResourceBarrier( static_cast<UINT>( barriers.size() ), barriers.data() );
-    }
-
-    if ( m_renderTarget )
-    {
-        m_commandList->ClearRenderTargetView( m_renderTarget->getView(), clearColor, 0, nullptr );
-    }
-    if ( m_depthStencilTarget && m_depthStencilTarget->getResource()->getResourceState() == D3D12_RESOURCE_STATE_DEPTH_WRITE )
-    {
-        m_commandList->ClearDepthStencilView( m_depthStencilTarget->getView(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr );
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_depthStencilTarget->getView();
-    if ( m_renderTarget )
-    {
-        D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_renderTarget->getView();
-        m_commandList->OMSetRenderTargets( 1, &rtv, false, &dsv );
+        br.recordBarrierTransition(m_depthStencilTarget.getResourceHandle(), D3D12_RESOURCE_STATE_DEPTH_READ);
     }
     else
     {
-        m_commandList->OMSetRenderTargets( 0, nullptr, false, &dsv );
+        br.recordBarrierTransition(m_depthStencilTarget.getResourceHandle(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
     }
+
+    for ( Descriptor const& descriptor : m_passResources )
+    {
+        br.recordBarrierTransition(descriptor.getResourceHandle(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    }
+    br.submitBarriers(m_commandList);
+
+    if ( (m_depthStencilTarget.getDSVDesc().Flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH) == 0 )
+    {
+        m_commandList->ClearDepthStencilView( m_depthStencilTarget.getDescriptorHandle(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr );
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_depthStencilTarget.getDescriptorHandle();
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv = renderTarget.getDescriptorHandle();
+    m_commandList->OMSetRenderTargets( 1, &rtv, false, &dsv );
 
     // Record scenes
     std::wstring currentMaterialName;
-    m_commandList->SetGraphicsRootConstantBufferView( 0, m_passBuffer->getGPUVirtualAddress() );
+    m_commandList->SetGraphicsRootConstantBufferView( 0, ResourceManager::it().getD3DResource(m_passBuffer)->GetGPUVirtualAddress() );
     for ( std::shared_ptr<Mesh> const& currentMesh : scene.getMeshes() )
     {
         if ( !currentMesh->hasVertexBuffer() )
@@ -167,13 +140,8 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
 
         for ( Camera* camera : cameras )
         {
-            std::vector<D3D12_RESOURCE_BARRIER> barriers;
-            if ( camera->getGPUBufferResource()->getResourceState() != D3D12_RESOURCE_STATE_COMMON )
-            {
-                D3D12_RESOURCE_BARRIER barrier = camera->getGPUBufferResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_COMMON );
-                barriers.push_back( barrier );
-            }
-            m_commandList->SetGraphicsRootConstantBufferView( 1, camera->getGPUBufferResource()->getGPUVirtualAddress() );
+            br.recordBarrierTransition(camera->getGPUBufferResource(), D3D12_RESOURCE_STATE_COMMON);
+            m_commandList->SetGraphicsRootConstantBufferView( 1, ResourceManager::it().getD3DResource(camera->getGPUBufferResource())->GetGPUVirtualAddress() );
             if ( currentMesh->isAABBValid() && !camera->isAABBVisible( currentMesh->getAABB() ) )
             {
                 continue;
@@ -185,21 +153,17 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
                 Material* currentMeshMaterial = MaterialManager::it().getMaterial( currentMeshMaterialName.c_str() );
                 if ( currentMeshMaterial && currentMeshMaterial->hasTechnique( m_techniqueName.c_str() ) )
                 {
-                    m_commandList->SetGraphicsRootConstantBufferView( 2, currentMeshMaterial->getMaterialBufferResource()->getGPUVirtualAddress() );
+                    m_commandList->SetGraphicsRootConstantBufferView( 2, ResourceManager::it().getD3DResource(currentMeshMaterial->getMaterialBufferResource())->GetGPUVirtualAddress() );
                     m_commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
-                    for ( Descriptor const* descriptor : currentMeshMaterial->getResourceViews() )
+                    for ( Descriptor const& descriptor : currentMeshMaterial->getResourceViews() )
                     {
-                        if ( descriptor->getType() == Descriptor::Type::ShaderResourceView &&
-                             descriptor->getResource()->getResourceState() != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE )
+                        if ( descriptor.getType() == Descriptor::Type::ShaderResourceView )
                         {
-                            D3D12_RESOURCE_BARRIER barrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE );
-                            barriers.push_back( barrier );
+                            br.recordBarrierTransition(descriptor.getResourceHandle(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                         }
-                        else if ( descriptor->getType() == Descriptor::Type::UnorderedAccessView &&
-                                  descriptor->getResource()->getResourceState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS )
+                        else if ( descriptor.getType() == Descriptor::Type::UnorderedAccessView )
                         {
-                            D3D12_RESOURCE_BARRIER barrier = descriptor->getResource()->getTransitionBarrier( D3D12_RESOURCE_STATE_UNORDERED_ACCESS );
-                            barriers.push_back( barrier );
+                            br.recordBarrierTransition(descriptor.getResourceHandle(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                         }
                     }
                     currentMaterialName = currentMeshMaterialName;
@@ -210,10 +174,7 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
                 }
             }
 
-            if ( barriers.size() > 0 )
-            {
-                m_commandList->ResourceBarrier( static_cast<UINT>( barriers.size() ), barriers.data() );
-            }
+            br.submitBarriers( m_commandList );
 
             currentMesh->record( m_commandList );
         }

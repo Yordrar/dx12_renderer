@@ -1,6 +1,6 @@
 #pragma once
 
-class Resource;
+#include <resource/ResourceHandle.h>
 
 class VertexBuffer
 {
@@ -11,11 +11,11 @@ public:
 	void bind( ComPtr<ID3D12GraphicsCommandList> commandList );
 
 	size_t getVertexCount() const { return m_vertexCount; }
-	Resource* getResource() const { return m_resource; }
+	ResourceHandle getResource() const { return m_resource; }
 
 private:
 	void* m_vertices;
 	size_t m_vertexSize;
 	size_t m_vertexCount;
-	Resource* m_resource;
+	ResourceHandle m_resource;
 };

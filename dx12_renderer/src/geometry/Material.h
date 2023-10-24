@@ -30,7 +30,7 @@ public:
     {
         std::wstring m_name;
         std::vector<Technique> m_techniques;
-        std::vector<Descriptor const*> m_resourceViews;
+        std::vector<Descriptor> m_resourceViews;
         std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
     };
 
@@ -42,9 +42,9 @@ public:
 
     std::wstring const& getName() const { return m_desc.m_name; }
     ComPtr<ID3D12PipelineState> getPSOForTechnique( wchar_t const* techniqueName ) const;
-    Resource const* getMaterialBufferResource() const { return m_materialBuffer; }
-    Resource const* getBindlessIndicesBufferResource() const { return m_bindlessIndicesBuffer; }
-    std::vector<Descriptor const*> const& getResourceViews() const { return m_desc.m_resourceViews; }
+    ResourceHandle getMaterialBufferResource() const { return m_materialBuffer; }
+    ResourceHandle getBindlessIndicesBufferResource() const { return m_bindlessIndicesBuffer; }
+    std::vector<Descriptor> const& getResourceViews() const { return m_desc.m_resourceViews; }
 
     bool hasTechnique( wchar_t const* techniqueName ) const;
 
@@ -69,10 +69,10 @@ private:
 
     MaterialDesc m_desc;
 
-    Resource* m_materialBuffer;
+    ResourceHandle m_materialBuffer;
     MaterialBufferData m_materialBufferData;
 
-    Resource* m_bindlessIndicesBuffer;
+    ResourceHandle m_bindlessIndicesBuffer;
     std::vector<UINT> m_bindlessIndices;
     
     // PSO name is: <technique_name>

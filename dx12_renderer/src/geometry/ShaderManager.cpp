@@ -14,6 +14,11 @@ ShaderManager::ShaderManager()
 
 D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& shaderDesc )
 {
+    if (!shaderDesc.m_filename.c_str() || shaderDesc.m_filename == L"")
+    {
+        return D3D12_SHADER_BYTECODE{ nullptr, 0 };
+    }
+
     ShaderMap::iterator it = m_shaders.find( shaderDesc );
 
     if ( it != m_shaders.end() )
@@ -88,6 +93,7 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& shaderDesc )
     if ( pErrors != nullptr && pErrors->GetStringLength() != 0 )
     {
         OutputDebugStringA( pErrors->GetStringPointer() );
+        DebugBreak();
     }
 
     // Save pdb.
