@@ -15,7 +15,7 @@
 #include <resource/ResourceManager.h>
 #include <geometry/MaterialManager.h>
 
-#define TINYOBJLOADER_IMPLEMENTATION 
+#define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -23,7 +23,7 @@
 
 #include <meshoptimizer.h>
 
-#include <imgui.h>
+#include <imgui/imgui.h>
 
 struct Vertex
 {

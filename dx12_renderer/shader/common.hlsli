@@ -1,25 +1,24 @@
-cbuffer passBuffer : register(b0, space0)
-{
-    uint passBufferIndex;
-};
-
-cbuffer cameraBuffer : register(b1, space0)
+struct CameraData
 {
     float4x4 viewProjMatrix;
     float4x4 inverseViewProjMatrix;
     float4 cameraPosition;
 };
 
-cbuffer materialBuffer : register(b2, space0)
-{
-    uint bindlessIndicesBufferIndex;
-};
-
-cbuffer geometryBuffer : register(b3, space0)
+struct GeometryData
 {
     float4x4 modelMatrix;
     float4x4 inverseModelMatrix;
 };
+
+struct DrawConstants
+{
+    uint passBufferIndex;
+    uint cameraBufferIndex;
+    uint materialBufferIndex;
+    uint geometryBufferIndex;
+};
+ConstantBuffer<DrawConstants> drawConstants : register(b0, space0);
 
 template<typename buffer_type>
 buffer_type getBuffer(uint index)
@@ -29,13 +28,18 @@ buffer_type getBuffer(uint index)
 }
 
 template<typename buffer_type>
-buffer_type getBindlessIndicesBuffer()
+buffer_type getPassBuffer()
 {
-    return getBuffer<buffer_type>(bindlessIndicesBufferIndex);
+    return getBuffer<buffer_type>(drawConstants.passBufferIndex);
+}
+
+CameraData getCameraData()
+{
+    return getBuffer<CameraData>(drawConstants.cameraBufferIndex);
 }
 
 template<typename buffer_type>
-buffer_type getPassIndicesBuffer()
+buffer_type getMaterialBuffer()
 {
-    return getBuffer<buffer_type>(passBufferIndex);
+    return getBuffer<buffer_type>(drawConstants.materialBufferIndex);
 }

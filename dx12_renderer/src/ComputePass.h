@@ -34,10 +34,6 @@ private:
         CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE m_rootSignature;
         CD3DX12_PIPELINE_STATE_STREAM_CS m_computeShader;
     };
-    struct PassBufferData
-    {
-        uint32_t passResourceIndicesBufferIndex;
-    };
 
     std::wstring m_name;
     UINT m_threadGroupCountX;
@@ -53,10 +49,8 @@ private:
     double m_executionTimeInMilliseconds;
 
     ResourceHandle m_passBuffer;
-    PassBufferData m_passBufferData;
-
-    ResourceHandle m_passResourceIndicesBuffer;
-    std::vector<UINT> m_passResourceIndicesBufferData;
+    std::vector<UINT> m_passBufferData;
+    Descriptor m_passBufferDescriptor;
 
     std::vector<Descriptor> m_resourceViews;
 

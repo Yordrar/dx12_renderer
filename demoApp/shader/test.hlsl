@@ -20,8 +20,9 @@ struct VSOut
 
 VSOut commonVertexProcessing(VSIn vertexData)
 {
+    CameraData cameraData = getCameraData();
     VSOut vsOut;
-    vsOut.m_position = mul(float4(vertexData.m_position, 1.0f), viewProjMatrix);
+    vsOut.m_position = mul(float4(vertexData.m_position, 1.0f), cameraData.viewProjMatrix);
     vsOut.m_normal = vertexData.m_normal;
     vsOut.m_uvs = vertexData.m_uvs;
     vsOut.m_tangent = vertexData.m_tangent;
@@ -54,7 +55,7 @@ struct ResourceIndices
 [earlydepthstencil]
 float4 main_ps(VSOut vsOut) : SV_Target
 {
-    ResourceIndices indices = getBindlessIndicesBuffer<ResourceIndices>();
+    ResourceIndices indices = getMaterialBuffer<ResourceIndices>();
     Texture2D tex = ResourceDescriptorHeap[indices.textureIdx];
     SamplerState samp = SamplerDescriptorHeap[0];
     float4 col = tex.Sample(samp, vsOut.m_uvs);

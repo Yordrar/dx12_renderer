@@ -67,11 +67,11 @@ void ComputePass::record()
     currentCommandAllocator->Reset();
     m_commandList->Reset( currentCommandAllocator.Get(), nullptr );
 
-    if ( !m_passResourceIndicesBuffer.isValid() )
+    if ( !m_passBuffer.isValid() )
     {
-        m_passResourceIndicesBuffer = ResourceManager::it().createResource( ( m_name + L"_passResourceIndicesBuffer" ).c_str(),
-                                                                            CD3DX12_RESOURCE_DESC::Buffer( std::max( m_passResourceIndicesBufferData.size() * sizeof( UINT ), 1Ui64 ) ),
-                                                                            D3D12_SUBRESOURCE_DATA{ m_passResourceIndicesBufferData.data(), static_cast<LONG_PTR>( m_passResourceIndicesBufferData.size() * sizeof( UINT ) ), 0 } );
+        m_passBuffer = ResourceManager::it().createResource( ( m_name + L"_passBuffer" ).c_str(),
+                                                                            CD3DX12_RESOURCE_DESC::Buffer( std::max( m_passBufferData.size() * sizeof( UINT ), 1Ui64 ) ),
+                                                                            D3D12_SUBRESOURCE_DATA{ m_passBufferData.data(), static_cast<LONG_PTR>( m_passBufferData.size() * sizeof( UINT ) ), 0 } );
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
         {
             .Format = DXGI_FORMAT_R32_TYPELESS,
@@ -80,15 +80,9 @@ void ComputePass::record()
         };
         srvDesc.Buffer.FirstElement = 0;
         srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-        srvDesc.Buffer.NumElements = static_cast<UINT>( m_passResourceIndicesBufferData.size() );
+        srvDesc.Buffer.NumElements = static_cast<UINT>( m_passBufferData.size() );
         srvDesc.Buffer.StructureByteStride = 0;
-        m_passBufferData.passResourceIndicesBufferIndex = ResourceManager::it().getShaderResourceView( m_passResourceIndicesBuffer, srvDesc ).getDescriptorIndex();
-    }
-    if ( !m_passBuffer.isValid() )
-    {
-        m_passBuffer = ResourceManager::it().createResource( ( m_name + L"_passBuffer" ).c_str(),
-                                                             CD3DX12_RESOURCE_DESC::Buffer( std::max( sizeof( m_passBufferData ), 1Ui64 ) ),
-                                                             D3D12_SUBRESOURCE_DATA{ &m_passBufferData, static_cast<LONG_PTR>( sizeof( m_passBufferData ) ), 0 } );
+        m_passBufferDescriptor = ResourceManager::it().getShaderResourceView( m_passBuffer, srvDesc );
     }
 
     ResourceManager::it().copyResourcesToGPU( m_commandList );
@@ -109,7 +103,7 @@ void ComputePass::record()
     // Set root signature
     m_commandList->SetComputeRootSignature(Renderer::getRootSignature().Get());
 
-    m_commandList->SetComputeRootConstantBufferView( 0, ResourceManager::it().getD3DResource(m_passBuffer)->GetGPUVirtualAddress() );
+    m_commandList->SetComputeRoot32BitConstant( 0, m_passBufferDescriptor.getDescriptorIndex(), 0 );
 
     // Transition UAV resources
     BarrierRecorder br;
@@ -140,17 +134,17 @@ void ComputePass::record()
 
 void ComputePass::addResourceView( Descriptor const descriptor )
 {
-    m_passResourceIndicesBufferData.push_back( descriptor.getDescriptorIndex() );
+    m_passBufferData.push_back( descriptor.getDescriptorIndex() );
     m_resourceViews.push_back( descriptor );
 }
 
 void ComputePass::setResourceView( UINT index, Descriptor const descriptor )
 {
-    assert( index >= 0 && index < m_passResourceIndicesBufferData.size() );
+    assert( index >= 0 && index < m_passBufferData.size() );
     assert( index >= 0 && index < m_resourceViews.size() );
-    m_passResourceIndicesBufferData[ index ] = descriptor.getDescriptorIndex();
+    m_passBufferData[ index ] = descriptor.getDescriptorIndex();
     m_resourceViews[ index ] = descriptor;
-    ResourceManager::it().setResourceNeedsCopyToGPU(m_passResourceIndicesBuffer);
+    ResourceManager::it().setResourceNeedsCopyToGPU(m_passBuffer);
 }
 
 void ComputePass::setThreadGroupCounts( UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ )

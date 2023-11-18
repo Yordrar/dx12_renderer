@@ -55,11 +55,11 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
 
     static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-    if ( !m_passResourceIndicesBuffer.isValid() )
+    if ( !m_passBuffer.isValid() )
     {
-        m_passResourceIndicesBuffer = ResourceManager::it().createResource( ( m_name + L"_passResourceIndicesBuffer" ).c_str(),
-                                                                            CD3DX12_RESOURCE_DESC::Buffer( std::max( m_passResourceIndicesBufferData.size() * sizeof( UINT ), 1Ui64 ) ),
-                                                                            D3D12_SUBRESOURCE_DATA{ m_passResourceIndicesBufferData.data(), static_cast<LONG_PTR>( m_passResourceIndicesBufferData.size() * sizeof( UINT ) ), 0 } );
+        m_passBuffer = ResourceManager::it().createResource( ( m_name + L"_passBuffer" ).c_str(),
+                                                                            CD3DX12_RESOURCE_DESC::Buffer( std::max(m_passBufferData.size() * sizeof( UINT ), 1Ui64 ) ),
+                                                                            D3D12_SUBRESOURCE_DATA{ m_passBufferData.data(), static_cast<LONG_PTR>( m_passBufferData.size() * sizeof( UINT ) ), 0 } );
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
         {
             .Format = DXGI_FORMAT_R32_TYPELESS,
@@ -68,15 +68,9 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
         };
         srvDesc.Buffer.FirstElement = 0;
         srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-        srvDesc.Buffer.NumElements = static_cast<UINT>( std::max( m_passResourceIndicesBufferData.size(), 1Ui64 ) );
+        srvDesc.Buffer.NumElements = static_cast<UINT>( std::max( m_passBufferData.size(), 1Ui64 ) );
         srvDesc.Buffer.StructureByteStride = 0;
-        m_passBufferData.passResourceIndicesBufferIndex = ResourceManager::it().getShaderResourceView( m_passResourceIndicesBuffer, srvDesc ).getDescriptorIndex();
-    }
-    if ( !m_passBuffer.isValid() )
-    {
-        m_passBuffer = ResourceManager::it().createResource( ( m_name + L"_passBuffer" ).c_str(),
-                                                             CD3DX12_RESOURCE_DESC::Buffer( std::max( sizeof( m_passBufferData ), 1Ui64 ) ),
-                                                             D3D12_SUBRESOURCE_DATA{ &m_passBufferData, static_cast<LONG_PTR>( sizeof( m_passBufferData ) ), 0 } );
+        m_passBufferDescriptor = ResourceManager::it().getShaderResourceView( m_passBuffer, srvDesc );
     }
 
     Profiler::it().startQuery( m_commandList.Get(), m_profilerQueryIndex );
@@ -130,7 +124,7 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
 
     // Record scenes
     std::wstring currentMaterialName;
-    m_commandList->SetGraphicsRootConstantBufferView( 0, ResourceManager::it().getD3DResource(m_passBuffer)->GetGPUVirtualAddress() );
+    m_commandList->SetGraphicsRoot32BitConstant( 0, m_passBufferDescriptor.getDescriptorIndex(), 0 );
     for ( std::shared_ptr<Mesh> const& currentMesh : scene.getMeshes() )
     {
         if ( !currentMesh->hasVertexBuffer() )
@@ -141,7 +135,7 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
         for ( Camera* camera : cameras )
         {
             br.recordBarrierTransition(camera->getGPUBufferResource(), D3D12_RESOURCE_STATE_COMMON);
-            m_commandList->SetGraphicsRootConstantBufferView( 1, ResourceManager::it().getD3DResource(camera->getGPUBufferResource())->GetGPUVirtualAddress() );
+            m_commandList->SetGraphicsRoot32BitConstant(0, camera->getCameraBufferDescriptor().getDescriptorIndex(), 1);
             if ( currentMesh->isAABBValid() && !camera->isAABBVisible( currentMesh->getAABB() ) )
             {
                 continue;
@@ -153,7 +147,7 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
                 Material* currentMeshMaterial = MaterialManager::it().getMaterial( currentMeshMaterialName.c_str() );
                 if ( currentMeshMaterial && currentMeshMaterial->hasTechnique( m_techniqueName.c_str() ) )
                 {
-                    m_commandList->SetGraphicsRootConstantBufferView( 2, ResourceManager::it().getD3DResource(currentMeshMaterial->getMaterialBufferResource())->GetGPUVirtualAddress() );
+                    m_commandList->SetGraphicsRoot32BitConstant( 0, currentMeshMaterial->getMaterialBufferDescriptor().getDescriptorIndex(), 2 );
                     m_commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
                     for ( Descriptor const& descriptor : currentMeshMaterial->getResourceViews() )
                     {
@@ -190,7 +184,7 @@ void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras
 
 void RenderPass::addResourceView( Descriptor const& descriptor )
 {
-    m_passResourceIndicesBufferData.push_back( descriptor.getDescriptorIndex() );
+    m_passBufferData.push_back( descriptor.getDescriptorIndex() );
     m_passResources.push_back( descriptor );
 }
 

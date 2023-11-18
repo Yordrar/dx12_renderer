@@ -21,6 +21,7 @@ public:
 	bool isAABBVisible( Mesh::AABB const& aabb ) const;
 
 	ResourceHandle getGPUBufferResource() const { return m_cameraBuffer; }
+	Descriptor getCameraBufferDescriptor() const { return m_cameraBufferDescriptor; }
 
 	struct
 	{
@@ -30,6 +31,7 @@ public:
 	} m_cameraData;
 	
 	ResourceHandle m_cameraBuffer;
+	Descriptor m_cameraBufferDescriptor;
 
 	std::wstring m_name;
 	DirectX::XMVECTOR m_localRightVector;

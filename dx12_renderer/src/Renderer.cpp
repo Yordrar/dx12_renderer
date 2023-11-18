@@ -1,8 +1,8 @@
 #include "Renderer.h"
 
-#include <imgui.h>
-#include <imgui_impl_win32.h>
-#include <imgui_impl_dx12.h>
+#include <imgui/imgui.h>
+#include <imgui/backends/imgui_impl_win32.h>
+#include <imgui/backends/imgui_impl_dx12.h>
 
 #include <RendererConstants.h>
 #include <BarrierRecorder.h>
@@ -133,12 +133,9 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     }
 
     // Create root signature
-    CD3DX12_ROOT_PARAMETER slotRootParameters[ 4 ] = {};
+    CD3DX12_ROOT_PARAMETER slotRootParameters[ 1 ] = {};
 
-    slotRootParameters[ 0 ].InitAsConstantBufferView( 0, 0 ); // Render Pass buffer
-    slotRootParameters[ 1 ].InitAsConstantBufferView( 1, 0 ); // Camera buffer
-    slotRootParameters[ 2 ].InitAsConstantBufferView( 2, 0 ); // Material buffer
-    slotRootParameters[ 3 ].InitAsConstantBufferView( 3, 0 ); // Geometry buffer
+    slotRootParameters[ 0 ].InitAsConstants( 32, 0 );
 
     CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc( _countof(slotRootParameters), slotRootParameters, 0, nullptr,
                                              D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -177,9 +174,8 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
 
-    // Setup Platform/Renderer backends
+    // Setup Imgui's Platform/Renderer backend
     // Reserve the first descriptor for imgui's font texture
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
     {

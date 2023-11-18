@@ -15,7 +15,7 @@ filter "Debug"
 	optimize "off"
 	targetdir "build/bin/debug"
 	debugdir "build/bin/debug"
-	defines "_DEBUG"
+	defines "RENDERER_DEBUG"
 
 filter "Release"
 	runtime "Release"

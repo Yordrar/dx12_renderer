@@ -17,6 +17,18 @@ Camera::Camera( wchar_t const* name, DirectX::XMVECTOR position, float fov, floa
 	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
 
 	m_cameraBuffer = ResourceManager::it().createResource( std::wstring(m_name + L"_buffer").c_str(), CD3DX12_RESOURCE_DESC::Buffer( sizeof( m_cameraData ) ), D3D12_SUBRESOURCE_DATA{ &m_cameraData, sizeof( m_cameraData ), 0 } );
+	D3D12_RESOURCE_DESC cameraBufferResourceDesc = ResourceManager::it().getResourceDesc(m_cameraBuffer);
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
+	{
+		.Format = DXGI_FORMAT_R32_TYPELESS,
+		.ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
+		.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+	};
+	srvDesc.Buffer.FirstElement = 0;
+	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+	srvDesc.Buffer.NumElements = sizeof(m_cameraData)/sizeof(UINT);
+	srvDesc.Buffer.StructureByteStride = 0;
+	m_cameraBufferDescriptor = ResourceManager::it().getShaderResourceView(m_cameraBuffer, srvDesc);
 }
 
 void Camera::move( float delta_x, float delta_y, float delta_z )

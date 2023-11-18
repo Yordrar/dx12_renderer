@@ -24,11 +24,6 @@ public:
     void waitOnComputePasses( ComPtr<ID3D12CommandQueue> cmdQueue, std::vector<ComputePass*> const& submittedComputePasses );
 
 private:
-    struct PassBufferData
-    {
-        uint32_t passResourceIndicesBufferIndex;
-    };
-
     std::wstring m_name;
     std::wstring m_techniqueName;
 
@@ -44,10 +39,8 @@ private:
     double m_executionTimeInMilliseconds;
 
     ResourceHandle m_passBuffer;
-    PassBufferData m_passBufferData;
-
-    ResourceHandle m_passResourceIndicesBuffer;
-    std::vector<UINT> m_passResourceIndicesBufferData;
+    std::vector<UINT> m_passBufferData;
+    Descriptor m_passBufferDescriptor;
 
     std::vector<Descriptor> m_passResources;
 

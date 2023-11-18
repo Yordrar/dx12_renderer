@@ -10,7 +10,7 @@ struct PassIndices
 [numthreads(8, 8, 1)]
 void test_cs( uint3 threadID : SV_DispatchThreadID )
 {
-    PassIndices indices = getPassIndicesBuffer<PassIndices>();
+    PassIndices indices = getPassBuffer<PassIndices>();
     RWTexture2D<float4> texture = ResourceDescriptorHeap[indices.testTexture];
     texture[threadID.xy] = float4(threadID.xy / float2(255,255), 0.0, 1.0);
 }
@@ -28,7 +28,7 @@ struct PassIndices
 [numthreads(8, 8, 1)]
 void mipmap_generator_cs( uint3 threadID : SV_DispatchThreadID )
 {
-    PassIndices indices = getPassIndicesBuffer<PassIndices>();
+    PassIndices indices = getPassBuffer<PassIndices>();
     Texture2D textureMip0 = ResourceDescriptorHeap[indices.textureMip0Index];
     RWTexture2D<float4> textureMip1 = ResourceDescriptorHeap[indices.textureMip1Index];
     float2 uv = (1.0f/877.0f) * ( threadID.xy + 0.5 );

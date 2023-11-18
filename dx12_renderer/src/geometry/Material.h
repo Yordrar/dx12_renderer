@@ -43,16 +43,12 @@ public:
     std::wstring const& getName() const { return m_desc.m_name; }
     ComPtr<ID3D12PipelineState> getPSOForTechnique( wchar_t const* techniqueName ) const;
     ResourceHandle getMaterialBufferResource() const { return m_materialBuffer; }
-    ResourceHandle getBindlessIndicesBufferResource() const { return m_bindlessIndicesBuffer; }
+    Descriptor getMaterialBufferDescriptor() const { return m_materialBufferDescriptor; }
     std::vector<Descriptor> const& getResourceViews() const { return m_desc.m_resourceViews; }
 
     bool hasTechnique( wchar_t const* techniqueName ) const;
 
 private:
-    struct MaterialBufferData
-    {
-        uint32_t bindlessIndicesBufferIndex;
-    };
     struct PipelineStateStream
     {
         CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE m_rootSignature;
@@ -70,10 +66,8 @@ private:
     MaterialDesc m_desc;
 
     ResourceHandle m_materialBuffer;
-    MaterialBufferData m_materialBufferData;
-
-    ResourceHandle m_bindlessIndicesBuffer;
     std::vector<UINT> m_bindlessIndices;
+    Descriptor m_materialBufferDescriptor;
     
     // PSO name is: <technique_name>
     using PSOCache = std::unordered_map< std::wstring, ComPtr<ID3D12PipelineState> >;

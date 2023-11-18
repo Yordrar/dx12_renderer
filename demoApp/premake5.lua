@@ -14,7 +14,6 @@ project "demoApp"
 		"external", 
 		"external/meshoptimizer/src",
 		"../dx12_renderer/src",
-		"../dx12_renderer/external/imgui",
 		"../dx12_renderer/external/dx12_agility_sdk/build/native/include",
 	}
 	prebuildcommands {
