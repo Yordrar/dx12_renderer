@@ -16,14 +16,14 @@ public:
     Camera& getCamera() { return m_camera; }
     ResourceHandle getCameraBufferResource() const { return m_camera.getGPUBufferResource(); }
 
-    std::vector< std::shared_ptr<Mesh> > const& getMeshes() const { return m_meshes; }
-
     void addMesh( Mesh* geometry );
+    std::vector< std::shared_ptr<Mesh> > const& getMeshes();
 
 private:
     std::wstring m_name;
     Camera m_camera;
 
     std::vector< std::shared_ptr<Mesh> > m_meshes;
+    bool meshesNeedSorting;
 };
 

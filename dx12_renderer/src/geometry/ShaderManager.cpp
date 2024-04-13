@@ -74,11 +74,11 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& shaderDesc )
     // Compile it with specified arguments.
     ComPtr<IDxcResult> compilationResult;
     m_compiler->Compile(
-        &sourceBuffer,                     // Source buffer.
-        compileArgs.data(),                // Array of pointers to arguments.
-        static_cast<UINT32>( compileArgs.size() ),                // Number of arguments.
-        m_includeHandler.Get(),            // User-provided interface to handle #include directives (optional).
-        IID_PPV_ARGS( &compilationResult ) // Compiler output status, buffer, and errors.
+        &sourceBuffer,                             // Source buffer.
+        compileArgs.data(),                        // Array of pointers to arguments.
+        static_cast<UINT32>( compileArgs.size() ), // Number of arguments.
+        m_includeHandler.Get(),                    // User-provided interface to handle #include directives (optional).
+        IID_PPV_ARGS( &compilationResult )         // Compiler output status, buffer, and errors.
     );
     ComPtr<IDxcBlob> compiledBytecodeBlob;
     ComPtr<IDxcBlobUtf16> shaderName = nullptr;
@@ -129,6 +129,7 @@ LPCWSTR ShaderManager::shaderTypeToTargetString( ShaderType type )
         case ShaderType::ComputeShader:
             return L"cs_6_6";
         default:
+            assert(false);
             return L"";
     }
 }

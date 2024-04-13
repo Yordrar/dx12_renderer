@@ -212,16 +212,6 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         ResourceHandle texture = ResourceManager::it().createResource( StrToWideStr( material.diffuse_texname ).c_str(),
                                                                   resourceDesc,
                                                                   subresData );
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
-        {
-            .Format = resourceDesc.Format,
-            .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
-            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-        };
-        srvDesc.Texture2D.MipLevels = resourceDesc.MipLevels;
-        srvDesc.Texture2D.MostDetailedMip = 0;
-        srvDesc.Texture2D.PlaneSlice = 0;
-        srvDesc.Texture2D.ResourceMinLODClamp = 0;
 
         DXGI_FORMAT rtformats[ 8 ] = { DXGI_FORMAT_UNKNOWN };
         rtformats[ 0 ] = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -252,7 +242,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         newMaterialDesc.m_techniques.push_back( mainTechnique );
         if ( texture.isValid() )
         {
-            newMaterialDesc.m_resourceViews.push_back(ResourceManager::it().getShaderResourceView( texture, srvDesc ) );
+            newMaterialDesc.m_resourceViews.push_back( texture.getDefaultShaderResourceView() );
         }
         newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
         newMaterialDesc.m_inputLayout.push_back( D3D12_INPUT_ELEMENT_DESC{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT , D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } );
@@ -347,25 +337,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     ResourceHandle mainRenderTarget = ResourceManager::it().createResource( L"mainRenderTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, desiredClientWidth, desiredClientHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) );
     ResourceHandle mainDepthStencilTarget = ResourceManager::it().createResource( L"mainDepthStencilTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, desiredClientWidth, desiredClientHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL | D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE ) );
 
-    D3D12_RENDER_TARGET_VIEW_DESC rtvDesc =
-    {
-        .Format = ResourceManager::it().getResourceDesc(mainRenderTarget).Format,
-        .ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
-    };
-    rtvDesc.Texture2D.MipSlice = 0;
-    rtvDesc.Texture2D.PlaneSlice = 0;
-
-    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc =
-    {
-        .Format = ResourceManager::it().getResourceDesc(mainDepthStencilTarget).Format,
-        .ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D,
-        .Flags = D3D12_DSV_FLAG_NONE
-    };
-    dsvDesc.Texture2D.MipSlice = 0;
-
-    RenderPass depthPass( L"Depth Prepass", L"depth", ResourceManager::it().getRenderTargetView( mainRenderTarget, rtvDesc ), ResourceManager::it().getDepthStencilView( mainDepthStencilTarget, dsvDesc ) );
-    dsvDesc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
-    RenderPass mainPass( L"Main Pass", L"main", Descriptor(), ResourceManager::it().getDepthStencilView( mainDepthStencilTarget, dsvDesc ) );
+    RenderPass depthPass( L"Depth Prepass", L"depth", mainRenderTarget.getDefaultRenderTargetView(), mainDepthStencilTarget.getDefaultDepthStencilView() );
+    RenderPass mainPass( L"Main Pass", L"main", Descriptor(), mainDepthStencilTarget.getDefaultDepthStencilView(D3D12_DSV_FLAG_READ_ONLY_DEPTH));
 
     ResourceManager::it().createSampler( L"globalSampler" );
 
@@ -395,51 +368,14 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     ComputePass mipMapGeneratorPass( L"mipmap_generator", L"shader/testCompute.hlsl", width / 16, height / 16, 1 );
 
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDescMip0 =
-    {
-        .Format = ResourceManager::it().getResourceDesc(testTexture).Format,
-        .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
-        .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-    };
-    srvDescMip0.Texture2D.MipLevels = 3;
-    srvDescMip0.Texture2D.MostDetailedMip = 0;
-    srvDescMip0.Texture2D.PlaneSlice = 0;
-    srvDescMip0.Texture2D.ResourceMinLODClamp = 0;
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDescMip1 =
-    {
-        .Format = ResourceManager::it().getResourceDesc(testTexture).Format,
-        .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
-        .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-    };
-    srvDescMip1.Texture2D.MipLevels = 2;
-    srvDescMip1.Texture2D.MostDetailedMip = 1;
-    srvDescMip1.Texture2D.PlaneSlice = 0;
-    srvDescMip1.Texture2D.ResourceMinLODClamp = 0;
-
-    D3D12_UNORDERED_ACCESS_VIEW_DESC uavDescMip1 =
-    {
-        .Format = ResourceManager::it().getResourceDesc(testTexture).Format,
-        .ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D,
-    };
-    uavDescMip1.Texture2D.PlaneSlice = 0;
-    uavDescMip1.Texture2D.MipSlice = 1;
-
-    D3D12_UNORDERED_ACCESS_VIEW_DESC uavDescMip2 =
-    {
-        .Format = ResourceManager::it().getResourceDesc(testTexture).Format,
-        .ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D,
-    };
-    uavDescMip2.Texture2D.PlaneSlice = 0;
-    uavDescMip2.Texture2D.MipSlice = 2;
-
-    mipMapGeneratorPass.addResourceView(ResourceManager::it().getShaderResourceView(testTexture, srvDescMip0));
-    mipMapGeneratorPass.addResourceView(ResourceManager::it().getUnorderedAccessView(testTexture, uavDescMip1));
+    mipMapGeneratorPass.addResourceView( testTexture.getShaderResourceView(0) );
+    mipMapGeneratorPass.addResourceView( testTexture.getUnorderedAccessView(1) );
     renderer.beginFrame();
     renderer.submitComputePass( mipMapGeneratorPass );
     renderer.endFrame();
 
-    mipMapGeneratorPass.setResourceView( 0, ResourceManager::it().getShaderResourceView(testTexture, srvDescMip1));
-    mipMapGeneratorPass.setResourceView( 1, ResourceManager::it().getUnorderedAccessView(testTexture, uavDescMip2));
+    mipMapGeneratorPass.setResourceView( 0, testTexture.getShaderResourceView(1) );
+    mipMapGeneratorPass.setResourceView( 1, testTexture.getUnorderedAccessView(2) );
     mipMapGeneratorPass.setThreadGroupCounts( width / 32, height / 32, 1 );
     renderer.beginFrame();
     renderer.submitComputePass( mipMapGeneratorPass );

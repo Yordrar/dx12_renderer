@@ -36,7 +36,7 @@ RenderPass::~RenderPass()
 
 }
 
-void RenderPass::record( Scene const& scene, std::vector<Camera*> const& cameras )
+void RenderPass::record( Scene& scene, std::vector<Camera*> const& cameras )
 {
     // Reset command list and allocator
     ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentBackbufferIndex() ];

@@ -22,7 +22,8 @@ public:
 	Resource(Resource&&) = default;
 	Resource& operator= (Resource&&) = default;
 
-	static UINT getSizeAligned256( UINT sizeInBytes ) { return ( sizeInBytes + 255 ) & ~255; }
+	static UINT getSizeAligned256(UINT sizeInBytes) { return (sizeInBytes + 255) & ~255; }
+	static UINT64 getSizeAligned256(UINT64 sizeInBytes) { return (sizeInBytes + 255) & ~255; }
 
 	std::wstring const& getName() const { return m_name; }
 	ComPtr<ID3D12Resource> getD3DResource() const { return m_resource; }

@@ -18,11 +18,11 @@ public:
 
     void createSampler( wchar_t const* resourceName );
 
-    Descriptor const getConstantBufferView(ResourceHandle handle, D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc);
-    Descriptor const getShaderResourceView(ResourceHandle handle, D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc);
-    Descriptor const getUnorderedAccessView(ResourceHandle handle, D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc);
-    Descriptor const getRenderTargetView(ResourceHandle handle, D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc);
-    Descriptor const getDepthStencilView(ResourceHandle handle, D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc);
+    Descriptor const& getConstantBufferView(ResourceHandle handle, D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc);
+    Descriptor const& getShaderResourceView(ResourceHandle handle, D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc);
+    Descriptor const& getUnorderedAccessView(ResourceHandle handle, D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc);
+    Descriptor const& getRenderTargetView(ResourceHandle handle, D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc);
+    Descriptor const& getDepthStencilView(ResourceHandle handle, D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc);
 
     ComPtr<ID3D12Resource> getD3DResource(ResourceHandle handle) const;
     D3D12_RESOURCE_STATES getResourceState(ResourceHandle handle) const;
@@ -32,10 +32,10 @@ public:
 
     void copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> commandList );
 
+    bool isResourceHandleValid(ResourceHandle handle) const { return m_resources[handle.m_index].m_generation == handle.m_generation; }
+
 private:
     ResourceManager();
-
-    bool isHandleValid(ResourceHandle handle) const { return handle.isValid() && m_resources[handle.m_index].m_generation == handle.m_generation; }
 
     struct ResourceContainerEntry
     {

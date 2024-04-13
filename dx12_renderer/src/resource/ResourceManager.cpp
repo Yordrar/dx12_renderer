@@ -63,8 +63,9 @@ void ResourceManager::createSampler( wchar_t const* resourceName )
     DescriptorHeap::getDescriptorHeapSampler().addSampler( &samplerDesc );
 }
 
-Descriptor const ResourceManager::getConstantBufferView(ResourceHandle handle, D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc)
+Descriptor const& ResourceManager::getConstantBufferView(ResourceHandle handle, D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc)
 {
+    assert(isResourceHandleValid(handle));
     for (Descriptor const& descriptor : m_cbvs)
     {
         if (memcmp(&descriptor.m_cbvDesc, &cbvDesc, sizeof(D3D12_CONSTANT_BUFFER_VIEW_DESC)) == 0 &&
@@ -83,11 +84,12 @@ Descriptor const ResourceManager::getConstantBufferView(ResourceHandle handle, D
         DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize());
     newCBV.m_cbvDesc = cbvDesc;
     m_cbvs.push_back(newCBV);
-    return newCBV;
+    return m_cbvs[m_cbvs.size() - 1];
 }
 
-Descriptor const ResourceManager::getShaderResourceView(ResourceHandle handle, D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc)
+Descriptor const& ResourceManager::getShaderResourceView(ResourceHandle handle, D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc)
 {
+    assert(isResourceHandleValid(handle));
     for (Descriptor const& descriptor : m_srvs)
     {
         if (memcmp(&descriptor.m_srvDesc, &srvDesc, sizeof(D3D12_SHADER_RESOURCE_VIEW_DESC)) == 0 &&
@@ -105,11 +107,12 @@ Descriptor const ResourceManager::getShaderResourceView(ResourceHandle handle, D
         DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize());
     newSRV.m_srvDesc = srvDesc;
     m_srvs.push_back(newSRV);
-    return newSRV;
+    return m_srvs[m_srvs.size() - 1];
 }
 
-Descriptor const ResourceManager::getUnorderedAccessView(ResourceHandle handle, D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc)
+Descriptor const& ResourceManager::getUnorderedAccessView(ResourceHandle handle, D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc)
 {
+    assert(isResourceHandleValid(handle));
     for (Descriptor const& descriptor : m_uavs)
     {
         if (memcmp(&descriptor.m_uavDesc, &uavDesc, sizeof(D3D12_UNORDERED_ACCESS_VIEW_DESC)) == 0 &&
@@ -127,11 +130,12 @@ Descriptor const ResourceManager::getUnorderedAccessView(ResourceHandle handle, 
         DescriptorHeap::getDescriptorHeapCbvSrvUav().getIncrementSize());
     newUAV.m_uavDesc = uavDesc;
     m_uavs.push_back(newUAV);
-    return newUAV;
+    return m_uavs[m_uavs.size() - 1];
 }
 
-Descriptor const ResourceManager::getRenderTargetView(ResourceHandle handle, D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc)
+Descriptor const& ResourceManager::getRenderTargetView(ResourceHandle handle, D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc)
 {
+    assert(isResourceHandleValid(handle));
     for (Descriptor const& descriptor : m_rtvs)
     {
         if (memcmp(&descriptor.m_rtvDesc, &rtvDesc, sizeof(D3D12_RENDER_TARGET_VIEW_DESC)) == 0 &&
@@ -149,11 +153,12 @@ Descriptor const ResourceManager::getRenderTargetView(ResourceHandle handle, D3D
         DescriptorHeap::getDescriptorHeapRtv().getIncrementSize());
     newRTV.m_rtvDesc = rtvDesc;
     m_rtvs.push_back(newRTV);
-    return newRTV;
+    return m_rtvs[m_rtvs.size() - 1];
 }
 
-Descriptor const ResourceManager::getDepthStencilView(ResourceHandle handle, D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc)
+Descriptor const& ResourceManager::getDepthStencilView(ResourceHandle handle, D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc)
 {
+    assert(isResourceHandleValid(handle));
     for (Descriptor const& descriptor : m_dsvs)
     {
         if (memcmp(&descriptor.m_dsvDesc, &dsvDesc, sizeof(D3D12_DEPTH_STENCIL_VIEW_DESC)) == 0 &&
@@ -171,51 +176,37 @@ Descriptor const ResourceManager::getDepthStencilView(ResourceHandle handle, D3D
         DescriptorHeap::getDescriptorHeapDsv().getIncrementSize());
     newDSV.m_dsvDesc = dsvDesc;
     m_dsvs.push_back(newDSV);
-    return newDSV;
+    return m_dsvs[m_dsvs.size() - 1];
 }
 
 ComPtr<ID3D12Resource> ResourceManager::getD3DResource(ResourceHandle handle) const
 {
-    if (isHandleValid(handle))
-    {
-        return m_resources[handle.m_index].m_resource.getD3DResource();
-    }
-    return nullptr;
+    assert(isResourceHandleValid(handle));
+    return m_resources[handle.m_index].m_resource.getD3DResource();
 }
 
 D3D12_RESOURCE_STATES ResourceManager::getResourceState(ResourceHandle handle) const
 {
-    if (isHandleValid(handle))
-    {
-        return m_resources[handle.m_index].m_resource.getResourceState();
-    }
-    return D3D12_RESOURCE_STATE_COMMON;
+    assert(isResourceHandleValid(handle));
+    return m_resources[handle.m_index].m_resource.getResourceState();
 }
 
 D3D12_RESOURCE_BARRIER ResourceManager::getTransitionBarrier(ResourceHandle handle, D3D12_RESOURCE_STATES newState)
 {
-    if (isHandleValid(handle))
-    {
-        return m_resources[handle.m_index].m_resource.getTransitionBarrier(newState);
-    }
-    return D3D12_RESOURCE_BARRIER();
+    assert(isResourceHandleValid(handle));
+    return m_resources[handle.m_index].m_resource.getTransitionBarrier(newState);
 }
 
 D3D12_RESOURCE_DESC ResourceManager::getResourceDesc(ResourceHandle handle) const
 {
-    if (isHandleValid(handle))
-    {
-        return m_resources[handle.m_index].m_resource.getResourceDesc();
-    }
-    return D3D12_RESOURCE_DESC();
+    assert(isResourceHandleValid(handle));
+    return m_resources[handle.m_index].m_resource.getResourceDesc();
 }
 
 void ResourceManager::setResourceNeedsCopyToGPU(ResourceHandle handle)
 {
-    if (isHandleValid(handle))
-    {
-        m_resources[handle.m_index].m_resource.setNeedsCopyToGPU(true);
-    }
+    assert(isResourceHandleValid(handle));
+    m_resources[handle.m_index].m_resource.setNeedsCopyToGPU(true);
 }
 
 void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )
@@ -235,15 +226,18 @@ void ResourceManager::copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> comm
         }
     }
 
-    if ( preCopyBarriers.size() > 0 )
+    if (resourcesToCopy.size() > 0 )
     {
         PIXScopedEvent(commandList.Get(), PIX_COLOR_DEFAULT, "Copy resources to GPU");
 
-        commandList->ResourceBarrier( static_cast<UINT>( preCopyBarriers.size() ), preCopyBarriers.data() );
-    }
+        if (preCopyBarriers.size() > 0)
+        {
+            commandList->ResourceBarrier(static_cast<UINT>(preCopyBarriers.size()), preCopyBarriers.data());
+        }
 
-    for ( Resource* resource : resourcesToCopy )
-    {
-        resource->copyDataToGPU( commandList );
+        for (Resource* resource : resourcesToCopy)
+        {
+            resource->copyDataToGPU(commandList);
+        }
     }
 }

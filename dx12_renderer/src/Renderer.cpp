@@ -221,6 +221,8 @@ static std::vector<RenderPass*> submittedRenderPasses;
 static std::vector<ComputePass*> submittedComputePasses;
 void Renderer::beginFrame()
 {
+    m_graphicsCmdQueue->GetTimestampFrequency(&s_timestampFrequency);
+
     submittedRenderPasses.clear();
     submittedComputePasses.clear();
 
@@ -239,7 +241,7 @@ void Renderer::beginFrame()
     m_preFrameCommandList->Close();
 }
 
-void Renderer::submitRenderPass( RenderPass& pass, Scene const& scene, std::vector<Camera*> const& cameras )
+void Renderer::submitRenderPass( RenderPass& pass, Scene& scene, std::vector<Camera*> const& cameras )
 {
     pass.record( scene, cameras );
     m_gpuFrameTime += pass.getExecutionTimeMilliseconds();

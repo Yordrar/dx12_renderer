@@ -43,15 +43,15 @@ uint64_t Profiler::allocateQueryIndex()
 
 void Profiler::startQuery( ComPtr<ID3D12GraphicsCommandList> commandList, uint64_t index )
 {
-    commandList->EndQuery( m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, getInHeapQueryIndexForCurrentFrameFromAllocatedIndex(index) );
+    commandList->EndQuery( m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, (UINT)getInHeapQueryIndexForCurrentFrameFromAllocatedIndex(index) );
 }
 
 void Profiler::endQuery( ComPtr<ID3D12GraphicsCommandList> commandList, uint64_t index )
 {
-    commandList->EndQuery( m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, getInHeapQueryIndexForCurrentFrameFromAllocatedIndex(index) + 1 );
+    commandList->EndQuery( m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, (UINT)getInHeapQueryIndexForCurrentFrameFromAllocatedIndex(index) + 1 );
 
     uint64_t const dstOffset = getInHeapQueryIndexForCurrentFrameFromAllocatedIndex( index ) * sizeof( uint64_t );
-    commandList->ResolveQueryData( m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, getInHeapQueryIndexForCurrentFrameFromAllocatedIndex(index), 2, m_resolvedQueriesResource.Get(), dstOffset );
+    commandList->ResolveQueryData( m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, (UINT)getInHeapQueryIndexForCurrentFrameFromAllocatedIndex(index), 2, m_resolvedQueriesResource.Get(), dstOffset );
 }
 
 double Profiler::getResolvedQuery( uint64_t index )

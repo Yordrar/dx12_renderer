@@ -17,7 +17,7 @@ public:
     ID3D12GraphicsCommandList* getCommandList() const { return m_commandList.Get(); }
     double getExecutionTimeMilliseconds() const { return m_executionTimeInMilliseconds; }
 
-    void record( Scene const& scene, std::vector<Camera*> const& cameras );
+    void record( Scene& scene, std::vector<Camera*> const& cameras );
     void addResourceView( Descriptor const& descriptor );
     void addComputePassToWaitOn( ComputePass* computePass );
     bool hasToWaitOnCompute() const { return m_computePassesToWaitOn.size() > 0; }

@@ -16,7 +16,7 @@ Descriptor::Descriptor( Type type,
                         UINT offsetInDescriptors,
                         UINT descriptorIncrementSize )
     : m_type( type )
-    , m_handle( handle )
+    , m_resource( handle )
     , m_descriptorIndex( offsetInDescriptors )
 {
     m_descriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE( cpuDescriptorHandleForHeapStart,

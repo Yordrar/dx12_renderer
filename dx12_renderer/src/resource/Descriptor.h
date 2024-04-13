@@ -32,7 +32,7 @@ public:
 	bool isValid() const { return m_type != Type::InvalidView; }
 
 	Type getType() const { return m_type; }
-	ResourceHandle getResourceHandle() const { return m_handle; }
+	ResourceHandle getResourceHandle() const { return m_resource; }
 	D3D12_CPU_DESCRIPTOR_HANDLE getDescriptorHandle() const { return m_descriptorHandle; }
 	UINT getDescriptorIndex() const { return m_descriptorIndex; }
 
@@ -44,7 +44,7 @@ public:
 
 private:
 	Type m_type;
-	ResourceHandle m_handle;
+	ResourceHandle m_resource;
 	D3D12_CPU_DESCRIPTOR_HANDLE m_descriptorHandle;
 	UINT m_descriptorIndex;
 
