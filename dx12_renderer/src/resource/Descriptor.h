@@ -29,7 +29,7 @@ public:
 	operator D3D12_CPU_DESCRIPTOR_HANDLE() const { return m_descriptorHandle; }
 	operator UINT() const { return m_descriptorIndex; }
 
-	bool isValid() const { return m_type != Type::InvalidView; }
+	bool isValid() const { return m_type != Type::InvalidView && m_resource.isValid(); }
 
 	Type getType() const { return m_type; }
 	ResourceHandle getResourceHandle() const { return m_resource; }

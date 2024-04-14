@@ -73,6 +73,8 @@ Resource::Resource( wchar_t const* name, ComPtr<ID3D12Resource> resource )
 
 Resource::~Resource()
 {
+    m_resource.Reset();
+    m_intermediateUploadBuffer.Reset();
 }
 
 D3D12_RESOURCE_BARRIER Resource::getTransitionBarrier( D3D12_RESOURCE_STATES newState )
@@ -99,6 +101,9 @@ void Resource::copyDataToGPU( ComPtr<ID3D12GraphicsCommandList> commandList )
 {
     assert( m_resourceState == D3D12_RESOURCE_STATE_COPY_DEST );
     assert( m_subresourceData.pData );
-    UpdateSubresources<1>( commandList.Get(), m_resource.Get(), m_intermediateUploadBuffer.Get(), 0, 0, 1, &m_subresourceData );
-    m_needsCopyToGPU = false;
+    if (m_resource && m_intermediateUploadBuffer)
+    {
+        UpdateSubresources<1>(commandList.Get(), m_resource.Get(), m_intermediateUploadBuffer.Get(), 0, 0, 1, &m_subresourceData);
+        m_needsCopyToGPU = false;
+    }
 }

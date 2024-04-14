@@ -14,7 +14,7 @@ extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 710; }
 
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 
-RECT Renderer::s_windowRect;
+RECT Renderer::s_clientRect;
 ComPtr<ID3D12Device2> Renderer::s_device{ nullptr };
 UINT Renderer::s_previousBackBufferIndex = 0;
 UINT Renderer::s_currentBackBufferIndex = 0;
@@ -23,7 +23,7 @@ ComPtr<ID3D12RootSignature> Renderer::s_rootSignature{ nullptr };
 Descriptor Renderer::s_backBufferRTVs[RendererConstants::sc_numBackBuffers];
 ResourceHandle Renderer::s_backBufferHandles[RendererConstants::sc_numBackBuffers];
 
-Renderer::Renderer( HWND hWnd, RECT windowRect )
+Renderer::Renderer( HWND hWnd, RECT clientRect)
     : m_hWnd(hWnd)
     , m_swapChain( nullptr )
     , m_frameFence( nullptr )
@@ -34,7 +34,7 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i ) m_fenceValues[ i ] = 0;
     m_fenceValues[ 0 ] = 1;
     s_currentBackBufferIndex = 0;
-    s_windowRect = windowRect;
+    s_clientRect = clientRect;
 #if defined(_DEBUG)
     ComPtr<ID3D12Debug> debugInterface;
     D3D12GetDebugInterface( IID_PPV_ARGS( &debugInterface ) );
@@ -98,8 +98,8 @@ Renderer::Renderer( HWND hWnd, RECT windowRect )
 
     // Create swap chain
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-    swapChainDesc.Width = s_windowRect.right - s_windowRect.left;
-    swapChainDesc.Height = s_windowRect.bottom - s_windowRect.top;
+    swapChainDesc.Width = getClientWidth();
+    swapChainDesc.Height = getClientHeight();
     swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     swapChainDesc.Stereo = FALSE;
     swapChainDesc.SampleDesc = { 1, 0 };
@@ -297,7 +297,6 @@ void Renderer::endFrame()
     m_frameFence->GPUSignal( m_graphicsCmdQueue, currentFenceValue );
 
     // Update the frame index
-    s_previousBackBufferIndex = s_currentBackBufferIndex;
     s_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
 
     // If the next frame is not ready to be rendered yet, wait until it is ready

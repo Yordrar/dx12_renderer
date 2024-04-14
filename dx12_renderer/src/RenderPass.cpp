@@ -16,7 +16,7 @@ RenderPass::RenderPass( wchar_t const* name,
     , m_commandList( nullptr )
     , m_renderTarget( renderTarget )
     , m_depthStencilTarget( depthStencilTarget )
-    , m_scissorRect( Renderer::getWindowRect() )
+    , m_scissorRect( Renderer::getClientRect() )
     , m_profilerQueryIndex( Profiler::it().allocateQueryIndex() )
     , m_executionTimeInMilliseconds( 0 )
 {

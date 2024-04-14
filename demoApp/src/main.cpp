@@ -9,6 +9,7 @@
 #include <string>
 
 #include <Utils.h>
+#include <Window.h>
 #include <Renderer.h>
 #include <Scene.h>
 #include <geometry/Mesh.h>
@@ -39,134 +40,53 @@ bool mouse_clicked = false;
 int previous_pos_x = -1;
 int previous_pos_y = -1;
 bool useIndexedVertexBuffer = true;
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
-LRESULT CALLBACK WndProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam )
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR pCmdLine, _In_ int nShowCmd)
 {
-    if ( ImGui_ImplWin32_WndProcHandler( hwnd, message, wParam, lParam ) )
-    {
-        return DefWindowProcW( hwnd, message, wParam, lParam );
-    }
+    Window window(hInstance,
+        hPrevInstance,
+        pCmdLine,
+        nShowCmd,
+        "DX12 Renderer Demo App",
+        1280,
+        720);
 
-    if ( ImGui::GetCurrentContext() )
-    {
-        ImGuiIO& io = ImGui::GetIO();
-        if ( io.WantCaptureMouse )
+    window.onLeftMouseButtonDown([&](WPARAM wParam, LPARAM lParam)
         {
-            return DefWindowProcW( hwnd, message, wParam, lParam );
-        }
-    }
-
-    switch ( message )
-    {
-        case WM_PAINT:
-            break; 
-        // The default window procedure will play a system notification sound 
-        // when pressing the Alt+Enter keyboard combination if this message is 
-        // not handled.
-        case WM_SYSCHAR:
-            break;
-        case WM_SIZE:
-            break;
-        case WM_DESTROY:
-            PostQuitMessage( 0 );
-            break;
-        case WM_LBUTTONDOWN:
             mouse_clicked = true;
-            previous_pos_x = GET_X_LPARAM( lParam );
-            previous_pos_y = GET_Y_LPARAM( lParam );
-            break;
-        case WM_LBUTTONUP:
+            previous_pos_x = GET_X_LPARAM(lParam);
+            previous_pos_y = GET_Y_LPARAM(lParam);
+        });
+    window.onLeftMouseButtonUp([&](WPARAM wParam, LPARAM lParam)
+        {
             mouse_clicked = false;
             previous_pos_x = -1;
             previous_pos_y = -1;
-            break;
-        case WM_MOUSEMOVE:
-            if ( mouse_clicked )
+        });
+    window.onMouseMove([&](WPARAM wParam, LPARAM lParam)
+        {
+            if (mouse_clicked)
             {
-                int pos_x = GET_X_LPARAM( lParam );
-                int pos_y = GET_Y_LPARAM( lParam );
+                int pos_x = GET_X_LPARAM(lParam);
+                int pos_y = GET_Y_LPARAM(lParam);
 
-                scene->getCamera().rotate( -( pos_y - previous_pos_y ) / 3.5f, 0 );
-                scene->getCamera().rotate( 0, ( pos_x - previous_pos_x ) / 3.5f );
+                scene->getCamera().rotate(-(pos_y - previous_pos_y) / 3.5f, 0);
+                scene->getCamera().rotate(0, (pos_x - previous_pos_x) / 3.5f);
 
                 previous_pos_x = pos_x;
                 previous_pos_y = pos_y;
             }
-            break;
-        case WM_MOUSEWHEEL:
+        });
+    window.onMouseWheel([&](WPARAM wParam, LPARAM lParam)
         {
-            int delta = GET_WHEEL_DELTA_WPARAM( wParam );
-            scene->getCamera().m_cameraData.m_position.m128_f32[ 0 ] *= 1.0f - ( delta / 500.0f );
-            scene->getCamera().m_cameraData.m_position.m128_f32[ 1 ] *= 1.0f - ( delta / 500.0f );
-            scene->getCamera().m_cameraData.m_position.m128_f32[ 2 ] *= 1.0f - ( delta / 500.0f );
+            int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+            scene->getCamera().m_cameraData.m_position.m128_f32[0] *= 1.0f - (delta / 500.0f);
+            scene->getCamera().m_cameraData.m_position.m128_f32[1] *= 1.0f - (delta / 500.0f);
+            scene->getCamera().m_cameraData.m_position.m128_f32[2] *= 1.0f - (delta / 500.0f);
 
-            scene->getCamera().move( 0.0f, 0.0f, 0.0f );
-            break;
-        }
-        default:
-            break;
-    }
+            scene->getCamera().move(0.0f, 0.0f, 0.0f);
+        });
 
-    return DefWindowProcW( hwnd, message, wParam, lParam );
-}
-
-int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow )
-{
-    static auto windowClassName = L"DemoAppWindowClass";
-
-    WNDCLASSEX windowClass =
-    {
-        .cbSize = sizeof(WNDCLASSEX),
-        .style = CS_HREDRAW | CS_VREDRAW,
-        .lpfnWndProc = &WndProc,
-        .cbClsExtra = 0,
-        .cbWndExtra = 0,
-        .hInstance = hInstance,
-        .hIcon = NULL,
-        .hCursor = LoadCursor( NULL, IDC_ARROW ),
-        .hbrBackground = (HBRUSH)COLOR_WINDOW,
-        .lpszMenuName = NULL,
-        .lpszClassName = windowClassName,
-        .hIconSm = NULL,
-    };
-
-    static ATOM atom = RegisterClassEx( &windowClass );
-    assert( atom > 0 );
-
-    int screenWidth = GetSystemMetrics( SM_CXSCREEN );
-    int screenHeight = GetSystemMetrics( SM_CYSCREEN );
-
-    LONG desiredClientWidth = 1280;
-    LONG desiredClientHeight = 720;
-    RECT clientRect = { 0, 0, desiredClientWidth, desiredClientHeight };
-    RECT windowRect = { 0, 0, desiredClientWidth, desiredClientHeight };
-    AdjustWindowRect( &windowRect, WS_OVERLAPPEDWINDOW, false );
-
-    int windowWidth = windowRect.right - windowRect.left;
-    int windowHeight = windowRect.bottom - windowRect.top;
-
-    // Center the window within the screen. Clamp to 0, 0 for the top-left corner.
-    int windowX = std::max<int>( 0, ( screenWidth - windowWidth ) / 2 );
-    int windowY = std::max<int>( 0, ( screenHeight - windowHeight ) / 2 );
-
-    HWND hWnd = CreateWindowEx(
-        NULL,
-        windowClassName,
-        L"DX12 Renderer Demo",
-        WS_OVERLAPPEDWINDOW,
-        windowX,
-        windowY,
-        windowWidth,
-        windowHeight,
-        nullptr,
-        nullptr,
-        hInstance,
-        nullptr
-    );
-    assert( hWnd );
-    ShowWindow( hWnd, nCmdShow );
-
-    Renderer renderer( hWnd, clientRect );
+    Renderer* renderer = window.getRenderer();
 
     std::string inputfile = "resource/sponza/sponza.obj";
     std::string mtlDir = "resource/sponza/";
@@ -334,8 +254,10 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
         scene->addMesh( mesh );
     }
 
-    ResourceHandle mainRenderTarget = ResourceManager::it().createResource( L"mainRenderTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, desiredClientWidth, desiredClientHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) );
-    ResourceHandle mainDepthStencilTarget = ResourceManager::it().createResource( L"mainDepthStencilTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, desiredClientWidth, desiredClientHeight, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL | D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE ) );
+    ResourceHandle mainRenderTarget = ResourceManager::it().createResource( L"mainRenderTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, renderer->getClientWidth(), renderer->getClientHeight(), 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET));
+    ResourceManager::it().destroyResource(mainRenderTarget);
+    mainRenderTarget = ResourceManager::it().createResource( L"mainRenderTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_R8G8B8A8_UNORM, renderer->getClientWidth(), renderer->getClientHeight(), 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET ) );
+    ResourceHandle mainDepthStencilTarget = ResourceManager::it().createResource( L"mainDepthStencilTarget", CD3DX12_RESOURCE_DESC::Tex2D( DXGI_FORMAT_D32_FLOAT, renderer->getClientWidth(), renderer->getClientHeight(), 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL | D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE ) );
 
     RenderPass depthPass( L"Depth Prepass", L"depth", mainRenderTarget.getDefaultRenderTargetView(), mainDepthStencilTarget.getDefaultDepthStencilView() );
     RenderPass mainPass( L"Main Pass", L"main", Descriptor(), mainDepthStencilTarget.getDefaultDepthStencilView(D3D12_DSV_FLAG_READ_ONLY_DEPTH));
@@ -343,13 +265,13 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
     ResourceManager::it().createSampler( L"globalSampler" );
 
     bool show_window = true;
-    renderer.registerImguiCallback( [&show_window, &renderer, &depthPass, &mainPass] ()
+    renderer->registerImguiCallback( [&show_window, &renderer, &depthPass, &mainPass] ()
                                     {
                                         if ( show_window )
                                         {
                                             ImGui::Begin( "Stats", &show_window );
-                                            ImGui::LabelText( "", "CPU Time: %.2f ms", renderer.getCPUFrameTime() );
-                                            ImGui::LabelText( "", "GPU Time: %.2f ms", renderer.getGPUFrameTime() );
+                                            ImGui::LabelText( "", "CPU Time: %.2f ms", renderer->getCPUFrameTime() );
+                                            ImGui::LabelText( "", "GPU Time: %.2f ms", renderer->getGPUFrameTime() );
                                             ImGui::LabelText( "", "Depth Prepass Time: %.2f ms", depthPass.getExecutionTimeMilliseconds() );
                                             ImGui::LabelText( "", "Main Pass Time: %.2f ms", mainPass.getExecutionTimeMilliseconds() );
                                             ImGui::End();
@@ -370,33 +292,26 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine
 
     mipMapGeneratorPass.addResourceView( testTexture.getShaderResourceView(0) );
     mipMapGeneratorPass.addResourceView( testTexture.getUnorderedAccessView(1) );
-    renderer.beginFrame();
-    renderer.submitComputePass( mipMapGeneratorPass );
-    renderer.endFrame();
+    renderer->beginFrame();
+    renderer->submitComputePass( mipMapGeneratorPass );
+    renderer->endFrame();
 
     mipMapGeneratorPass.setResourceView( 0, testTexture.getShaderResourceView(1) );
     mipMapGeneratorPass.setResourceView( 1, testTexture.getUnorderedAccessView(2) );
     mipMapGeneratorPass.setThreadGroupCounts( width / 32, height / 32, 1 );
-    renderer.beginFrame();
-    renderer.submitComputePass( mipMapGeneratorPass );
-    renderer.endFrame();
+    renderer->beginFrame();
+    renderer->submitComputePass( mipMapGeneratorPass );
+    renderer->endFrame();
 
-    MSG msg{};
-    while ( msg.message != WM_QUIT )
+    while ( !window.shouldCloseWindow() )
     {
-        if ( PeekMessage( &msg, NULL, 0, 0, PM_REMOVE ) )
-        {
-            TranslateMessage( &msg );
-            DispatchMessage( &msg );
-        }
-
-        renderer.beginFrame();
-        renderer.submitRenderPass( depthPass, *scene, { &scene->getCamera() } );
-        renderer.submitRenderPass( mainPass, *scene, { &scene->getCamera() } );
-        renderer.endFrame();
+        renderer->beginFrame();
+        renderer->submitRenderPass( depthPass, *scene, { &scene->getCamera() } );
+        renderer->submitRenderPass( mainPass, *scene, { &scene->getCamera() } );
+        renderer->endFrame();
     }
 
-    renderer.waitForIdleGPU();
+    renderer->waitForIdleGPU();
 
     return 0;
 }

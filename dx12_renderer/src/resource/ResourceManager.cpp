@@ -37,14 +37,25 @@ ResourceHandle ResourceManager::createResource(wchar_t const* name, ComPtr<ID3D1
         unsigned int slot = m_freeResourceSlots.front();
         m_freeResourceSlots.pop();
         m_resources[slot].m_resource = std::move(Resource(name, resource));
-        return ResourceHandle{ slot, ++m_resources[slot].m_generation };
+        return ResourceHandle{ slot, m_resources[slot].m_generation };
     }
 }
 
 void ResourceManager::destroyResource(ResourceHandle handle)
 {
+    assert(isResourceHandleValid(handle));
+
+    // Call the resource's destructor which releases the internal D3D resources and frees up video memory
+    m_resources[handle.m_index].m_resource.~Resource();
+
     m_freeResourceSlots.push(handle.m_index);
     m_resources[handle.m_index].m_generation++;
+
+    m_cbvs.erase(std::remove_if(m_cbvs.begin(), m_cbvs.end(), [&handle](Descriptor const& descriptor) { return descriptor.getResourceHandle() == handle; }), m_cbvs.end());
+    m_srvs.erase(std::remove_if(m_srvs.begin(), m_srvs.end(), [&handle](Descriptor const& descriptor) { return descriptor.getResourceHandle() == handle; }), m_srvs.end());
+    m_uavs.erase(std::remove_if(m_uavs.begin(), m_uavs.end(), [&handle](Descriptor const& descriptor) { return descriptor.getResourceHandle() == handle; }), m_uavs.end());
+    m_rtvs.erase(std::remove_if(m_rtvs.begin(), m_rtvs.end(), [&handle](Descriptor const& descriptor) { return descriptor.getResourceHandle() == handle; }), m_rtvs.end());
+    m_dsvs.erase(std::remove_if(m_dsvs.begin(), m_dsvs.end(), [&handle](Descriptor const& descriptor) { return descriptor.getResourceHandle() == handle; }), m_dsvs.end());
 }
 
 void ResourceManager::createSampler( wchar_t const* resourceName )

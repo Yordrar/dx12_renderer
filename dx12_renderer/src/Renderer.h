@@ -12,8 +12,16 @@ class Scene;
 class Renderer
 {
 public:
-    Renderer(HWND hWnd, RECT windowRect);
+    Renderer(HWND hWnd, RECT clientRect);
     ~Renderer();
+
+    Renderer(const Renderer&) = delete;
+    Renderer& operator= (const Renderer&) = delete;
+    Renderer(Renderer&) = delete;
+    Renderer& operator= (Renderer&) = delete;
+
+    Renderer(Renderer&&) = default;
+    Renderer& operator= (Renderer&&) = default;
 
     static ComPtr<ID3D12Device2> device() { return s_device; }
 
@@ -29,7 +37,9 @@ public:
 
     static UINT getCurrentBackbufferIndex() { return s_currentBackBufferIndex; }
     static UINT getPreviousBackbufferIndex() { return s_previousBackBufferIndex; }
-    static RECT getWindowRect() { return s_windowRect; }
+    static RECT getClientRect() { return s_clientRect; }
+    static UINT getClientWidth() { return s_clientRect.right - s_clientRect.left; }
+    static UINT getClientHeight() { return s_clientRect.bottom - s_clientRect.top; }
     static ComPtr<ID3D12RootSignature> getRootSignature() { return s_rootSignature; }
     static uint64_t getTimestampFrequency() { return s_timestampFrequency; }
     static Descriptor const getCurrentBackbufferRTV() { return s_backBufferRTVs[getCurrentBackbufferIndex()]; }
@@ -41,7 +51,7 @@ private:
     void recordImgui();
 
     HWND m_hWnd;
-    static RECT s_windowRect;
+    static RECT s_clientRect;
 
     static ComPtr<ID3D12Device2> s_device;
     static ComPtr<ID3D12RootSignature> s_rootSignature;

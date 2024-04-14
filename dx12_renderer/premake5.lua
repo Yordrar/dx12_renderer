@@ -18,7 +18,7 @@ project "dx12_renderer"
 	libdirs { "external/dxc/lib/x64", "external/WinPixEventRuntime/bin/x64" }
 	links { "d3d12", "dxgi", "dxguid", "dxcompiler", "WinPixEventRuntime" }
 	defines { "NOMINMAX", "WIN32_LEAN_AND_MEAN" }
-	includedirs { 
+	includedirs {
 		"src",
 		"src/imgui",
 		"external",
