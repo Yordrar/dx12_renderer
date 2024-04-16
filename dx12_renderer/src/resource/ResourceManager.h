@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Renderer.h>
 #include <Manager.h>
 #include <resource/DescriptorHeap.h>
 #include <resource/Resource.h>
@@ -12,8 +11,8 @@ class ResourceManager : public Manager<ResourceManager>
 public:
     ~ResourceManager() = default;
 
-    ResourceHandle createResource(wchar_t const* name, D3D12_RESOURCE_DESC resourceDesc, D3D12_SUBRESOURCE_DATA const& subresourceData = D3D12_SUBRESOURCE_DATA{ nullptr, 0, 0 });
-    ResourceHandle createResource(wchar_t const* name, ComPtr<ID3D12Resource> resource);
+    ResourceHandle createResource( wchar_t const* name, D3D12_RESOURCE_DESC resourceDesc, D3D12_SUBRESOURCE_DATA const& subresourceData = D3D12_SUBRESOURCE_DATA{ nullptr, 0, 0 });
+    ResourceHandle createResource( wchar_t const* name, ComPtr<ID3D12Resource> resource);
     void destroyResource(ResourceHandle handle);
 
     void createSampler( wchar_t const* resourceName );

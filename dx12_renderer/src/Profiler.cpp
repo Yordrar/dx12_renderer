@@ -3,8 +3,9 @@
 #include <Renderer.h>
 #include <RendererConstants.h>
 
-Profiler::Profiler()
-    : m_queryHeap( nullptr )
+Profiler::Profiler( Renderer const& renderer )
+    : m_renderer( renderer )
+    , m_queryHeap( nullptr )
     , m_resolvedQueriesResource( nullptr )
     , m_numAllocatedQueryIndices( 0 )
 {
@@ -28,12 +29,12 @@ Profiler::Profiler()
 
 uint64_t Profiler::getInHeapQueryIndexForCurrentFrameFromAllocatedIndex( uint64_t allocatedIndex )
 {
-    return (2 * allocatedIndex) + (2 * sc_numQueriesPerFrame * Renderer::getCurrentBackbufferIndex());
+    return (2 * allocatedIndex) + (2 * sc_numQueriesPerFrame * m_renderer.getCurrentBackbufferIndex());
 }
 
 uint64_t Profiler::getInHeapQueryIndexForPreviousFrameFromAllocatedIndex( uint64_t allocatedIndex )
 {
-    return (2 * allocatedIndex) + (2 * sc_numQueriesPerFrame * Renderer::getPreviousBackbufferIndex());
+    return (2 * allocatedIndex) + (2 * sc_numQueriesPerFrame * m_renderer.getPreviousBackbufferIndex());
 }
 
 uint64_t Profiler::allocateQueryIndex()
@@ -64,7 +65,7 @@ double Profiler::getResolvedQuery( uint64_t index )
     };
     m_resolvedQueriesResource->Map( 0, &readRange, &data );
     uint64_t* resolvedQueries = reinterpret_cast<uint64_t*>( data );
-    double gpuFrequency = static_cast<double>( Renderer::getTimestampFrequency() );
+    double gpuFrequency = static_cast<double>(m_renderer.getTimestampFrequency() );
 
     uint64_t start = resolvedQueries[ getInHeapQueryIndexForPreviousFrameFromAllocatedIndex( index ) ];
     uint64_t end = resolvedQueries[ getInHeapQueryIndexForPreviousFrameFromAllocatedIndex( index ) + 1 ];

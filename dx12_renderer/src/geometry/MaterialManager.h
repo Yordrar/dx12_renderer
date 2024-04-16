@@ -1,9 +1,6 @@
 #pragma once
 
 #include <Manager.h>
-#pragma once
-
-#include <Manager.h>
 #include <geometry/Material.h>
 
 class MaterialManager : public Manager<MaterialManager>

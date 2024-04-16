@@ -9,7 +9,7 @@ ResourceManager::ResourceManager()
 {
 }
 
-ResourceHandle ResourceManager::createResource(wchar_t const* name, D3D12_RESOURCE_DESC resourceDesc, D3D12_SUBRESOURCE_DATA const& subresourceData)
+ResourceHandle ResourceManager::createResource( wchar_t const* name, D3D12_RESOURCE_DESC resourceDesc, D3D12_SUBRESOURCE_DATA const& subresourceData)
 {
     if (m_freeResourceSlots.empty())
     {
@@ -25,7 +25,7 @@ ResourceHandle ResourceManager::createResource(wchar_t const* name, D3D12_RESOUR
     }
 }
 
-ResourceHandle ResourceManager::createResource(wchar_t const* name, ComPtr<ID3D12Resource> resource)
+ResourceHandle ResourceManager::createResource( wchar_t const* name, ComPtr<ID3D12Resource> resource)
 {
     if (m_freeResourceSlots.empty())
     {

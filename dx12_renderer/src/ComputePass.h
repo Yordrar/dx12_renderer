@@ -5,6 +5,8 @@
 #include <Fence.h>
 #include <resource/Resource.h>
 
+class Renderer;
+
 class ComputePass
 {
 public:
@@ -15,11 +17,10 @@ public:
                  UINT threadGroupCountZ );
     ~ComputePass();
 
-    ID3D12GraphicsCommandList* getCommandList() const { return m_commandList.Get(); }
     double getExecutionTimeMilliseconds() const { return m_executionTimeInMilliseconds; }
     Fence& getFence() { return m_fence; }
 
-    void record();
+    void record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> commandList );
     void addResourceView( Descriptor const descriptor );
     void setResourceView( UINT index, Descriptor const descriptor );
     void setThreadGroupCountX( UINT threadGroupCountX ) { m_threadGroupCountX = threadGroupCountX; }
@@ -31,17 +32,15 @@ public:
 private:
     struct PipelineStateStream
     {
-        CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE m_rootSignature;
+        CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE s_rootSignature;
         CD3DX12_PIPELINE_STATE_STREAM_CS m_computeShader;
     };
 
     std::wstring m_name;
+    std::wstring m_shaderFilename;
     UINT m_threadGroupCountX;
     UINT m_threadGroupCountY;
     UINT m_threadGroupCountZ;
-
-    ComPtr<ID3D12GraphicsCommandList> m_commandList;
-    ComPtr<ID3D12CommandAllocator> m_commandAllocators[ RendererConstants::sc_numBackBuffers ];
 
     ComPtr<ID3D12PipelineState> m_pso;
 

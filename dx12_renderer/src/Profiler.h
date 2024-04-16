@@ -1,11 +1,11 @@
 #pragma once
 
-#include <Manager.h>
+class Renderer;
 
-class Profiler : public Manager<Profiler>
+class Profiler
 {
-	friend class Manager<Profiler>;
 public:
+	Profiler( Renderer const& renderer );
 	~Profiler() = default;
 
 	static constexpr uint64_t sc_numQueriesPerFrame = 1024;
@@ -16,9 +16,10 @@ public:
 	double getResolvedQuery( uint64_t index );
 
 private:
-	Profiler();
 	uint64_t getInHeapQueryIndexForCurrentFrameFromAllocatedIndex( uint64_t allocatedIndex );
 	uint64_t getInHeapQueryIndexForPreviousFrameFromAllocatedIndex( uint64_t allocatedIndex );
+
+	Renderer const& m_renderer;
 
 	ComPtr<ID3D12QueryHeap> m_queryHeap;
 	ComPtr<ID3D12Resource> m_resolvedQueriesResource;

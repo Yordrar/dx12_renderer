@@ -1,9 +1,13 @@
 // Windows
 #include <Windows.h>
 #include <Windowsx.h>
+#include <wrl.h>
+using namespace Microsoft::WRL;
 
 // DirectX 12
+#include <d3d12.h>
 #include <d3dx12/d3dx12.h>
+#include <dxgi1_6.h>
 #include <DirectXMath.h>
 
 #include <string>
@@ -11,6 +15,8 @@
 #include <Utils.h>
 #include <Window.h>
 #include <Renderer.h>
+#include <RenderPass.h>
+#include <ComputePass.h>
 #include <Scene.h>
 #include <geometry/Mesh.h>
 #include <resource/ResourceManager.h>
@@ -130,8 +136,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         subresData.SlicePitch = 0;
 
         ResourceHandle texture = ResourceManager::it().createResource( StrToWideStr( material.diffuse_texname ).c_str(),
-                                                                  resourceDesc,
-                                                                  subresData );
+                                                                       resourceDesc,
+                                                                       subresData );
 
         DXGI_FORMAT rtformats[ 8 ] = { DXGI_FORMAT_UNKNOWN };
         rtformats[ 0 ] = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -288,7 +294,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     subresData.SlicePitch = 0;
     ResourceHandle testTexture = ResourceManager::it().createResource( L"computeTestTexture", resourceDesc, subresData );
 
-    ComputePass mipMapGeneratorPass( L"mipmap_generator", L"shader/testCompute.hlsl", width / 16, height / 16, 1 );
+    /*ComputePass mipMapGeneratorPass( L"mipmap_generator", L"shader/testCompute.hlsl", width / 16, height / 16, 1 );
 
     mipMapGeneratorPass.addResourceView( testTexture.getShaderResourceView(0) );
     mipMapGeneratorPass.addResourceView( testTexture.getUnorderedAccessView(1) );
@@ -299,15 +305,15 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     mipMapGeneratorPass.setResourceView( 0, testTexture.getShaderResourceView(1) );
     mipMapGeneratorPass.setResourceView( 1, testTexture.getUnorderedAccessView(2) );
     mipMapGeneratorPass.setThreadGroupCounts( width / 32, height / 32, 1 );
-    renderer->beginFrame();
     renderer->submitComputePass( mipMapGeneratorPass );
-    renderer->endFrame();
+    renderer->endFrame();*/
 
     while ( !window.shouldCloseWindow() )
     {
         renderer->beginFrame();
         renderer->submitRenderPass( depthPass, *scene, { &scene->getCamera() } );
         renderer->submitRenderPass( mainPass, *scene, { &scene->getCamera() } );
+        renderer->submitImGui();
         renderer->endFrame();
     }
 

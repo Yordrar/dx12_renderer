@@ -51,7 +51,7 @@ public:
 private:
     struct PipelineStateStream
     {
-        CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE m_rootSignature;
+        CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE s_rootSignature;
         CD3DX12_PIPELINE_STATE_STREAM_VS m_vertexShader;
         CD3DX12_PIPELINE_STATE_STREAM_PS m_pixelShader;
         CD3DX12_PIPELINE_STATE_STREAM_BLEND_DESC m_blendState;

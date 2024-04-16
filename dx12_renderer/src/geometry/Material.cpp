@@ -32,7 +32,7 @@ Material::Material( MaterialDesc const& materialDesc )
 
         PipelineStateStream pipelineStateStream =
         {
-            .m_rootSignature = Renderer::getRootSignature().Get(),
+            .s_rootSignature = Renderer::getRootSignature().Get(),
             .m_vertexShader = ShaderManager::it().getShader( vertexShaderDesc ),
             .m_pixelShader = ShaderManager::it().getShader( pixelShaderDesc ),
             .m_blendState = technique.m_blendState,

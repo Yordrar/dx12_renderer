@@ -33,7 +33,7 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc, D3D1
     }
 
     CD3DX12_HEAP_PROPERTIES heapProperties( D3D12_HEAP_TYPE_DEFAULT );
-    Renderer::device()->CreateCommittedResource( &heapProperties,
+    Renderer::device()->CreateCommittedResource(&heapProperties,
                                                  D3D12_HEAP_FLAG_NONE,
                                                  &resourceDesc,
                                                  D3D12_RESOURCE_STATE_COMMON,

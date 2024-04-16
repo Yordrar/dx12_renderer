@@ -2,7 +2,6 @@
 
 #include <queue>
 
-#include <Renderer.h>
 #include <resource/Descriptor.h>
 
 class DescriptorHeap
@@ -13,7 +12,7 @@ public:
     DescriptorHeap( D3D12_DESCRIPTOR_HEAP_DESC heapDesc );
 
     ComPtr<ID3D12DescriptorHeap> getHeap() const { return m_heap; }
-    UINT getIncrementSize() const { return Renderer::device()->GetDescriptorHandleIncrementSize( m_type ); }
+    UINT getIncrementSize() const;
 
     UINT addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC const* cbv );
     UINT addSRV( ComPtr<ID3D12Resource> resource, D3D12_SHADER_RESOURCE_VIEW_DESC const* srv );

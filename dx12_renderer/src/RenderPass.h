@@ -5,6 +5,8 @@
 #include <ComputePass.h>
 #include <resource/Resource.h>
 
+class Renderer;
+
 class RenderPass
 {
 public:
@@ -14,28 +16,26 @@ public:
                 Descriptor depthStencilTarget );
     ~RenderPass();
 
-    ID3D12GraphicsCommandList* getCommandList() const { return m_commandList.Get(); }
     double getExecutionTimeMilliseconds() const { return m_executionTimeInMilliseconds; }
 
-    void record( Scene& scene, std::vector<Camera*> const& cameras );
+    void record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> commandList, Scene& scene, std::vector<Camera*> const& cameras );
     void addResourceView( Descriptor const& descriptor );
     void addComputePassToWaitOn( ComputePass* computePass );
     bool hasToWaitOnCompute() const { return m_computePassesToWaitOn.size() > 0; }
     void waitOnComputePasses( ComPtr<ID3D12CommandQueue> cmdQueue, std::vector<ComputePass*> const& submittedComputePasses );
+    void setScissorRect( D3D12_RECT const& rect );
 
 private:
     std::wstring m_name;
     std::wstring m_techniqueName;
 
-    ComPtr<ID3D12GraphicsCommandList> m_commandList;
-    ComPtr<ID3D12CommandAllocator> m_commandAllocators[ RendererConstants::sc_numBackBuffers ];
-
     Descriptor m_renderTarget;
     Descriptor m_depthStencilTarget;
 
     D3D12_RECT m_scissorRect;
+    bool m_useCustomScissorRect;
 
-    uint64_t m_profilerQueryIndex;
+    int64_t m_profilerQueryIndex;
     double m_executionTimeInMilliseconds;
 
     ResourceHandle m_passBuffer;

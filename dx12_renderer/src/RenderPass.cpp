@@ -13,22 +13,14 @@ RenderPass::RenderPass( wchar_t const* name,
                         Descriptor depthStencilTarget )
     : m_name( name )
     , m_techniqueName( techniqueName )
-    , m_commandList( nullptr )
     , m_renderTarget( renderTarget )
     , m_depthStencilTarget( depthStencilTarget )
-    , m_scissorRect( Renderer::getClientRect() )
-    , m_profilerQueryIndex( Profiler::it().allocateQueryIndex() )
+    , m_scissorRect( D3D12_RECT{} )
+    , m_useCustomScissorRect( false )
+    , m_profilerQueryIndex( -1 )
     , m_executionTimeInMilliseconds( 0 )
 {
-    for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
-    {
-        Renderer::device()->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &m_commandAllocators[ i ] ) );
-    }
 
-    HRESULT result = Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_commandList ) );
-    m_commandList->Close();
-    std::wstring commandListName = m_name + L"_commandList";
-    m_commandList->SetName( commandListName.c_str() );
 }
 
 RenderPass::~RenderPass()
@@ -36,12 +28,12 @@ RenderPass::~RenderPass()
 
 }
 
-void RenderPass::record( Scene& scene, std::vector<Camera*> const& cameras )
+void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> commandList, Scene& scene, std::vector<Camera*> const& cameras )
 {
-    // Reset command list and allocator
-    ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentBackbufferIndex() ];
-    currentCommandAllocator->Reset();
-    m_commandList->Reset( currentCommandAllocator.Get(), nullptr );
+    if (m_profilerQueryIndex == -1)
+    {
+        m_profilerQueryIndex = renderer.getProfiler().allocateQueryIndex();
+    }
 
     Descriptor renderTarget;
     if (m_renderTarget.isValid())
@@ -50,7 +42,7 @@ void RenderPass::record( Scene& scene, std::vector<Camera*> const& cameras )
     }
     else
     {
-        renderTarget = Renderer::getCurrentBackbufferRTV();
+        renderTarget = renderer.getCurrentBackbufferRTV();
     }
 
     static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -73,16 +65,26 @@ void RenderPass::record( Scene& scene, std::vector<Camera*> const& cameras )
         m_passBufferDescriptor = ResourceManager::it().getShaderResourceView( m_passBuffer, srvDesc );
     }
 
-    Profiler::it().startQuery( m_commandList.Get(), m_profilerQueryIndex );
+    renderer.getProfiler().startQuery( commandList.Get(), m_profilerQueryIndex );
 
-    ResourceManager::it().copyResourcesToGPU( m_commandList );
+    ResourceManager::it().copyResourcesToGPU( commandList );
 
-    PIXBeginEvent( m_commandList.Get(), PIX_COLOR_DEFAULT, m_name.c_str() );
+    PIXBeginEvent( commandList.Get(), PIX_COLOR_DEFAULT, m_name.c_str() );
 
     // Set viewport
     D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(ResourceManager::it().getD3DResource(renderTarget.getResourceHandle()).Get() );
-    m_commandList->RSSetViewports( 1, &viewport );
-    m_commandList->RSSetScissorRects( 1, &m_scissorRect );
+    commandList->RSSetViewports( 1, &viewport );
+
+    // Set scissor
+    if (m_useCustomScissorRect)
+    {
+        commandList->RSSetScissorRects(1, &m_scissorRect);
+    }
+    else
+    {
+        D3D12_RECT scissorRect = renderer.getClientRect();
+        commandList->RSSetScissorRects(1, &scissorRect);
+    }
 
     // Set descriptor heaps
     ID3D12DescriptorHeap* descriptorHeaps[] =
@@ -90,10 +92,10 @@ void RenderPass::record( Scene& scene, std::vector<Camera*> const& cameras )
         DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap().Get(),
         DescriptorHeap::getDescriptorHeapSampler().getHeap().Get(),
     };
-    m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
+    commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
 
     // Set root signature
-    m_commandList->SetGraphicsRootSignature(Renderer::getRootSignature().Get());
+    commandList->SetGraphicsRootSignature(renderer.getRootSignature().Get());
 
     // Clear and set render targets
     BarrierRecorder br;
@@ -111,20 +113,20 @@ void RenderPass::record( Scene& scene, std::vector<Camera*> const& cameras )
     {
         br.recordBarrierTransition(descriptor.getResourceHandle(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
-    br.submitBarriers(m_commandList);
+    br.submitBarriers(commandList);
 
     if ( (m_depthStencilTarget.getDSVDesc().Flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH) == 0 )
     {
-        m_commandList->ClearDepthStencilView( m_depthStencilTarget.getDescriptorHandle(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr );
+        commandList->ClearDepthStencilView( m_depthStencilTarget.getDescriptorHandle(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr );
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_depthStencilTarget.getDescriptorHandle();
     D3D12_CPU_DESCRIPTOR_HANDLE rtv = renderTarget.getDescriptorHandle();
-    m_commandList->OMSetRenderTargets( 1, &rtv, false, &dsv );
+    commandList->OMSetRenderTargets( 1, &rtv, false, &dsv );
 
     // Record scenes
     std::wstring currentMaterialName;
-    m_commandList->SetGraphicsRoot32BitConstant( 0, m_passBufferDescriptor.getDescriptorIndex(), 0 );
+    commandList->SetGraphicsRoot32BitConstant( 0, m_passBufferDescriptor.getDescriptorIndex(), 0 );
     for ( std::shared_ptr<Mesh> const& currentMesh : scene.getMeshes() )
     {
         if ( !currentMesh->hasVertexBuffer() )
@@ -135,7 +137,7 @@ void RenderPass::record( Scene& scene, std::vector<Camera*> const& cameras )
         for ( Camera* camera : cameras )
         {
             br.recordBarrierTransition(camera->getGPUBufferResource(), D3D12_RESOURCE_STATE_COMMON);
-            m_commandList->SetGraphicsRoot32BitConstant(0, camera->getCameraBufferDescriptor().getDescriptorIndex(), 1);
+            commandList->SetGraphicsRoot32BitConstant(0, camera->getCameraBufferDescriptor().getDescriptorIndex(), 1);
             if ( currentMesh->isAABBValid() && !camera->isAABBVisible( currentMesh->getAABB() ) )
             {
                 continue;
@@ -147,8 +149,8 @@ void RenderPass::record( Scene& scene, std::vector<Camera*> const& cameras )
                 Material* currentMeshMaterial = MaterialManager::it().getMaterial( currentMeshMaterialName.c_str() );
                 if ( currentMeshMaterial && currentMeshMaterial->hasTechnique( m_techniqueName.c_str() ) )
                 {
-                    m_commandList->SetGraphicsRoot32BitConstant( 0, currentMeshMaterial->getMaterialBufferDescriptor().getDescriptorIndex(), 2 );
-                    m_commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
+                    commandList->SetGraphicsRoot32BitConstant( 0, currentMeshMaterial->getMaterialBufferDescriptor().getDescriptorIndex(), 2 );
+                    commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
                     for ( Descriptor const& descriptor : currentMeshMaterial->getResourceViews() )
                     {
                         if ( descriptor.getType() == Descriptor::Type::ShaderResourceView )
@@ -168,18 +170,16 @@ void RenderPass::record( Scene& scene, std::vector<Camera*> const& cameras )
                 }
             }
 
-            br.submitBarriers( m_commandList );
+            br.submitBarriers( commandList );
 
-            currentMesh->record( m_commandList );
+            currentMesh->record( commandList );
         }
     }
 
-    PIXEndEvent( m_commandList.Get() );
+    PIXEndEvent( commandList.Get() );
 
-    Profiler::it().endQuery( m_commandList.Get(), m_profilerQueryIndex );
-    m_executionTimeInMilliseconds = Profiler::it().getResolvedQuery( m_profilerQueryIndex );
-
-    m_commandList->Close();
+    renderer.getProfiler().endQuery( commandList.Get(), m_profilerQueryIndex );
+    m_executionTimeInMilliseconds = renderer.getProfiler().getResolvedQuery( m_profilerQueryIndex );
 }
 
 void RenderPass::addResourceView( Descriptor const& descriptor )
@@ -203,4 +203,10 @@ void RenderPass::waitOnComputePasses( ComPtr<ID3D12CommandQueue> cmdQueue, std::
             m_computePassesToWaitOn[ i ]->getFence().GPUWait( cmdQueue, ++m_computePassFenceCounters[ i ] );
         }
     }
+}
+
+void RenderPass::setScissorRect(D3D12_RECT const& rect)
+{
+    m_useCustomScissorRect = true;
+    m_scissorRect = rect;
 }

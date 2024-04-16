@@ -153,9 +153,8 @@ LRESULT Window::windowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
     {
     case WM_PAINT:
         break;
-        // The default window procedure will play a system notification sound 
-        // when pressing the Alt+Enter keyboard combination if this message is 
-        // not handled.
+        // The default window procedure will play a system notification sound
+        // when pressing the Alt+Enter if this message is not handled
     case WM_SYSCHAR:
         break;
     case WM_SIZE:

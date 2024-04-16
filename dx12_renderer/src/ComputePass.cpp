@@ -13,30 +13,21 @@ ComputePass::ComputePass( wchar_t const* name,
                           UINT threadGroupCountY,
                           UINT threadGroupCountZ )
     : m_name( name )
+    , m_shaderFilename( shaderFilename )
     , m_threadGroupCountX( threadGroupCountX )
     , m_threadGroupCountY( threadGroupCountY )
     , m_threadGroupCountZ( threadGroupCountZ )
-    , m_commandList( nullptr )
+    , m_pso( nullptr )
     , m_profilerQueryIndex( 0 )
     , m_executionTimeInMilliseconds( 0 )
     , m_fence( (m_name + L"_fence").c_str() )
 {
-    for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i )
-    {
-        Renderer::device()->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_COMPUTE, IID_PPV_ARGS( &m_commandAllocators[ i ] ) );
-    }
-
-    HRESULT result = Renderer::device()->CreateCommandList( 0, D3D12_COMMAND_LIST_TYPE_COMPUTE, m_commandAllocators[ 0 ].Get(), nullptr, IID_PPV_ARGS( &m_commandList ) );
-    m_commandList->Close();
-    std::wstring commandListName = m_name + L"_commandList";
-    m_commandList->SetName( commandListName.c_str() );
-
     std::wstring passNameDefine;
-    passNameDefine.resize( m_name.size() );
-    std::transform( m_name.begin(), m_name.end(), passNameDefine.begin(), std::towupper );
+    passNameDefine.resize(m_name.size());
+    std::transform(m_name.begin(), m_name.end(), passNameDefine.begin(), std::towupper);
     ShaderManager::ShaderDesc computeShaderDesc =
     {
-        .m_filename = shaderFilename,
+        .m_filename = m_shaderFilename,
         .m_entryPoint = m_name + L"_cs",
         .m_shaderType = ShaderManager::ShaderType::ComputeShader,
         .m_enableDebug = true,
@@ -44,15 +35,16 @@ ComputePass::ComputePass( wchar_t const* name,
     };
     PipelineStateStream pipelineStateStream =
     {
-        .m_rootSignature = Renderer::getRootSignature().Get(),
-        .m_computeShader = ShaderManager::it().getShader( computeShaderDesc ),
+        .s_rootSignature = Renderer::getRootSignature().Get(),
+        .m_computeShader = ShaderManager::it().getShader(computeShaderDesc),
     };
     D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc =
     {
-        .SizeInBytes = sizeof( PipelineStateStream ),
+        .SizeInBytes = sizeof(PipelineStateStream),
         .pPipelineStateSubobjectStream = &pipelineStateStream,
     };
-    Renderer::device()->CreatePipelineState( &pipelineStateStreamDesc, IID_PPV_ARGS( &m_pso ) );
+    Renderer::device()->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_pso));
+    assert(m_pso);
 }
 
 ComputePass::~ComputePass()
@@ -60,13 +52,8 @@ ComputePass::~ComputePass()
 
 }
 
-void ComputePass::record()
+void ComputePass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> commandList )
 {
-    // Reset command list and allocator
-    ComPtr<ID3D12CommandAllocator> currentCommandAllocator = m_commandAllocators[ Renderer::getCurrentBackbufferIndex() ];
-    currentCommandAllocator->Reset();
-    m_commandList->Reset( currentCommandAllocator.Get(), nullptr );
-
     if ( !m_passBuffer.isValid() )
     {
         m_passBuffer = ResourceManager::it().createResource( ( m_name + L"_passBuffer" ).c_str(),
@@ -85,12 +72,12 @@ void ComputePass::record()
         m_passBufferDescriptor = ResourceManager::it().getShaderResourceView( m_passBuffer, srvDesc );
     }
 
-    ResourceManager::it().copyResourcesToGPU( m_commandList );
+    ResourceManager::it().copyResourcesToGPU( commandList );
 
-    PIXBeginEvent( m_commandList.Get(), PIX_COLOR_DEFAULT, m_name.c_str() );
+    PIXBeginEvent( commandList.Get(), PIX_COLOR_DEFAULT, m_name.c_str() );
 
     // Set PSO
-    m_commandList->SetPipelineState( m_pso.Get() );
+    commandList->SetPipelineState( m_pso.Get() );
 
     // Set descriptor heaps
     ID3D12DescriptorHeap* descriptorHeaps[] =
@@ -98,12 +85,12 @@ void ComputePass::record()
         DescriptorHeap::getDescriptorHeapCbvSrvUav().getHeap().Get(),
         DescriptorHeap::getDescriptorHeapSampler().getHeap().Get(),
     };
-    m_commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
+    commandList->SetDescriptorHeaps( _countof( descriptorHeaps ), descriptorHeaps );
 
     // Set root signature
-    m_commandList->SetComputeRootSignature(Renderer::getRootSignature().Get());
+    commandList->SetComputeRootSignature(Renderer::getRootSignature().Get());
 
-    m_commandList->SetComputeRoot32BitConstant( 0, m_passBufferDescriptor.getDescriptorIndex(), 0 );
+    commandList->SetComputeRoot32BitConstant( 0, m_passBufferDescriptor.getDescriptorIndex(), 0 );
 
     // Transition UAV resources
     BarrierRecorder br;
@@ -114,9 +101,9 @@ void ComputePass::record()
             br.recordBarrierTransition(descriptor.getResourceHandle(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
     }
-    br.submitBarriers(m_commandList);
+    br.submitBarriers(commandList);
 
-    m_commandList->Dispatch( m_threadGroupCountX, m_threadGroupCountY, m_threadGroupCountZ );
+    commandList->Dispatch( m_threadGroupCountX, m_threadGroupCountY, m_threadGroupCountZ );
 
     for ( Descriptor const& descriptor : m_resourceViews )
     {
@@ -125,11 +112,9 @@ void ComputePass::record()
             br.recordBarrierUAV(descriptor.getResourceHandle());
         }
     }
-    br.submitBarriers(m_commandList);
+    br.submitBarriers(commandList);
 
-    PIXEndEvent( m_commandList.Get() );
-
-    m_commandList->Close();
+    PIXEndEvent( commandList.Get() );
 }
 
 void ComputePass::addResourceView( Descriptor const descriptor )

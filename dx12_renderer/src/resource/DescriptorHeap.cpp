@@ -27,6 +27,11 @@ UINT DescriptorHeap::addSRV( ComPtr<ID3D12Resource> resource, D3D12_SHADER_RESOU
     return slot;
 }
 
+UINT DescriptorHeap::getIncrementSize() const
+{
+    return Renderer::device()->GetDescriptorHandleIncrementSize(m_type);
+}
+
 UINT DescriptorHeap::addCBV( D3D12_CONSTANT_BUFFER_VIEW_DESC const* cbv )
 {
     assert( m_type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV );
