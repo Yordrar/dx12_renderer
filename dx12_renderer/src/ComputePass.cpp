@@ -20,7 +20,6 @@ ComputePass::ComputePass( wchar_t const* name,
     , m_pso( nullptr )
     , m_profilerQueryIndex( 0 )
     , m_executionTimeInMilliseconds( 0 )
-    , m_fence( (m_name + L"_fence").c_str() )
 {
     std::wstring passNameDefine;
     passNameDefine.resize(m_name.size());
@@ -117,6 +116,16 @@ void ComputePass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> 
     PIXEndEvent( commandList.Get() );
 }
 
+void ComputePass::addFenceToSignal( Fence& fence )
+{
+    m_fencesToSignal.push_back(&fence);
+}
+
+void ComputePass::addFenceToWaitOn( Fence& fence )
+{
+    m_fencesToWaitOn.push_back(&fence);
+}
+
 void ComputePass::addResourceView( Descriptor const descriptor )
 {
     m_passBufferData.push_back( descriptor.getDescriptorIndex() );
@@ -129,7 +138,10 @@ void ComputePass::setResourceView( UINT index, Descriptor const descriptor )
     assert( index >= 0 && index < m_resourceViews.size() );
     m_passBufferData[ index ] = descriptor.getDescriptorIndex();
     m_resourceViews[ index ] = descriptor;
-    ResourceManager::it().setResourceNeedsCopyToGPU(m_passBuffer);
+    if (m_passBuffer.isValid())
+    {
+        ResourceManager::it().setResourceNeedsCopyToGPU(m_passBuffer);
+    }
 }
 
 void ComputePass::setThreadGroupCounts( UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ )

@@ -18,9 +18,14 @@ public:
     ~ComputePass();
 
     double getExecutionTimeMilliseconds() const { return m_executionTimeInMilliseconds; }
-    Fence& getFence() { return m_fence; }
 
     void record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> commandList );
+
+    void addFenceToSignal(Fence& fence);
+    std::vector<Fence*> const& getFencesToSignal() const { return m_fencesToSignal; }
+    void addFenceToWaitOn(Fence& fence);
+    std::vector<Fence*> const& getFencesToWaitOn() const { return m_fencesToWaitOn; }
+
     void addResourceView( Descriptor const descriptor );
     void setResourceView( UINT index, Descriptor const descriptor );
     void setThreadGroupCountX( UINT threadGroupCountX ) { m_threadGroupCountX = threadGroupCountX; }
@@ -53,6 +58,7 @@ private:
 
     std::vector<Descriptor> m_resourceViews;
 
-    Fence m_fence;
+    std::vector<Fence*> m_fencesToSignal;
+    std::vector<Fence*> m_fencesToWaitOn;
 };
 

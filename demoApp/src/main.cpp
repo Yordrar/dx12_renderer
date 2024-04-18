@@ -294,26 +294,34 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     subresData.SlicePitch = 0;
     ResourceHandle testTexture = ResourceManager::it().createResource( L"computeTestTexture", resourceDesc, subresData );
 
-    /*ComputePass mipMapGeneratorPass( L"mipmap_generator", L"shader/testCompute.hlsl", width / 16, height / 16, 1 );
+    ComputePass mipMapGeneratorPass( L"mipmap_generator", L"shader/testCompute.hlsl", width / 16, height / 16, 1 );
 
     mipMapGeneratorPass.addResourceView( testTexture.getShaderResourceView(0) );
     mipMapGeneratorPass.addResourceView( testTexture.getUnorderedAccessView(1) );
-    renderer->beginFrame();
-    renderer->submitComputePass( mipMapGeneratorPass );
-    renderer->endFrame();
 
-    mipMapGeneratorPass.setResourceView( 0, testTexture.getShaderResourceView(1) );
-    mipMapGeneratorPass.setResourceView( 1, testTexture.getUnorderedAccessView(2) );
-    mipMapGeneratorPass.setThreadGroupCounts( width / 32, height / 32, 1 );
-    renderer->submitComputePass( mipMapGeneratorPass );
-    renderer->endFrame();*/
+    Fence testFence(L"TestFence");
+
+    mipMapGeneratorPass.addFenceToSignal(testFence);
+    depthPass.addFenceToWaitOn(testFence);
 
     while ( !window.shouldCloseWindow() )
     {
         renderer->beginFrame();
+
+        mipMapGeneratorPass.setResourceView(0, testTexture.getShaderResourceView(0));
+        mipMapGeneratorPass.setResourceView(1, testTexture.getUnorderedAccessView(1));
+        mipMapGeneratorPass.setThreadGroupCounts(width / 16, height / 16, 1);
+        renderer->submitComputePass(mipMapGeneratorPass);
+
+        mipMapGeneratorPass.setResourceView(0, testTexture.getShaderResourceView(1));
+        mipMapGeneratorPass.setResourceView(1, testTexture.getUnorderedAccessView(2));
+        mipMapGeneratorPass.setThreadGroupCounts(width / 32, height / 32, 1);
+        renderer->submitComputePass(mipMapGeneratorPass);
+
         renderer->submitRenderPass( depthPass, *scene, { &scene->getCamera() } );
         renderer->submitRenderPass( mainPass, *scene, { &scene->getCamera() } );
         renderer->submitImGui();
+
         renderer->endFrame();
     }
 

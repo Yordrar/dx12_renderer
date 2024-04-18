@@ -19,11 +19,14 @@ public:
     double getExecutionTimeMilliseconds() const { return m_executionTimeInMilliseconds; }
 
     void record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> commandList, Scene& scene, std::vector<Camera*> const& cameras );
+
     void addResourceView( Descriptor const& descriptor );
-    void addComputePassToWaitOn( ComputePass* computePass );
-    bool hasToWaitOnCompute() const { return m_computePassesToWaitOn.size() > 0; }
-    void waitOnComputePasses( ComPtr<ID3D12CommandQueue> cmdQueue, std::vector<ComputePass*> const& submittedComputePasses );
     void setScissorRect( D3D12_RECT const& rect );
+
+    void addFenceToSignal( Fence& fence );
+    std::vector<Fence*> const& getFencesToSignal() const { return m_fencesToSignal; }
+    void addFenceToWaitOn( Fence& fence );
+    std::vector<Fence*> const& getFencesToWaitOn() const { return m_fencesToWaitOn; }
 
 private:
     std::wstring m_name;
@@ -44,7 +47,7 @@ private:
 
     std::vector<Descriptor> m_passResources;
 
-    std::vector<ComputePass*> m_computePassesToWaitOn;
-    std::vector<UINT> m_computePassFenceCounters;
+    std::vector<Fence*> m_fencesToSignal;
+    std::vector<Fence*> m_fencesToWaitOn;
 };
 

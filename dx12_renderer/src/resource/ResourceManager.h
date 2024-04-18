@@ -31,7 +31,8 @@ public:
 
     void copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> commandList );
 
-    bool isResourceHandleValid(ResourceHandle handle) const { return m_resources[handle.m_index].m_generation == handle.m_generation; }
+    bool isResourceHandleValid(ResourceHandle handle) const { return handle.isValid(); }
+    bool doesResourceHandlePointToValidResource(ResourceHandle handle) const { return m_resources[handle.m_index].m_generation == handle.m_generation; }
 
 private:
     ResourceManager();

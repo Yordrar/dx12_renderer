@@ -6,7 +6,7 @@ bool ResourceHandle::isValid() const
 {
     return m_index != RESOURCE_HANDLE_INVALID_INDEX &&
         m_generation != RESOURCE_HANDLE_INVALID_GENERATION &&
-        ResourceManager::it().isResourceHandleValid(*this);
+        ResourceManager::it().doesResourceHandlePointToValidResource(*this);
 }
 
 Descriptor const& ResourceHandle::getDefaultConstantBufferView()

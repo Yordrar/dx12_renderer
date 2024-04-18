@@ -5,6 +5,7 @@
 #include <imgui/backends/imgui_impl_dx12.h>
 
 #include <RendererConstants.h>
+#include <Fence.h>
 #include <BarrierRecorder.h>
 #include <Profiler.h>
 #include <RenderPass.h>
@@ -17,6 +18,7 @@ extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 710; }
 
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 
+uint64_t Renderer::s_globalFrameCounter = 1;
 ComPtr<ID3D12Device2> Renderer::s_device = nullptr;
 ComPtr<ID3D12RootSignature> Renderer::s_rootSignature = nullptr;
 
@@ -34,8 +36,8 @@ Renderer::Renderer( HWND hWnd, RECT clientRect)
     , m_imguiCallbackRegistered( false )
     , m_profiler( nullptr )
 {
-    for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i ) m_fenceValues[ i ] = 0;
-    m_fenceValues[ 0 ] = 1;
+    for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i ) m_frameFenceValues[ i ] = 0;
+    m_frameFenceValues[ 0 ] = 1;
     m_clientRect = clientRect;
 #if defined(_DEBUG)
     ComPtr<ID3D12Debug> debugInterface;
@@ -226,8 +228,8 @@ Renderer::~Renderer()
 }
 
 static auto start = std::chrono::high_resolution_clock::now();
-static std::unordered_set<RenderPass*> submittedRenderPasses;
-static std::unordered_set<ComputePass*> submittedComputePasses;
+static std::vector<RenderPass*> submittedRenderPasses;
+static std::vector<ComputePass*> submittedComputePasses;
 void Renderer::beginFrame()
 {
     m_numGraphicsCommandListsUsed = 0;
@@ -259,7 +261,7 @@ void Renderer::submitRenderPass( RenderPass& pass, Scene& scene, std::vector<Cam
     pass.record( *this, commandList, scene, cameras );
     commandList->Close();
     m_gpuFrameTime += pass.getExecutionTimeMilliseconds();
-    submittedRenderPasses.insert( &pass );
+    submittedRenderPasses.push_back( &pass );
 }
 
 void Renderer::submitComputePass( ComputePass& pass )
@@ -268,7 +270,7 @@ void Renderer::submitComputePass( ComputePass& pass )
     pass.record( *this, commandList );
     commandList->Close();
     m_gpuFrameTime += pass.getExecutionTimeMilliseconds();
-    submittedComputePasses.insert( &pass );
+    submittedComputePasses.push_back( &pass );
 }
 
 void Renderer::submitImGui()
@@ -286,33 +288,45 @@ void Renderer::endFrame()
     {
         computePass->transitionResourcesForNextFrame(m_postFrameCommandList);
     }
+
     m_postFrameCommandList->Close();
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( end - start );
     m_cpuFrameTime = static_cast<double>( elapsed.count() );
 
-    ID3D12CommandList** graphicsCommandLists = (ID3D12CommandList**)alloca((m_numGraphicsCommandListsUsed+2) * sizeof(*graphicsCommandLists));
-    graphicsCommandLists[0] = m_preFrameCommandList.Get();
-    for (size_t i = 1; i < m_numGraphicsCommandListsUsed+1; i++)
+    m_graphicsCmdQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)m_preFrameCommandList.GetAddressOf());
+    for (size_t i = 0; i < submittedRenderPasses.size(); i++)
     {
-        graphicsCommandLists[i] = m_graphicsCommandLists[i-1].Get();
+        for (Fence* const& fence : submittedRenderPasses[i]->getFencesToWaitOn())
+        {
+            fence->GPUWait(m_graphicsCmdQueue);
+        }
+        m_graphicsCmdQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)m_graphicsCommandLists[i].GetAddressOf());
+        for (Fence* const& fence : submittedRenderPasses[i]->getFencesToSignal())
+        {
+            fence->GPUSignal(m_graphicsCmdQueue);
+        }
     }
-    graphicsCommandLists[m_numGraphicsCommandListsUsed + 1] = m_postFrameCommandList.Get();
-
-    ID3D12CommandList** computeCommandLists = (ID3D12CommandList**)alloca(m_numComputeCommandListsUsed * sizeof(*computeCommandLists));
-    for (size_t i = 0; i < m_numComputeCommandListsUsed; i++)
+    for (size_t i = 0; i < submittedComputePasses.size(); i++)
     {
-        computeCommandLists[i] = m_computeCommandLists[i].Get();
+        for (Fence* const& fence : submittedComputePasses[i]->getFencesToWaitOn())
+        {
+            fence->GPUWait(m_computeCmdQueue);
+        }
+        m_computeCmdQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)m_computeCommandLists[i].GetAddressOf());
+        for (Fence* const& fence : submittedComputePasses[i]->getFencesToSignal())
+        {
+            fence->GPUSignal(m_computeCmdQueue);
+        }
     }
-
-    m_graphicsCmdQueue->ExecuteCommandLists( static_cast<UINT>(m_numGraphicsCommandListsUsed+2), graphicsCommandLists );
-    m_computeCmdQueue->ExecuteCommandLists( static_cast<UINT>(m_numComputeCommandListsUsed), computeCommandLists );
+    m_graphicsCmdQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)m_graphicsCommandLists[m_numGraphicsCommandListsUsed-1].GetAddressOf());
+    m_graphicsCmdQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)m_postFrameCommandList.GetAddressOf());
 
     m_swapChain->Present( 1, 0 );
 
     // Schedule a Signal command in the queue
-    uint64_t const currentFenceValue = m_fenceValues[ m_currentBackBufferIndex ];
+    uint64_t const currentFenceValue = m_frameFenceValues[ m_currentBackBufferIndex ];
     m_frameFence->GPUSignal( m_graphicsCmdQueue, currentFenceValue );
 
     // Update the frame index
@@ -320,18 +334,20 @@ void Renderer::endFrame()
     m_currentBackBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
 
     // If the next frame is not ready to be rendered yet, wait until it is ready
-    m_frameFence->CPUWait( m_fenceValues[ m_currentBackBufferIndex ] );
+    m_frameFence->CPUWait( m_frameFenceValues[ m_currentBackBufferIndex ] );
 
     // Set the fence value for the next frame
-    m_fenceValues[ m_currentBackBufferIndex ] = currentFenceValue + 1;
+    m_frameFenceValues[ m_currentBackBufferIndex ] = currentFenceValue + 1;
+
+    s_globalFrameCounter++;
 }
 
 void Renderer::waitForIdleGPU()
 {
-    uint64_t const currentFenceValue = m_fenceValues[ m_currentBackBufferIndex ];
+    uint64_t const currentFenceValue = m_frameFenceValues[ m_currentBackBufferIndex ];
     m_frameFence->GPUSignal( m_graphicsCmdQueue, currentFenceValue );
     m_frameFence->CPUWait( currentFenceValue );
-    m_fenceValues[ m_currentBackBufferIndex ]++;
+    m_frameFenceValues[ m_currentBackBufferIndex ]++;
 }
 
 ComPtr<ID3D12GraphicsCommandList> Renderer::getNextGraphicsCommandList()

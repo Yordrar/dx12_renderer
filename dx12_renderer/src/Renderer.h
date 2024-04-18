@@ -3,11 +3,11 @@
 #include <functional>
 
 #include <RendererConstants.h>
-#include <Fence.h>
 #include <Profiler.h>
 #include <resource/Descriptor.h>
 
 class Scene;
+class Fence;
 class Camera;
 class RenderPass;
 class ComputePass;
@@ -40,6 +40,7 @@ public:
 
     void waitForIdleGPU();
 
+    static uint64_t getGlobalFrameCounter() { return s_globalFrameCounter; }
     UINT getCurrentBackbufferIndex() const { return m_currentBackBufferIndex; }
     UINT getPreviousBackbufferIndex() const { return m_previousBackBufferIndex; }
     RECT getClientRect() const { return m_clientRect; }
@@ -58,6 +59,8 @@ private:
 
     void recordImgui(ComPtr<ID3D12GraphicsCommandList> commandList);
 
+    static uint64_t s_globalFrameCounter;
+
     HWND m_hWnd;
     RECT m_clientRect;
 
@@ -73,7 +76,7 @@ private:
     Descriptor m_backBufferRTVs[RendererConstants::sc_numBackBuffers];
     ResourceHandle m_backBufferHandles[RendererConstants::sc_numBackBuffers];
     std::unique_ptr<Fence> m_frameFence;
-    uint64_t m_fenceValues[ RendererConstants::sc_numBackBuffers ];
+    uint64_t m_frameFenceValues[ RendererConstants::sc_numBackBuffers ];
 
     ComPtr<ID3D12CommandQueue> m_graphicsCmdQueue;
     ComPtr<ID3D12CommandQueue> m_computeCmdQueue;

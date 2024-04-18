@@ -188,25 +188,18 @@ void RenderPass::addResourceView( Descriptor const& descriptor )
     m_passResources.push_back( descriptor );
 }
 
-void RenderPass::addComputePassToWaitOn( ComputePass* computePass )
-{
-    m_computePassesToWaitOn.push_back( computePass );
-    m_computePassFenceCounters.push_back( 0 );
-}
-
-void RenderPass::waitOnComputePasses( ComPtr<ID3D12CommandQueue> cmdQueue, std::vector<ComputePass*> const& submittedComputePasses )
-{
-    for ( size_t i = 0; i < m_computePassesToWaitOn.size(); ++i )
-    {
-        if ( std::find( submittedComputePasses.begin(), submittedComputePasses.end(), m_computePassesToWaitOn[ i ] ) != submittedComputePasses.end() )
-        {
-            m_computePassesToWaitOn[ i ]->getFence().GPUWait( cmdQueue, ++m_computePassFenceCounters[ i ] );
-        }
-    }
-}
-
 void RenderPass::setScissorRect(D3D12_RECT const& rect)
 {
     m_useCustomScissorRect = true;
     m_scissorRect = rect;
+}
+
+void RenderPass::addFenceToSignal( Fence& fence )
+{
+    m_fencesToSignal.push_back( &fence );
+}
+
+void RenderPass::addFenceToWaitOn( Fence& fence )
+{
+    m_fencesToWaitOn.push_back( &fence );
 }
