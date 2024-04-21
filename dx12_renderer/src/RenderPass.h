@@ -22,6 +22,7 @@ public:
 
     void addResourceView( Descriptor const& descriptor );
     void setScissorRect( D3D12_RECT const& rect );
+    void setClearRenderTargetsBeforeRendering(bool clearTargets) { m_clearRenderTargetsBeforeRendering = clearTargets; }
 
     void addFenceToSignal( Fence& fence );
     std::vector<Fence*> const& getFencesToSignal() const { return m_fencesToSignal; }
@@ -34,6 +35,7 @@ private:
 
     Descriptor m_renderTarget;
     Descriptor m_depthStencilTarget;
+    bool m_clearRenderTargetsBeforeRendering;
 
     D3D12_RECT m_scissorRect;
     bool m_useCustomScissorRect;

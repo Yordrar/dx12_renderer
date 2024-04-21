@@ -15,6 +15,7 @@ RenderPass::RenderPass( wchar_t const* name,
     , m_techniqueName( techniqueName )
     , m_renderTarget( renderTarget )
     , m_depthStencilTarget( depthStencilTarget )
+    , m_clearRenderTargetsBeforeRendering( false )
     , m_scissorRect( D3D12_RECT{} )
     , m_useCustomScissorRect( false )
     , m_profilerQueryIndex( -1 )
@@ -115,9 +116,14 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
     }
     br.submitBarriers(commandList);
 
-    if ( (m_depthStencilTarget.getDSVDesc().Flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH) == 0 )
+    if ( m_clearRenderTargetsBeforeRendering )
     {
-        commandList->ClearDepthStencilView( m_depthStencilTarget.getDescriptorHandle(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr );
+        FLOAT const clearColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        commandList->ClearRenderTargetView(renderTarget.getDescriptorHandle(), clearColor, 0, nullptr);
+        if ((m_depthStencilTarget.getDSVDesc().Flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH) == 0)
+        {
+            commandList->ClearDepthStencilView(m_depthStencilTarget.getDescriptorHandle(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        }
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_depthStencilTarget.getDescriptorHandle();
