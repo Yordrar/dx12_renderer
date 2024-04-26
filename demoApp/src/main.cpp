@@ -268,6 +268,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     RenderPass depthPass( L"Depth Prepass", L"depth", mainRenderTarget.getDefaultRenderTargetView(), mainDepthStencilTarget.getDefaultDepthStencilView() );
     RenderPass mainPass( L"Main Pass", L"main", Descriptor(), mainDepthStencilTarget.getDefaultDepthStencilView(D3D12_DSV_FLAG_READ_ONLY_DEPTH));
 
+    depthPass.setClearRenderTargetsBeforeRendering(true);
+
     ResourceManager::it().createSampler( L"globalSampler" );
 
     bool show_window = true;
