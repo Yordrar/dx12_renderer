@@ -1,9 +1,12 @@
 #include "ResourceManager.h"
 
+#include <stb_image.h>
+
 #include <Renderer.h>
-#include <resource/Resource.h>
-#include <resource/DescriptorHeap.h>
 #include <resource/Descriptor.h>
+#include <resource/DescriptorHeap.h>
+#include <resource/Resource.h>
+#include <Utils.h>
 
 ResourceManager::ResourceManager()
 {
@@ -72,6 +75,19 @@ void ResourceManager::createSampler( wchar_t const* resourceName )
     samplerDesc.MaxAnisotropy = 0;
 
     DescriptorHeap::getDescriptorHeapSampler().addSampler( &samplerDesc );
+}
+
+ResourceHandle ResourceManager::loadTextureFromFile(wchar_t const* name, wchar_t const* filePath)
+{
+    int width, height, nrChannelsInFile;
+    uint8_t* data = stbi_load(WideStrToStr(filePath).c_str(), &width, &height, &nrChannelsInFile, 4);
+    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 3, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS);
+
+    D3D12_SUBRESOURCE_DATA subresData;
+    subresData.pData = data;
+    subresData.RowPitch = width * 4;
+    subresData.SlicePitch = 0;
+    return ResourceManager::it().createResource(name, resourceDesc, subresData);
 }
 
 Descriptor const& ResourceManager::getConstantBufferView(ResourceHandle handle, D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc)

@@ -17,6 +17,8 @@ public:
 
     void createSampler( wchar_t const* resourceName );
 
+    ResourceHandle loadTextureFromFile(wchar_t const* name, wchar_t const* filePath);
+
     Descriptor const& getConstantBufferView(ResourceHandle handle, D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc);
     Descriptor const& getShaderResourceView(ResourceHandle handle, D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc);
     Descriptor const& getUnorderedAccessView(ResourceHandle handle, D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc);

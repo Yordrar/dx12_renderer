@@ -23,7 +23,7 @@ filter "Release"
 	optimize "on"
 	targetdir "build/bin/release"
 	debugdir "build/bin/release"
-	flags "LinkTimeOptimization"
+	linktimeoptimization "on"
 
 include "dx12_renderer"
 include "demoApp"

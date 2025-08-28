@@ -3,7 +3,7 @@
 #include <Renderer.h>
 #include <resource/ResourceManager.h>
 
-IndexBuffer::IndexBuffer( wchar_t const* name, UINT* indices, UINT count )
+IndexBuffer::IndexBuffer( UINT* indices, UINT count )
 	: m_indices( new UINT[ count ] )
 	, m_indexCount( count )
 {
@@ -16,7 +16,7 @@ IndexBuffer::IndexBuffer( wchar_t const* name, UINT* indices, UINT count )
 		.RowPitch = m_indexCount * sizeof( UINT ),
 		.SlicePitch = 0,
 	};
-	m_resource = ResourceManager::it().createResource( name, resourceDesc, subresData );
+	m_resource = ResourceManager::it().createResource( L"", resourceDesc, subresData);
 }
 
 IndexBuffer::~IndexBuffer()

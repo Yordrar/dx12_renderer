@@ -5,7 +5,7 @@
 class IndexBuffer
 {
 public:
-	IndexBuffer( wchar_t const* name, UINT* indices, UINT count );
+	IndexBuffer( UINT* indices, UINT count );
 	virtual ~IndexBuffer();
 
 	void bind( ComPtr<ID3D12GraphicsCommandList> commandList );

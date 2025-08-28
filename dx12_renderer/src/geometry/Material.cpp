@@ -2,60 +2,12 @@
 
 #include <Renderer.h>
 #include <geometry/ShaderManager.h>
+#include <geometry/Mesh.h>
 #include <resource/ResourceManager.h>
 
 Material::Material( MaterialDesc const& materialDesc )
     : m_desc( materialDesc )
 {
-    for ( Technique const& technique : m_desc.m_techniques )
-    {
-        std::wstring passNameDefine;
-        passNameDefine.resize( technique.m_name.size() );
-        std::transform( technique.m_name.begin(), technique.m_name.end(), passNameDefine.begin(), std::towupper );
-        ShaderManager::ShaderDesc vertexShaderDesc =
-        {
-            .m_filename = technique.m_vertexShaderFilename,
-            .m_entryPoint = technique.m_name + L"_vs",
-            .m_shaderType = ShaderManager::ShaderType::VertexShader,
-            .m_enableDebug = true,
-            .m_defines = {passNameDefine},
-        };
-
-        ShaderManager::ShaderDesc pixelShaderDesc =
-        {
-            .m_filename = technique.m_pixelShaderFilename,
-            .m_entryPoint = technique.m_name + L"_ps",
-            .m_shaderType = ShaderManager::ShaderType::PixelShader,
-            .m_enableDebug = true,
-            .m_defines = {passNameDefine},
-        };
-
-        PipelineStateStream pipelineStateStream =
-        {
-            .s_rootSignature = Renderer::getRootSignature().Get(),
-            .m_vertexShader = ShaderManager::it().getShader( vertexShaderDesc ),
-            .m_pixelShader = ShaderManager::it().getShader( pixelShaderDesc ),
-            .m_blendState = technique.m_blendState,
-            .m_rasterizerState = technique.m_rasterizerState,
-            .m_depthStencilState = technique.m_depthStencilState,
-            .m_inputLayout = D3D12_INPUT_LAYOUT_DESC{ m_desc.m_inputLayout.data(), static_cast<UINT>( m_desc.m_inputLayout.size() ) },
-            .m_topologyType = technique.m_topologyType,
-            .m_rtFormats = technique.m_rtFormats,
-            .m_dsFormat = technique.m_dsFormat,
-        };
-
-        ComPtr<ID3D12PipelineState> pso;
-        D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc =
-        {
-            .SizeInBytes = sizeof( PipelineStateStream ),
-            .pPipelineStateSubobjectStream = &pipelineStateStream,
-        };
-        Renderer::device()->CreatePipelineState( &pipelineStateStreamDesc, IID_PPV_ARGS( &pso ) );
-
-        m_psoCache[ technique.m_name ] = pso;
-        m_psoCache[ technique.m_name ]->SetName( ( m_desc.m_name + L"/" + technique.m_name ).c_str() );
-    }
-
     for ( Descriptor const& resourceView : m_desc.m_resourceViews )
     {
         m_bindlessIndices.push_back( resourceView.getDescriptorIndex() );
@@ -78,25 +30,70 @@ Material::Material( MaterialDesc const& materialDesc )
     m_materialBufferDescriptor = ResourceManager::it().getShaderResourceView(m_materialBuffer, srvDesc);
 }
 
-ComPtr<ID3D12PipelineState> Material::getPSOForTechnique( wchar_t const* techniqueName ) const
+ComPtr<ID3D12PipelineState> Material::getPSO(PSODesc const& psoDesc)
 {
-    PSOCache::const_iterator it = m_psoCache.find( techniqueName );
-    if ( it != m_psoCache.end() )
+    if (m_psoCache.contains(psoDesc))
     {
-        return it->second;
+        return m_psoCache[psoDesc];
     }
 
-    return nullptr;
+    return createPSO(psoDesc);
 }
 
-bool Material::hasTechnique( wchar_t const* techniqueName ) const
+ComPtr<ID3D12PipelineState> Material::createPSO(PSODesc const& psoDesc)
 {
-    for ( Technique const& technique : m_desc.m_techniques )
+    std::wstring passNameDefine;
+    passNameDefine.resize(psoDesc.m_passName.size());
+    std::transform(psoDesc.m_passName.begin(), psoDesc.m_passName.end(), passNameDefine.begin(), std::towupper);
+    ShaderManager::ShaderDesc vertexShaderDesc =
     {
-        if ( technique.m_name == techniqueName )
-        {
-            return true;
-        }
-    }
-    return false;
+        .m_filename = psoDesc.m_shaderFilepath,
+        .m_entryPoint = psoDesc.m_passName + L"_vs",
+        .m_shaderType = ShaderManager::ShaderType::VertexShader,
+#if defined(RENDERER_DEBUG)
+        .m_enableDebug = true,
+#else
+        .m_enableDebug = false,
+#endif
+        .m_defines = {passNameDefine},
+    };
+
+    ShaderManager::ShaderDesc pixelShaderDesc =
+    {
+        .m_filename = psoDesc.m_shaderFilepath,
+        .m_entryPoint = psoDesc.m_passName + L"_ps",
+        .m_shaderType = ShaderManager::ShaderType::PixelShader,
+#if defined(RENDERER_DEBUG)
+        .m_enableDebug = true,
+#else
+        .m_enableDebug = false,
+#endif
+        .m_defines = {passNameDefine},
+    };
+
+    PipelineStateStream pipelineStateStream =
+    {
+        .s_rootSignature = Renderer::getRootSignature().Get(),
+        .m_vertexShader = ShaderManager::it().getShader(vertexShaderDesc),
+        .m_pixelShader = ShaderManager::it().getShader(pixelShaderDesc),
+        .m_blendState = psoDesc.m_blendState,
+        .m_rasterizerState = psoDesc.m_rasterizerState,
+        .m_depthStencilState = psoDesc.m_depthStencilState,
+        .m_inputLayout = D3D12_INPUT_LAYOUT_DESC{ Mesh::getInputLayout().data(), static_cast<UINT>(Mesh::getInputLayout().size()) },
+        .m_topologyType = psoDesc.m_primitiveTopologyType,
+        .m_rtFormats = psoDesc.m_rtFormats,
+        .m_dsFormat = psoDesc.m_dsFormat,
+    };
+
+    ComPtr<ID3D12PipelineState> pso;
+    D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc =
+    {
+        .SizeInBytes = sizeof(PipelineStateStream),
+        .pPipelineStateSubobjectStream = &pipelineStateStream,
+    };
+    Renderer::device()->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pso));
+
+    m_psoCache[psoDesc] = pso;
+    m_psoCache[psoDesc]->SetName((m_desc.m_name + L"/" + psoDesc.m_passName).c_str());
+    return m_psoCache[psoDesc];
 }

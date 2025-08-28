@@ -29,7 +29,6 @@ using namespace Microsoft::WRL;
 #include <vector>
 #include <queue>
 #include <unordered_map>
-#include <unordered_set>
 
 // Algorithms
 #include <algorithm>
@@ -37,16 +36,16 @@ using namespace Microsoft::WRL;
 // Regex
 #include <regex>
 
+// Input/Output
+#include <filesystem>
+
 // Atomic operations
 #include <atomic>
 
 // Threads
-#include <thread>
 #include <mutex>
-
-// Metaprogramming
-#include <type_traits>
 
 // External Libraries
 #include <dxcapi.h>
 #include <pix3.h>
+#include <meshoptimizer.h>

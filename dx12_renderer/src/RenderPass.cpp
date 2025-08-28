@@ -21,7 +21,15 @@ RenderPass::RenderPass( wchar_t const* name,
     , m_profilerQueryIndex( -1 )
     , m_executionTimeInMilliseconds( 0 )
 {
+    memset(m_rtFormats.RTFormats, DXGI_FORMAT_UNKNOWN, sizeof(m_rtFormats.RTFormats));
+    m_rtFormats.NumRenderTargets = 0;
+    if (renderTarget.getType() != Descriptor::Type::InvalidView)
+    {
+        m_rtFormats.RTFormats[0] = renderTarget.getRTVDesc().Format;
+        m_rtFormats.NumRenderTargets = 1;
+    }
 
+    m_dsFormat = depthStencilTarget.getDSVDesc().Format;
 }
 
 RenderPass::~RenderPass()
@@ -44,14 +52,16 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
     else
     {
         renderTarget = renderer.getCurrentBackbufferRTV();
+        m_rtFormats.RTFormats[0] = renderTarget.getRTVDesc().Format;
+        m_rtFormats.NumRenderTargets = 1;
     }
 
     static FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-    if ( !m_passBuffer.isValid() )
+    if ( !m_passBuffer.isValid() && m_passBufferData.size() > 0 )
     {
         m_passBuffer = ResourceManager::it().createResource( ( m_name + L"_passBuffer" ).c_str(),
-                                                                            CD3DX12_RESOURCE_DESC::Buffer( std::max(m_passBufferData.size() * sizeof( UINT ), 1Ui64 ) ),
+                                                                            CD3DX12_RESOURCE_DESC::Buffer( m_passBufferData.size() * sizeof( UINT ) ),
                                                                             D3D12_SUBRESOURCE_DATA{ m_passBufferData.data(), static_cast<LONG_PTR>( m_passBufferData.size() * sizeof( UINT ) ), 0 } );
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
         {
@@ -61,7 +71,7 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
         };
         srvDesc.Buffer.FirstElement = 0;
         srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-        srvDesc.Buffer.NumElements = static_cast<UINT>( std::max( m_passBufferData.size(), 1Ui64 ) );
+        srvDesc.Buffer.NumElements = static_cast<UINT>( m_passBufferData.size() );
         srvDesc.Buffer.StructureByteStride = 0;
         m_passBufferDescriptor = ResourceManager::it().getShaderResourceView( m_passBuffer, srvDesc );
     }
@@ -132,53 +142,61 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
 
     // Record scenes
     std::wstring currentMaterialName;
+    Material::PSODesc activePSODesc;
+    Material::PSODesc currentPSODesc =
+    {
+        .m_passName = m_techniqueName,
+        .m_depthStencilState = m_depthStencilState,
+        .m_blendState = m_blendState,
+        .m_rtFormats = m_rtFormats,
+        .m_dsFormat = m_dsFormat
+    };
     commandList->SetGraphicsRoot32BitConstant( 0, m_passBufferDescriptor.getDescriptorIndex(), 0 );
     for ( std::shared_ptr<Mesh> const& currentMesh : scene.getMeshes() )
     {
-        if ( !currentMesh->hasVertexBuffer() )
+        for (Mesh::Submesh const& currentSubmesh : currentMesh->getSubmeshes())
         {
-            continue;
-        }
-
-        for ( Camera* camera : cameras )
-        {
-            br.recordBarrierTransition(camera->getGPUBufferResource(), D3D12_RESOURCE_STATE_COMMON);
-            commandList->SetGraphicsRoot32BitConstant(0, camera->getCameraBufferDescriptor().getDescriptorIndex(), 1);
-            if ( currentMesh->isAABBValid() && !camera->isAABBVisible( currentMesh->getAABB() ) )
+            if (currentSubmesh.m_vertexBuffer.get() == nullptr)
             {
                 continue;
             }
 
-            std::wstring const& currentMeshMaterialName = currentMesh->getMaterialName();
-            if ( currentMaterialName != currentMeshMaterialName )
+            Material* currentMeshMaterial = currentSubmesh.m_material.get();
+
+            commandList->SetGraphicsRoot32BitConstant(0, currentMeshMaterial->getMaterialBufferDescriptor().getDescriptorIndex(), 2);
+
+            currentPSODesc.m_shaderFilepath = currentSubmesh.m_shaderFilepath,
+            currentPSODesc.m_primitiveTopologyType = currentSubmesh.m_primitiveTopologyType;
+            currentPSODesc.m_rasterizerState = currentSubmesh.m_rasterizerState;
+                
+            if (currentPSODesc != activePSODesc)
             {
-                Material* currentMeshMaterial = MaterialManager::it().getMaterial( currentMeshMaterialName.c_str() );
-                if ( currentMeshMaterial && currentMeshMaterial->hasTechnique( m_techniqueName.c_str() ) )
+                commandList->SetPipelineState(currentMeshMaterial->getPSO(currentPSODesc).Get());
+                activePSODesc = currentPSODesc;
+            }
+
+            for (Descriptor const& descriptor : currentMeshMaterial->getResourceViews())
+            {
+                if (descriptor.getType() == Descriptor::Type::ShaderResourceView)
                 {
-                    commandList->SetGraphicsRoot32BitConstant( 0, currentMeshMaterial->getMaterialBufferDescriptor().getDescriptorIndex(), 2 );
-                    commandList->SetPipelineState( currentMeshMaterial->getPSOForTechnique( m_techniqueName.c_str() ).Get() );
-                    for ( Descriptor const& descriptor : currentMeshMaterial->getResourceViews() )
-                    {
-                        if ( descriptor.getType() == Descriptor::Type::ShaderResourceView )
-                        {
-                            br.recordBarrierTransition(descriptor.getResourceHandle(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                        }
-                        else if ( descriptor.getType() == Descriptor::Type::UnorderedAccessView )
-                        {
-                            br.recordBarrierTransition(descriptor.getResourceHandle(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-                        }
-                    }
-                    currentMaterialName = currentMeshMaterialName;
+                    br.recordBarrierTransition(descriptor.getResourceHandle(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 }
-                else
+                else if (descriptor.getType() == Descriptor::Type::UnorderedAccessView)
                 {
-                    continue;
+                    br.recordBarrierTransition(descriptor.getResourceHandle(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 }
             }
 
-            br.submitBarriers( commandList );
+            for (Camera* camera : cameras)
+            {
+                br.recordBarrierTransition(camera->getGPUBufferResource(), D3D12_RESOURCE_STATE_COMMON);
 
-            currentMesh->record( commandList );
+                commandList->SetGraphicsRoot32BitConstant(0, camera->getCameraBufferDescriptor().getDescriptorIndex(), 1);
+
+                br.submitBarriers(commandList);
+
+                currentSubmesh.record(commandList);
+            }
         }
     }
 
@@ -198,6 +216,16 @@ void RenderPass::setScissorRect(D3D12_RECT const& rect)
 {
     m_useCustomScissorRect = true;
     m_scissorRect = rect;
+}
+
+void RenderPass::setDepthWriteMask(D3D12_DEPTH_WRITE_MASK depthWriteMask)
+{
+    m_depthStencilState.DepthWriteMask = depthWriteMask;
+}
+
+void RenderPass::setDepthFunc(D3D12_COMPARISON_FUNC depthFunc)
+{
+    m_depthStencilState.DepthFunc = depthFunc;
 }
 
 void RenderPass::addFenceToSignal( Fence& fence )

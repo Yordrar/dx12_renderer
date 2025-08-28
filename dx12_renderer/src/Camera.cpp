@@ -87,25 +87,3 @@ void Camera::rotate( float delta_angles_x, float delta_angles_y )
 
 	ResourceManager::it().setResourceNeedsCopyToGPU(m_cameraBuffer);
 }
-
-bool Camera::isAABBVisible( Mesh::AABB const& aabb ) const
-{
-	// Very naive visibility test, just check if any one corner of the AABB is in front of the camera
-	DirectX::XMVECTOR aabbCorners[ 8 ] = {
-		DirectX::XMVectorSet( aabb.m_minBounds.m128_f32[ 0 ], aabb.m_minBounds.m128_f32[ 1 ], aabb.m_minBounds.m128_f32[ 2 ], 1.0 ),
-		DirectX::XMVectorSet( aabb.m_maxBounds.m128_f32[ 0 ], aabb.m_minBounds.m128_f32[ 1 ], aabb.m_minBounds.m128_f32[ 2 ], 1.0 ),
-		DirectX::XMVectorSet( aabb.m_minBounds.m128_f32[ 0 ], aabb.m_maxBounds.m128_f32[ 1 ], aabb.m_minBounds.m128_f32[ 2 ], 1.0 ),
-		DirectX::XMVectorSet( aabb.m_maxBounds.m128_f32[ 0 ], aabb.m_maxBounds.m128_f32[ 1 ], aabb.m_minBounds.m128_f32[ 2 ], 1.0 ),
-		DirectX::XMVectorSet( aabb.m_minBounds.m128_f32[ 0 ], aabb.m_minBounds.m128_f32[ 1 ], aabb.m_maxBounds.m128_f32[ 2 ], 1.0 ),
-		DirectX::XMVectorSet( aabb.m_maxBounds.m128_f32[ 0 ], aabb.m_minBounds.m128_f32[ 1 ], aabb.m_maxBounds.m128_f32[ 2 ], 1.0 ),
-		DirectX::XMVectorSet( aabb.m_minBounds.m128_f32[ 0 ], aabb.m_maxBounds.m128_f32[ 1 ], aabb.m_maxBounds.m128_f32[ 2 ], 1.0 ),
-		DirectX::XMVectorSet( aabb.m_maxBounds.m128_f32[ 0 ], aabb.m_maxBounds.m128_f32[ 1 ], aabb.m_maxBounds.m128_f32[ 2 ], 1.0 ),
-	};
-
-	bool visible = false;
-	for ( size_t i = 0; i < 8; i++ )
-	{
-		visible = visible || DirectX::XMVector3Dot( DirectX::XMVector3Normalize( DirectX::XMVectorSubtract( aabbCorners[i], m_cameraData.m_position ) ), m_localForwardVector ).m128_f32[ 0 ] > 0.0f;
-	}
-	return visible;
-}

@@ -6,6 +6,9 @@ project "dx12_renderer"
 	files {
 		"src/**.h",
 		"src/**.cpp",
+		"external/meshoptimizer/src/**",
+		"external/tiny_obj_loader.h",
+		"external/stb_image.h",
 	}
 	removefiles {
 		"src/imgui/**",
@@ -21,9 +24,10 @@ project "dx12_renderer"
 	includedirs {
 		"src",
 		"src/imgui",
-		"external",
+		"external/",
 		"external/dx12_agility_sdk/build/native/include",
 		"external/dxc/inc",
+		"external/meshoptimizer/src",
 		"external/WinPixEventRuntime/Include/WinPixEventRuntime",
 		"external/imgui",
 		"external/imgui/backends",

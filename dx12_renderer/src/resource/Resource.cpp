@@ -12,11 +12,6 @@ Resource::Resource( wchar_t const* name, D3D12_RESOURCE_DESC& resourceDesc, D3D1
     , m_resourceState( D3D12_RESOURCE_STATE_COMMON )
     , m_needsCopyToGPU( subresourceData.pData != nullptr )
 {
-    if (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
-    {
-        resourceDesc.Width = Resource::getSizeAligned256(static_cast<UINT>(resourceDesc.Width));
-    }
-
     FLOAT clearColor[ 4 ] = { 0.0f, 0.0f, 0.0f, 0.0f };
     CD3DX12_CLEAR_VALUE clearValue;
     CD3DX12_CLEAR_VALUE* clearValuePtr = nullptr;

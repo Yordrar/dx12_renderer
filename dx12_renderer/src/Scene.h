@@ -24,6 +24,5 @@ private:
     Camera m_camera;
 
     std::vector< std::shared_ptr<Mesh> > m_meshes;
-    bool meshesNeedSorting;
 };
 

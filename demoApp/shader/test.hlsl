@@ -37,6 +37,11 @@ VSOut depth_vs( VSIn vertexData )
     return commonVertexProcessing( vertexData );
 }
 
+float4 depth_ps(VSOut vsOut) : SV_Target
+{
+    return float4(0.0, 0.0, 0.0, 0.0);
+}
+
 #endif
 
 #if defined(MAIN)

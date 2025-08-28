@@ -1,42 +1,50 @@
 #pragma once
 
-#include <limits>
-#include <memory>
-
-#include <DirectXMath.h>
-
-#include <geometry/Material.h>
 #include <geometry/VertexBuffer.h>
 #include <geometry/IndexBuffer.h>
+#include <geometry/Material.h>
 
 class Mesh
 {
 public:
-    struct AABB
+    struct Submesh
     {
-        DirectX::XMVECTOR m_minBounds = DirectX::XMVectorSet( std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), 1.0f );
-        DirectX::XMVECTOR m_maxBounds = DirectX::XMVectorSet( std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), 1.0f );
+        std::string m_name;
+        std::wstring m_materialName;
+        std::unique_ptr<VertexBuffer> m_vertexBuffer;
+        std::unique_ptr<IndexBuffer> m_indexBuffer;
+        std::wstring m_shaderFilepath;
+        D3D12_PRIMITIVE_TOPOLOGY m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        D3D12_PRIMITIVE_TOPOLOGY_TYPE m_primitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        CD3DX12_RASTERIZER_DESC m_rasterizerState = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT{});
+
+        std::unique_ptr<Material> m_material = nullptr;
+
+        void record(ComPtr<ID3D12GraphicsCommandList> commandList) const;
     };
 
-    Mesh( wchar_t const* name, wchar_t const* materialName, D3D_PRIMITIVE_TOPOLOGY primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+    struct Vertex
+    {
+        DirectX::XMFLOAT3 m_position;
+        DirectX::XMFLOAT3 m_normal;
+        DirectX::XMFLOAT2 m_uvs;
+        DirectX::XMFLOAT3 m_tangent;
+        DirectX::XMFLOAT3 m_bitangent;
+    };
+
+    Mesh( wchar_t const* objFilepath, wchar_t const* shaderFilepath );
     ~Mesh() = default;
 
-    void setVertexBuffer( void* vertexData, UINT vertexSize, UINT vertexCount );
-    bool hasVertexBuffer() const { return m_vertexBuffer != nullptr; }
-    void setIndexBuffer( UINT* indexData, UINT indexCount );
-    void setAABB( AABB const& aabb ) { m_aabb = aabb; }
-    bool isAABBValid() const;
+    void record(ComPtr<ID3D12GraphicsCommandList> commandList) const;
 
-    std::wstring const& getMaterialName() const { return m_materialName; }
-    AABB const& getAABB() const { return m_aabb; }
+    std::vector<Submesh> const& getSubmeshes() const { return m_submeshes; }
+    static std::vector<D3D12_INPUT_ELEMENT_DESC> const& getInputLayout() { return s_inputLayout; }
 
-    void record( ComPtr<ID3D12GraphicsCommandList> commandList );
+    void setFrontCounterClockwise(bool frontCounterClockwise);
 
 private:
-    std::wstring m_name;
-    std::wstring m_materialName;
-    std::unique_ptr<VertexBuffer> m_vertexBuffer;
-    std::unique_ptr<IndexBuffer> m_indexBuffer;
-    AABB m_aabb;
-    D3D_PRIMITIVE_TOPOLOGY m_primitiveTopology;
+    friend class Renderer;
+    static std::vector<D3D12_INPUT_ELEMENT_DESC> s_inputLayout;
+
+    std::vector<Submesh> m_submeshes;
 };

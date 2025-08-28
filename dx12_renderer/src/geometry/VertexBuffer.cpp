@@ -3,7 +3,7 @@
 #include <Renderer.h>
 #include <resource/ResourceManager.h>
 
-VertexBuffer::VertexBuffer( wchar_t const* name, void* vertices, size_t vertexSize, size_t vertexCount )
+VertexBuffer::VertexBuffer( void* vertices, size_t vertexSize, size_t vertexCount )
 	: m_vertices( new uint8_t[ vertexCount * vertexSize ] )
 	, m_vertexSize( vertexSize )
 	, m_vertexCount( vertexCount )
@@ -17,7 +17,7 @@ VertexBuffer::VertexBuffer( wchar_t const* name, void* vertices, size_t vertexSi
 		.RowPitch = static_cast<INT64>( m_vertexCount ) * static_cast<INT64>( m_vertexSize ),
 		.SlicePitch = 0,
 	};
-	m_resource = ResourceManager::it().createResource( name, resourceDesc, subresData );
+	m_resource = ResourceManager::it().createResource(L"", resourceDesc, subresData);
 }
 
 VertexBuffer::~VertexBuffer()

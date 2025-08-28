@@ -5,7 +5,7 @@
 class VertexBuffer
 {
 public:
-	VertexBuffer( wchar_t const* name, void* vertices, size_t vertexSize, size_t vertexCount );
+	VertexBuffer( void* vertices, size_t vertexSize, size_t vertexCount );
 	virtual ~VertexBuffer();
 
 	void bind( ComPtr<ID3D12GraphicsCommandList> commandList );

@@ -22,6 +22,10 @@ public:
 
     void addResourceView( Descriptor const& descriptor );
     void setScissorRect( D3D12_RECT const& rect );
+    
+    void setDepthWriteMask(D3D12_DEPTH_WRITE_MASK depthWriteMask);
+    void setDepthFunc(D3D12_COMPARISON_FUNC depthFunc);
+    
     void setClearRenderTargetsBeforeRendering(bool clearTargets) { m_clearRenderTargetsBeforeRendering = clearTargets; }
 
     void addFenceToSignal( Fence& fence );
@@ -36,6 +40,12 @@ private:
     Descriptor m_renderTarget;
     Descriptor m_depthStencilTarget;
     bool m_clearRenderTargetsBeforeRendering;
+    CD3DX12_DEPTH_STENCIL_DESC m_depthStencilState = CD3DX12_DEPTH_STENCIL_DESC(CD3DX12_DEFAULT{});
+
+    CD3DX12_BLEND_DESC m_blendState = CD3DX12_BLEND_DESC(CD3DX12_DEFAULT{});
+
+    CD3DX12_RT_FORMAT_ARRAY m_rtFormats;
+    DXGI_FORMAT m_dsFormat;
 
     D3D12_RECT m_scissorRect;
     bool m_useCustomScissorRect;

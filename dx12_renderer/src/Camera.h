@@ -18,8 +18,6 @@ public:
 	void move( float delta_x, float delta_y, float delta_z );
 	void rotate( float delta_angles_x, float delta_angles_y );
 
-	bool isAABBVisible( Mesh::AABB const& aabb ) const;
-
 	ResourceHandle getGPUBufferResource() const { return m_cameraBuffer; }
 	Descriptor getCameraBufferDescriptor() const { return m_cameraBufferDescriptor; }
 
