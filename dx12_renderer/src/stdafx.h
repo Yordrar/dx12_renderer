@@ -27,6 +27,7 @@ using namespace Microsoft::WRL;
 
 // Containers
 #include <vector>
+#include <array>
 #include <queue>
 #include <unordered_map>
 

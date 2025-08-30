@@ -32,9 +32,12 @@ Material::Material( MaterialDesc const& materialDesc )
 
 ComPtr<ID3D12PipelineState> Material::getPSO(PSODesc const& psoDesc)
 {
-    if (m_psoCache.contains(psoDesc))
+    for (PSOElement const& elem : m_psoCache)
     {
-        return m_psoCache[psoDesc];
+        if (elem.m_desc == psoDesc)
+        {
+            return elem.m_pso;
+        }
     }
 
     return createPSO(psoDesc);
@@ -93,7 +96,8 @@ ComPtr<ID3D12PipelineState> Material::createPSO(PSODesc const& psoDesc)
     };
     Renderer::device()->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pso));
 
-    m_psoCache[psoDesc] = pso;
-    m_psoCache[psoDesc]->SetName((m_desc.m_name + L"/" + psoDesc.m_passName).c_str());
-    return m_psoCache[psoDesc];
+    pso->SetName((m_desc.m_name + L"/" + psoDesc.m_passName).c_str());
+
+    m_psoCache.push_back({ psoDesc, pso });
+    return m_psoCache.back().m_pso;
 }

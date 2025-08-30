@@ -86,6 +86,10 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
     D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(ResourceManager::it().getD3DResource(renderTarget.getResourceHandle()).Get() );
     commandList->RSSetViewports( 1, &viewport );
 
+    /*ComPtr<ID3D12GraphicsCommandList5> commandList5;
+    commandList.As(&commandList5);
+    commandList5->RSSetShadingRate(D3D12_SHADING_RATE_2X2, nullptr);*/
+
     // Set scissor
     if (m_useCustomScissorRect)
     {

@@ -13,5 +13,6 @@ public:
 
     void submitBarriers(ComPtr<ID3D12GraphicsCommandList> commandList);
 private:
-    std::vector<D3D12_RESOURCE_BARRIER> m_recordedBarriers;
+    std::array<D3D12_RESOURCE_BARRIER, 32> m_recordedBarriers;
+    uint8_t m_numRecordedBarriers = 0;
 };

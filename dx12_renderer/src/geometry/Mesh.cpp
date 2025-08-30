@@ -132,9 +132,9 @@ Mesh::Mesh( wchar_t const* objFilepath, wchar_t const* shaderFilepath )
 
         meshopt_remapIndexBuffer(indexBuffer.data(), NULL, index_count, &remap[0]);
         meshopt_remapVertexBuffer(vertexBuffer.data(), &unindexedVertexBuffer[0], index_count, sizeof(Vertex), &remap[0]);
-        meshopt_optimizeVertexCache(indexBuffer.data(), indexBuffer.data(), index_count, vertex_count);
-        meshopt_optimizeOverdraw(indexBuffer.data(), indexBuffer.data(), index_count, &vertexBuffer[0].m_position.x, vertex_count, sizeof(Vertex), 1.05f);
-        meshopt_optimizeVertexFetch(vertexBuffer.data(), indexBuffer.data(), index_count, vertexBuffer.data(), vertex_count, sizeof(Vertex));
+        //meshopt_optimizeVertexCache(indexBuffer.data(), indexBuffer.data(), index_count, vertex_count);
+        //meshopt_optimizeOverdraw(indexBuffer.data(), indexBuffer.data(), index_count, &vertexBuffer[0].m_position.x, vertex_count, sizeof(Vertex), 1.05f);
+        //meshopt_optimizeVertexFetch(vertexBuffer.data(), indexBuffer.data(), index_count, vertexBuffer.data(), vertex_count, sizeof(Vertex));
 
         m_submeshes.emplace_back();
         Submesh& newSubmesh = m_submeshes.back();

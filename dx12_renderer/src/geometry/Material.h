@@ -4,7 +4,7 @@
 #include <d3dx12/d3dx12.h>
 #include <dxgi1_6.h>
 
-#include <unordered_map>
+#include <vector>
 
 #include <resource/Descriptor.h>
 
@@ -48,8 +48,8 @@ public:
             size_t operator()(PSODesc const& psoDesc) const noexcept
             {
                 std::size_t hash = 0;
-                hash = hash ^ (std::hash<std::wstring>{}(psoDesc.m_passName) << 1);
-                hash = hash ^ (std::hash<std::wstring>{}(psoDesc.m_shaderFilepath) << 1);
+                hash = hash ^ (std::hash<std::wstring>{}(std::wstring(psoDesc.m_passName)) << 1);
+                hash = hash ^ (std::hash<std::wstring>{}(std::wstring(psoDesc.m_shaderFilepath)) << 1);
                 uint32_t const* psoDescPtr = reinterpret_cast<uint32_t const*>(&psoDesc.m_primitiveTopologyType);
                 for (int i = 0; i < ((sizeof(PSODesc) - (sizeof(std::wstring) * 2)) / sizeof(uint32_t)); i++, psoDescPtr++)
                 {
@@ -88,6 +88,12 @@ private:
         CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT m_dsFormat;
     };
 
+    struct PSOElement
+    {
+        PSODesc m_desc;
+        ComPtr<ID3D12PipelineState> m_pso;
+    };
+
     ComPtr<ID3D12PipelineState> createPSO(PSODesc const& psoDesc);
 
     MaterialDesc m_desc;
@@ -96,6 +102,6 @@ private:
     std::vector<UINT> m_bindlessIndices;
     Descriptor m_materialBufferDescriptor;
     
-    using PSOCache = std::unordered_map< PSODesc, ComPtr<ID3D12PipelineState>, PSODesc::Hasher >;
+    using PSOCache = std::vector< PSOElement >;
     PSOCache m_psoCache;
 };

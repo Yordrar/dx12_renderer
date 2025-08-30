@@ -95,7 +95,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 
     depthPass.setClearRenderTargetsBeforeRendering(true);
 
-    mainPass.setClearRenderTargetsBeforeRendering(true);
     mainPass.setDepthWriteMask(D3D12_DEPTH_WRITE_MASK_ZERO);
     mainPass.setDepthFunc(D3D12_COMPARISON_FUNC_LESS_EQUAL);
 
