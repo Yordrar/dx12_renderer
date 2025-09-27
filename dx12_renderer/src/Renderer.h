@@ -40,6 +40,8 @@ public:
 
     void waitForIdleGPU();
 
+    void setStablePowerState(bool enable);
+
     static uint64_t getGlobalFrameCounter() { return s_globalFrameCounter; }
     UINT getCurrentBackbufferIndex() const { return m_currentBackBufferIndex; }
     UINT getPreviousBackbufferIndex() const { return m_previousBackBufferIndex; }

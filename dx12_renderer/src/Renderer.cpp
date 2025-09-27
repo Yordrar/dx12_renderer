@@ -358,6 +358,11 @@ void Renderer::waitForIdleGPU()
     m_frameFenceValues[ m_currentBackBufferIndex ]++;
 }
 
+void Renderer::setStablePowerState(bool enable)
+{
+    s_device->SetStablePowerState(enable);
+}
+
 ComPtr<ID3D12GraphicsCommandList> Renderer::getNextGraphicsCommandList()
 {
     if (m_numGraphicsCommandListsUsed < m_graphicsCommandLists.size())
