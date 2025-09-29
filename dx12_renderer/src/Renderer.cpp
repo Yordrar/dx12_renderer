@@ -79,6 +79,13 @@ Renderer::Renderer( HWND hWnd, RECT clientRect)
         HRESULT result = D3D12CreateDevice(selectedAdapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&s_device));
     }
 
+    // Check we have at least shader model 6.6
+    D3D12_FEATURE_DATA_SHADER_MODEL shaderModel = { D3D_SHADER_MODEL_6_6 };
+    HRESULT result = s_device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shaderModel, sizeof(shaderModel));
+    assert(shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_6);
+
+    setStablePowerState(false);
+
     m_profiler = std::make_unique<Profiler>(*this);
     assert(m_profiler);
     

@@ -15,7 +15,7 @@ public:
     ResourceHandle createResource( wchar_t const* name, ComPtr<ID3D12Resource> resource);
     void destroyResource(ResourceHandle handle);
 
-    void createSampler( wchar_t const* resourceName );
+    void createSampler( D3D12_SAMPLER_DESC samplerDesc );
 
     ResourceHandle loadTextureFromFile(wchar_t const* name, wchar_t const* filePath);
 

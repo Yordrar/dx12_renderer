@@ -18,8 +18,7 @@ Scene::~Scene()
 
 void Scene::addMesh( Mesh* mesh )
 {
-    std::shared_ptr<Mesh> newMesh( mesh );
-    m_meshes.push_back( newMesh );
+    m_meshes.push_back( std::shared_ptr<Mesh>(mesh) );
 }
 
 std::vector<std::shared_ptr<Mesh>> const& Scene::getMeshes()

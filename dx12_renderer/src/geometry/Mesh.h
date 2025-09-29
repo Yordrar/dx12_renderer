@@ -10,7 +10,6 @@ public:
     struct Submesh
     {
         std::string m_name;
-        std::wstring m_materialName;
         std::unique_ptr<VertexBuffer> m_vertexBuffer;
         std::unique_ptr<IndexBuffer> m_indexBuffer;
         std::wstring m_shaderFilepath;
@@ -18,7 +17,7 @@ public:
         D3D12_PRIMITIVE_TOPOLOGY_TYPE m_primitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         CD3DX12_RASTERIZER_DESC m_rasterizerState = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT{});
 
-        std::unique_ptr<Material> m_material = nullptr;
+        std::shared_ptr<Material> m_material = nullptr;
 
         void record(ComPtr<ID3D12GraphicsCommandList> commandList) const;
     };
@@ -32,17 +31,18 @@ public:
         DirectX::XMFLOAT3 m_bitangent;
     };
 
+    Mesh();
     Mesh( wchar_t const* objFilepath, wchar_t const* shaderFilepath );
     ~Mesh() = default;
 
-    void record(ComPtr<ID3D12GraphicsCommandList> commandList) const;
+    virtual void record(ComPtr<ID3D12GraphicsCommandList> commandList) const;
 
     std::vector<Submesh> const& getSubmeshes() const { return m_submeshes; }
     static std::vector<D3D12_INPUT_ELEMENT_DESC> const& getInputLayout() { return s_inputLayout; }
 
     void setFrontCounterClockwise(bool frontCounterClockwise);
 
-private:
+protected:
     friend class Renderer;
     static std::vector<D3D12_INPUT_ELEMENT_DESC> s_inputLayout;
 

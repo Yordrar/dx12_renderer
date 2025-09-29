@@ -1,5 +1,5 @@
 workspace "dx12_renderer"
-	configurations { "Debug", "Release" }
+	configurations { "Debug", "DebugASAN", "Release" }
 	system "Windows"
     architecture "x86_64"
 	language "C++"
@@ -16,6 +16,15 @@ filter "Debug"
 	targetdir "build/bin/debug"
 	debugdir "build/bin/debug"
 	defines "RENDERER_DEBUG"
+
+filter "DebugASAN"
+	runtime "Debug"
+	symbols "default"
+	optimize "off"
+	targetdir "build/bin/debug"
+	debugdir "build/bin/debug"
+	defines "RENDERER_DEBUG"
+	sanitize "Address"
 
 filter "Release"
 	runtime "Release"

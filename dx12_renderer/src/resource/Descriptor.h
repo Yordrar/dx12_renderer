@@ -30,6 +30,7 @@ public:
 	operator UINT() const { return m_descriptorIndex; }
 
 	bool isValid() const { return m_type != Type::InvalidView && m_resource.isValid(); }
+	void invalidate();
 
 	Type getType() const { return m_type; }
 	ResourceHandle getResourceHandle() const { return m_resource; }

@@ -149,7 +149,7 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
     Material::PSODesc activePSODesc;
     Material::PSODesc currentPSODesc =
     {
-        .m_passName = m_techniqueName,
+        .m_techniqueName = m_techniqueName,
         .m_depthStencilState = m_depthStencilState,
         .m_blendState = m_blendState,
         .m_rtFormats = m_rtFormats,
@@ -166,7 +166,6 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
             }
 
             Material* currentMeshMaterial = currentSubmesh.m_material.get();
-
             commandList->SetGraphicsRoot32BitConstant(0, currentMeshMaterial->getMaterialBufferDescriptor().getDescriptorIndex(), 2);
 
             currentPSODesc.m_shaderFilepath = currentSubmesh.m_shaderFilepath,

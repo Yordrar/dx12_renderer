@@ -46,7 +46,10 @@ ResourceHandle ResourceManager::createResource( wchar_t const* name, ComPtr<ID3D
 
 void ResourceManager::destroyResource(ResourceHandle handle)
 {
-    assert(isResourceHandleValid(handle));
+    if (!isResourceHandleValid(handle))
+    {
+        return;
+    }
 
     // Call the resource's destructor which releases the internal D3D resources and frees up video memory
     m_resources[handle.m_index].m_resource.~Resource();
@@ -61,19 +64,8 @@ void ResourceManager::destroyResource(ResourceHandle handle)
     m_dsvs.erase(std::remove_if(m_dsvs.begin(), m_dsvs.end(), [&handle](Descriptor const& descriptor) { return descriptor.getResourceHandle() == handle; }), m_dsvs.end());
 }
 
-void ResourceManager::createSampler( wchar_t const* resourceName )
+void ResourceManager::createSampler(D3D12_SAMPLER_DESC samplerDesc)
 {
-    D3D12_SAMPLER_DESC samplerDesc = {};
-    samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-    samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    samplerDesc.MipLODBias = 0.0f;
-    samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-    samplerDesc.MinLOD = 0.0f;
-    samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
-    samplerDesc.MaxAnisotropy = 0;
-
     DescriptorHeap::getDescriptorHeapSampler().addSampler( &samplerDesc );
 }
 

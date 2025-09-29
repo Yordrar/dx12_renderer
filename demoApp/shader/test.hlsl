@@ -62,6 +62,33 @@ float4 main_ps(VSOut vsOut) : SV_Target
 {
     ResourceIndices indices = getMaterialBuffer<ResourceIndices>();
     Texture2D tex = ResourceDescriptorHeap[indices.textureIdx];
+    SamplerState samp = SamplerDescriptorHeap[1];
+    float4 col = tex.Sample(samp, vsOut.m_uvs);
+    return col;
+}
+
+#endif
+
+#if defined(COPYTOBACKBUFFER)
+
+VSOut copyToBackbuffer_vs( VSIn vertexData )
+{
+    VSOut vsOut = commonVertexProcessing(vertexData);
+    vsOut.m_position = float4(vertexData.m_position, 1.0f);
+    return vsOut;
+}
+
+
+struct ResourceIndices
+{
+    uint textureIdx;
+};
+
+[earlydepthstencil]
+float4 copyToBackbuffer_ps(VSOut vsOut) : SV_Target
+{
+    ResourceIndices indices = getMaterialBuffer<ResourceIndices>();
+    Texture2D tex = ResourceDescriptorHeap[indices.textureIdx];
     SamplerState samp = SamplerDescriptorHeap[0];
     float4 col = tex.Sample(samp, vsOut.m_uvs);
     return col;

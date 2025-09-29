@@ -26,7 +26,11 @@ Descriptor::Descriptor( Type type,
 
 Descriptor::~Descriptor()
 {
-    /*switch ( m_type )
+}
+
+void Descriptor::invalidate()
+{
+    switch ( m_type )
     {
         case Type::ConstantBufferView:
         case Type::ShaderResourceView:
@@ -41,5 +45,8 @@ Descriptor::~Descriptor()
             break;
         default:
             break;
-    }*/
+    }
+    m_type = Type::InvalidView;
+    m_descriptorIndex = 0;
+    m_descriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(CD3DX12_DEFAULT{});
 }

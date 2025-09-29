@@ -16,6 +16,11 @@
 
 std::vector<D3D12_INPUT_ELEMENT_DESC> Mesh::s_inputLayout;
 
+Mesh::Mesh()
+{
+
+}
+
 Mesh::Mesh( wchar_t const* objFilepath, wchar_t const* shaderFilepath )
 {
     std::string inputFile(WideStrToStr(objFilepath));
@@ -46,7 +51,7 @@ Mesh::Mesh( wchar_t const* objFilepath, wchar_t const* shaderFilepath )
         exit(1);
     }
 
-    std::vector<std::pair<std::wstring, Material*>> loadedMaterials;
+    std::vector< std::shared_ptr<Material> > loadedMaterials;
     loadedMaterials.reserve(materials.size());
     for (tinyobj::material_t const& material : materials)
     {
@@ -70,7 +75,7 @@ Mesh::Mesh( wchar_t const* objFilepath, wchar_t const* shaderFilepath )
             newMaterialDesc.m_resourceViews.push_back(texture.getDefaultShaderResourceView());
         }
 
-        loadedMaterials.push_back(std::pair(newMaterialDesc.m_name, new Material(newMaterialDesc)));
+        loadedMaterials.push_back(std::make_shared<Material>(newMaterialDesc));
     }
 
     // Load shapes
@@ -142,8 +147,7 @@ Mesh::Mesh( wchar_t const* objFilepath, wchar_t const* shaderFilepath )
         newSubmesh.m_vertexBuffer = std::make_unique<VertexBuffer>(vertexBuffer.data(), sizeof(Vertex), static_cast<UINT>(vertexBuffer.size()));
         newSubmesh.m_indexBuffer = std::make_unique<IndexBuffer>(indexBuffer.data(), static_cast<UINT>(index_count));
         newSubmesh.m_shaderFilepath = shaderFilepath;
-        newSubmesh.m_materialName = loadedMaterials[shapes[shapeIdx].mesh.material_ids[0]].first;
-        newSubmesh.m_material.reset(loadedMaterials[shapes[shapeIdx].mesh.material_ids[0]].second);
+        newSubmesh.m_material = loadedMaterials[shapes[shapeIdx].mesh.material_ids[0]];
     }
 }
 
@@ -167,7 +171,10 @@ void Mesh::Submesh::record( ComPtr<ID3D12GraphicsCommandList> commandList ) cons
 {
     BarrierRecorder br;
     br.recordBarrierTransition(m_vertexBuffer->getResource(), D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-    br.recordBarrierTransition(m_indexBuffer->getResource(), D3D12_RESOURCE_STATE_INDEX_BUFFER);
+    if (m_indexBuffer)
+    {
+        br.recordBarrierTransition(m_indexBuffer->getResource(), D3D12_RESOURCE_STATE_INDEX_BUFFER);
+    }
     br.submitBarriers(commandList);
 
     commandList->IASetPrimitiveTopology( m_primitiveTopology );

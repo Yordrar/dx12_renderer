@@ -8,26 +8,21 @@
 Material::Material( MaterialDesc const& materialDesc )
     : m_desc( materialDesc )
 {
-    for ( Descriptor const& resourceView : m_desc.m_resourceViews )
-    {
-        m_bindlessIndices.push_back( resourceView.getDescriptorIndex() );
-    }
-    m_materialBuffer = ResourceManager::it().createResource( ( m_desc.m_name + L"_bindlessIndicesBuffer" ).c_str(),
-                                                                      CD3DX12_RESOURCE_DESC::Buffer( std::max( m_bindlessIndices.size() * sizeof( UINT ), 1Ui64 ) ),
-                                                                      D3D12_SUBRESOURCE_DATA{ m_bindlessIndices.data(), static_cast<LONG_PTR>( m_bindlessIndices.size() * sizeof( UINT ) ), 0 } );
-    
-    D3D12_RESOURCE_DESC materialBufferResourceDesc = ResourceManager::it().getResourceDesc(m_materialBuffer);
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
-    {
-        .Format = DXGI_FORMAT_R32_TYPELESS,
-        .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
-        .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-    };
-    srvDesc.Buffer.FirstElement = 0;
-    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-    srvDesc.Buffer.NumElements = static_cast<UINT>(std::max(m_bindlessIndices.size(), 1Ui64));
-    srvDesc.Buffer.StructureByteStride = 0;
-    m_materialBufferDescriptor = ResourceManager::it().getShaderResourceView(m_materialBuffer, srvDesc);
+    recreateInternalBuffers();
+}
+
+Material::~Material()
+{
+    m_psoCache.clear();
+    m_psoCache.shrink_to_fit();
+}
+
+void Material::addResourceView(Descriptor descriptor)
+{
+    m_desc.m_resourceViews.push_back(descriptor);
+    ResourceManager::it().destroyResource(m_materialBuffer);
+    m_materialBufferDescriptor.invalidate();
+    recreateInternalBuffers();
 }
 
 ComPtr<ID3D12PipelineState> Material::getPSO(PSODesc const& psoDesc)
@@ -43,15 +38,44 @@ ComPtr<ID3D12PipelineState> Material::getPSO(PSODesc const& psoDesc)
     return createPSO(psoDesc);
 }
 
+void Material::recreateInternalBuffers()
+{
+    if (m_desc.m_resourceViews.size() <= 0)
+    {
+        return;
+    }
+
+    for (Descriptor const& resourceView : m_desc.m_resourceViews)
+    {
+        m_bindlessIndices.push_back(resourceView.getDescriptorIndex());
+    }
+    m_materialBuffer = ResourceManager::it().createResource((m_desc.m_name + L"_bindlessIndicesBuffer").c_str(),
+        CD3DX12_RESOURCE_DESC::Buffer(std::max(m_bindlessIndices.size() * sizeof(UINT), 1Ui64)),
+        D3D12_SUBRESOURCE_DATA{ m_bindlessIndices.data(), static_cast<LONG_PTR>(m_bindlessIndices.size() * sizeof(UINT)), 0 });
+
+    D3D12_RESOURCE_DESC materialBufferResourceDesc = ResourceManager::it().getResourceDesc(m_materialBuffer);
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
+    {
+        .Format = DXGI_FORMAT_R32_TYPELESS,
+        .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
+        .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+    };
+    srvDesc.Buffer.FirstElement = 0;
+    srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+    srvDesc.Buffer.NumElements = static_cast<UINT>(std::max(m_bindlessIndices.size(), 1Ui64));
+    srvDesc.Buffer.StructureByteStride = 0;
+    m_materialBufferDescriptor = m_materialBuffer.getShaderResourceView(srvDesc);
+}
+
 ComPtr<ID3D12PipelineState> Material::createPSO(PSODesc const& psoDesc)
 {
     std::wstring passNameDefine;
-    passNameDefine.resize(psoDesc.m_passName.size());
-    std::transform(psoDesc.m_passName.begin(), psoDesc.m_passName.end(), passNameDefine.begin(), std::towupper);
+    passNameDefine.resize(psoDesc.m_techniqueName.size());
+    std::transform(psoDesc.m_techniqueName.begin(), psoDesc.m_techniqueName.end(), passNameDefine.begin(), std::towupper);
     ShaderManager::ShaderDesc vertexShaderDesc =
     {
         .m_filename = psoDesc.m_shaderFilepath,
-        .m_entryPoint = psoDesc.m_passName + L"_vs",
+        .m_entryPoint = psoDesc.m_techniqueName + L"_vs",
         .m_shaderType = ShaderManager::ShaderType::VertexShader,
 #if defined(RENDERER_DEBUG)
         .m_enableDebug = true,
@@ -64,7 +88,7 @@ ComPtr<ID3D12PipelineState> Material::createPSO(PSODesc const& psoDesc)
     ShaderManager::ShaderDesc pixelShaderDesc =
     {
         .m_filename = psoDesc.m_shaderFilepath,
-        .m_entryPoint = psoDesc.m_passName + L"_ps",
+        .m_entryPoint = psoDesc.m_techniqueName + L"_ps",
         .m_shaderType = ShaderManager::ShaderType::PixelShader,
 #if defined(RENDERER_DEBUG)
         .m_enableDebug = true,
@@ -96,7 +120,7 @@ ComPtr<ID3D12PipelineState> Material::createPSO(PSODesc const& psoDesc)
     };
     Renderer::device()->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pso));
 
-    pso->SetName((m_desc.m_name + L"/" + psoDesc.m_passName).c_str());
+    pso->SetName((m_desc.m_name + L"/" + psoDesc.m_techniqueName).c_str());
 
     m_psoCache.push_back({ psoDesc, pso });
     return m_psoCache.back().m_pso;
