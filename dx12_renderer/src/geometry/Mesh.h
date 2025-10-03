@@ -31,8 +31,6 @@ public:
         DirectX::XMFLOAT3 m_bitangent;
     };
 
-    Mesh();
-    Mesh( wchar_t const* objFilepath, wchar_t const* shaderFilepath );
     ~Mesh() = default;
 
     virtual void record(ComPtr<ID3D12GraphicsCommandList> commandList) const;
@@ -44,6 +42,10 @@ public:
 
 protected:
     friend class Renderer;
+    friend class MeshImporter;
+
+    Mesh();
+
     static std::vector<D3D12_INPUT_ELEMENT_DESC> s_inputLayout;
 
     std::vector<Submesh> m_submeshes;

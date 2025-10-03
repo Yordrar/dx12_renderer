@@ -19,6 +19,7 @@ using namespace Microsoft::WRL;
 #include <ComputePass.h>
 #include <Scene.h>
 #include <geometry/Mesh.h>
+#include <geometry/MeshImporter.h>
 #include <geometry/FullscreenTriangle.h>
 #include <resource/ResourceManager.h>
 
@@ -83,7 +84,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     mainScene = std::make_unique<Scene>(L"mainScene");
     copyToBackbufferScene = std::make_unique<Scene>(L"copyToBackbufferScene");
 
-    Mesh* mesh = new Mesh(L"resource/sponza/sponza.obj", L"shader/test.hlsl");
+    Mesh* mesh = MeshImporter::createFromObjFile(L"resource/sponza/sponza.obj", L"shader/test.hlsl");
     mesh->setFrontCounterClockwise(true);
     mainScene->addMesh(mesh);
 

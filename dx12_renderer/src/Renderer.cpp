@@ -12,7 +12,6 @@
 #include <ComputePass.h>
 #include <resource/ResourceManager.h>
 #include <resource/DescriptorHeap.h>
-#include <geometry/MaterialManager.h>
 
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 710; }
 

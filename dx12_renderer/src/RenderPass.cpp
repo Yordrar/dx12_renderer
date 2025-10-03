@@ -5,7 +5,6 @@
 #include <BarrierRecorder.h>
 #include <resource/ResourceManager.h>
 #include <resource/Descriptor.h>
-#include <geometry/MaterialManager.h>
 
 RenderPass::RenderPass( wchar_t const* name,
                         wchar_t const* techniqueName,
