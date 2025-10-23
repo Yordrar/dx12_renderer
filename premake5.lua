@@ -32,12 +32,3 @@ project "dx12_renderer"
 		"external/imgui",
 		"external/imgui/backends",
 	}
-	prebuildcommands {
-		"{MKDIR} %{cfg.buildtarget.directory}/D3D12/",
-		"{COPYFILE} " .. _WORKING_DIR .. "/dx12_renderer/external/dx12_agility_sdk/build/native/bin/x64/D3D12Core.dll %{cfg.buildtarget.directory}/D3D12/",
-		"{COPYFILE} " .. _WORKING_DIR .. "/dx12_renderer/external/dx12_agility_sdk/build/native/bin/x64/d3d12SDKLayers.dll %{cfg.buildtarget.directory}/D3D12/",
-		"{COPYFILE} " .. _WORKING_DIR .. "/dx12_renderer/external/dxc/bin/x64/dxcompiler.dll %{cfg.buildtarget.directory}",
-		"{COPYFILE} " .. _WORKING_DIR .. "/dx12_renderer/external/dxc/bin/x64/dxil.dll %{cfg.buildtarget.directory}",
-		"{COPYFILE} " .. _WORKING_DIR .. "/dx12_renderer/external/WinPixEventRuntime/bin/x64/WinPixEventRuntime.dll %{cfg.buildtarget.directory}",
-		"{COPYDIR} " .. _WORKING_DIR .. "/dx12_renderer/shader %{cfg.buildtarget.directory}shader",
-	}

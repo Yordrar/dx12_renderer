@@ -31,6 +31,7 @@ public:
 
     using ImguiCallback = std::function<void( void )>;
     void registerImguiCallback( ImguiCallback const& callback ) { m_imguiUserCallback = callback; m_imguiCallbackRegistered = true; }
+    void unregisterImguiCallback() { m_imguiUserCallback = nullptr; m_imguiCallbackRegistered = false; }
 
     void beginFrame();
     void submitRenderPass( RenderPass& pass, Scene& scene, std::vector<Camera*> const& cameras );

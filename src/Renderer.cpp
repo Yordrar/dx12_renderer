@@ -235,6 +235,8 @@ Renderer::Renderer( HWND hWnd, RECT clientRect)
 
 Renderer::~Renderer()
 {
+    unregisterImguiCallback();
+
     ImGui_ImplDX12_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
@@ -404,6 +406,7 @@ void Renderer::recordImgui(ComPtr<ID3D12GraphicsCommandList> commandList)
     {
         m_imguiUserCallback();
     }
+
     ImGui::Render();
 
     PIXBeginEvent(commandList.Get(), PIX_COLOR_DEFAULT, "Imgui" );
