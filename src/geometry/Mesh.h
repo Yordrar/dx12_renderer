@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdafx.h>
+
 #include <geometry/VertexBuffer.h>
 #include <geometry/IndexBuffer.h>
 #include <geometry/Material.h>

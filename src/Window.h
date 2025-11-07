@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <unordered_map>
+#include <memory>
 #include <functional>
 
 class Renderer;
@@ -31,6 +34,9 @@ public:
 private:
     LRESULT CALLBACK windowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
+    HINSTANCE m_hInstance;
+
+    std::wstring m_windowClassName;
     ATOM m_windowClassIdentifier;
     HWND m_windowHandle;
 

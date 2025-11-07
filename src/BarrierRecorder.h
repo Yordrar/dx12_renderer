@@ -5,7 +5,7 @@
 class BarrierRecorder
 {
 public:
-    BarrierRecorder() = default;
+    BarrierRecorder() : m_recordedBarriers{}, m_numRecordedBarriers(0) {}
     ~BarrierRecorder() = default;
 
     void recordBarrierTransition(ResourceHandle handle, D3D12_RESOURCE_STATES newState);
@@ -14,5 +14,5 @@ public:
     void submitBarriers(ComPtr<ID3D12GraphicsCommandList> commandList);
 private:
     std::array<D3D12_RESOURCE_BARRIER, 32> m_recordedBarriers;
-    uint8_t m_numRecordedBarriers = 0;
+    uint8_t m_numRecordedBarriers;
 };

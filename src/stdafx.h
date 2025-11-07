@@ -47,6 +47,8 @@ using namespace Microsoft::WRL;
 #include <mutex>
 
 // External Libraries
+#if defined(RENDERER)
 #include <dxcapi.h>
 #include <pix3.h>
 #include <meshoptimizer.h>
+#endif

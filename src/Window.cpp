@@ -14,14 +14,15 @@ Window::Window(HINSTANCE hInstance,
     char const* windowName,
     unsigned int width,
     unsigned int height)
-    : m_windowClassIdentifier(0)
+    : m_hInstance(hInstance)
+    , m_windowClassIdentifier(0)
     , m_windowHandle(nullptr)
     , m_renderer(nullptr)
     , m_windowMsg(MSG{})
     , m_msgToCallbackMap()
 {
     std::wstring windowNameWideStr = StrToWideStr(windowName);
-    std::wstring windowClassNameWideStr = windowNameWideStr;
+    std::wstring m_windowClassName = windowNameWideStr;
 
     WNDCLASSEX windowClass =
     {
@@ -35,7 +36,7 @@ Window::Window(HINSTANCE hInstance,
         .hCursor = LoadCursor(NULL, IDC_ARROW),
         .hbrBackground = (HBRUSH)COLOR_WINDOW,
         .lpszMenuName = NULL,
-        .lpszClassName = windowClassNameWideStr.c_str(),
+        .lpszClassName = m_windowClassName.c_str(),
         .hIconSm = NULL,
     };
 
@@ -60,7 +61,7 @@ Window::Window(HINSTANCE hInstance,
 
     m_windowHandle = CreateWindowEx(
         NULL,
-        windowClassNameWideStr.c_str(),
+        m_windowClassName.c_str(),
         windowNameWideStr.c_str(),
         WS_OVERLAPPEDWINDOW,
         windowX,
@@ -84,6 +85,9 @@ Window::Window(HINSTANCE hInstance,
 
 Window::~Window()
 {
+    CloseWindow(m_windowHandle);
+    DestroyWindow(m_windowHandle);
+    UnregisterClassW(m_windowClassName.c_str(), m_hInstance);
 }
 
 Renderer* Window::getRenderer() const

@@ -31,7 +31,6 @@ Renderer::Renderer( HWND hWnd, RECT clientRect)
     , m_computeCmdQueue( nullptr )
     , m_preFrameCommandList( nullptr )
     , m_postFrameCommandList( nullptr )
-    , m_imguiCallbackRegistered( false )
     , m_profiler( nullptr )
 {
     for ( int i = 0; i < RendererConstants::sc_numBackBuffers; ++i ) m_frameFenceValues[ i ] = 0;
@@ -235,8 +234,6 @@ Renderer::Renderer( HWND hWnd, RECT clientRect)
 
 Renderer::~Renderer()
 {
-    unregisterImguiCallback();
-
     ImGui_ImplDX12_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
@@ -297,6 +294,8 @@ void Renderer::submitImGui()
 
 void Renderer::endFrame()
 {
+    submitImGui();
+
     m_postFrameCommandList->Reset(m_graphicsCommandAllocators[getCurrentBackbufferIndex()].Get(), nullptr);
 
     for (ComputePass* computePass : submittedComputePasses)
@@ -402,9 +401,9 @@ ComPtr<ID3D12GraphicsCommandList> Renderer::getNextComputeCommandList()
 
 void Renderer::recordImgui(ComPtr<ID3D12GraphicsCommandList> commandList)
 {
-    if ( m_imguiCallbackRegistered )
+    for (std::pair<char const*, ImguiCallback> elem : m_imguiUserCallbacks)
     {
-        m_imguiUserCallback();
+        elem.second();
     }
 
     ImGui::Render();

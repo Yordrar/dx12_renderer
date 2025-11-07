@@ -1,11 +1,16 @@
 #pragma once
 
-#include <functional>
+#include <wrl.h>
+using namespace Microsoft::WRL;
+
+#include <memory>
 
 #include <RendererConstants.h>
-#include <Profiler.h>
 #include <resource/Descriptor.h>
 
+struct IDXGISwapChain4;
+
+class Profiler;
 class Scene;
 class Fence;
 class Camera;
@@ -30,13 +35,12 @@ public:
     static ComPtr<ID3D12RootSignature> getRootSignature() { return s_rootSignature; }
 
     using ImguiCallback = std::function<void( void )>;
-    void registerImguiCallback( ImguiCallback const& callback ) { m_imguiUserCallback = callback; m_imguiCallbackRegistered = true; }
-    void unregisterImguiCallback() { m_imguiUserCallback = nullptr; m_imguiCallbackRegistered = false; }
+    void registerImguiCallback(char const* name, ImguiCallback const& callback) { m_imguiUserCallbacks.push_back({ name, callback }); }
+    void unregisterImguiCallback(char const* name) { std::erase_if(m_imguiUserCallbacks, [&name](std::pair<char const*, ImguiCallback> const& current) {return strcmp(current.first, name) == 0; }); }
 
     void beginFrame();
     void submitRenderPass( RenderPass& pass, Scene& scene, std::vector<Camera*> const& cameras );
     void submitComputePass( ComputePass& pass );
-    void submitImGui();
     void endFrame();
 
     void waitForIdleGPU();
@@ -60,6 +64,7 @@ private:
     ComPtr<ID3D12GraphicsCommandList> getNextGraphicsCommandList();
     ComPtr<ID3D12GraphicsCommandList> getNextComputeCommandList();
 
+    void submitImGui();
     void recordImgui(ComPtr<ID3D12GraphicsCommandList> commandList);
 
     static uint64_t s_globalFrameCounter;
@@ -95,8 +100,7 @@ private:
     ComPtr<ID3D12CommandAllocator> m_graphicsCommandAllocators[ RendererConstants::sc_numBackBuffers ];
     ComPtr<ID3D12CommandAllocator> m_computeCommandAllocators[ RendererConstants::sc_numBackBuffers ];
 
-    bool m_imguiCallbackRegistered;
-    ImguiCallback m_imguiUserCallback;
+    std::vector< std::pair<char const*, ImguiCallback> > m_imguiUserCallbacks;
 
     std::unique_ptr<Profiler> m_profiler;
     double m_cpuFrameTime;
