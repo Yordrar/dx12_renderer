@@ -15,12 +15,12 @@ Scene::~Scene()
 
 }
 
-void Scene::addMesh( std::shared_ptr<Mesh> const& mesh )
+void Scene::addMesh( Mesh* mesh )
 {
     m_meshes.push_back( mesh );
 }
 
-std::vector<std::shared_ptr<Mesh>> const& Scene::getMeshes()
+std::vector<Mesh*> const& Scene::getMeshes()
 {
     return m_meshes;
 }

@@ -22,6 +22,7 @@ public:
     UINT addDSV( ComPtr<ID3D12Resource> resource, D3D12_DEPTH_STENCIL_VIEW_DESC const* dsv );
 
     void removeDescriptor( Descriptor const& descriptor );
+    void removeAllDescriptors();
 
     static DescriptorHeap& getDescriptorHeapCbvSrvUav();
     static DescriptorHeap& getDescriptorHeapSampler();

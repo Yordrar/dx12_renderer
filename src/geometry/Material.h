@@ -2,7 +2,6 @@
 
 #include <d3d12.h>
 #include <d3dx12/d3dx12.h>
-#include <dxgi1_6.h>
 
 #include <vector>
 
@@ -43,7 +42,6 @@ public:
                 m_shaderFilepath == other.m_shaderFilepath);
         }
     };
-    static_assert(sizeof(PSODesc) % sizeof(uint32_t) == 0, "PSODesc size must be aligned to 4 bytes");
 
     Material( MaterialDesc const& materialDesc );
     ~Material();

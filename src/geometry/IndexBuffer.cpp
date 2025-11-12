@@ -22,6 +22,7 @@ IndexBuffer::IndexBuffer( UINT* indices, UINT count )
 IndexBuffer::~IndexBuffer()
 {
 	delete[] m_indices;
+    ResourceManager::it().destroyResource(m_resource);
 }
 
 void IndexBuffer::bind( ComPtr<ID3D12GraphicsCommandList> commandList )

@@ -14,6 +14,7 @@ public:
     ResourceHandle createResource( wchar_t const* name, D3D12_RESOURCE_DESC resourceDesc, D3D12_SUBRESOURCE_DATA const& subresourceData = D3D12_SUBRESOURCE_DATA{ nullptr, 0, 0 });
     ResourceHandle createResource( wchar_t const* name, ComPtr<ID3D12Resource> resource);
     void destroyResource(ResourceHandle handle);
+    void destroyAllResources();
 
     void createSampler( D3D12_SAMPLER_DESC samplerDesc );
 
@@ -34,7 +35,7 @@ public:
     void copyResourcesToGPU( ComPtr<ID3D12GraphicsCommandList> commandList );
 
     bool isResourceHandleValid(ResourceHandle handle) const { return handle.isValid(); }
-    bool doesResourceHandlePointToValidResource(ResourceHandle handle) const { return m_resources[handle.m_index].m_generation == handle.m_generation; }
+    bool doesResourceHandlePointToValidResource(ResourceHandle handle) const { return handle.m_index < m_resources.size() && m_resources[handle.m_index].m_generation == handle.m_generation; }
 
 private:
     ResourceManager();

@@ -64,6 +64,24 @@ void ResourceManager::destroyResource(ResourceHandle handle)
     m_dsvs.erase(std::remove_if(m_dsvs.begin(), m_dsvs.end(), [&handle](Descriptor const& descriptor) { return descriptor.getResourceHandle() == handle; }), m_dsvs.end());
 }
 
+void ResourceManager::destroyAllResources()
+{
+    m_resources.clear();
+    while (!m_freeResourceSlots.empty())
+    {
+        m_freeResourceSlots.pop();
+    }
+    DescriptorHeap::getDescriptorHeapCbvSrvUav().removeAllDescriptors();
+    DescriptorHeap::getDescriptorHeapRtv().removeAllDescriptors();
+    DescriptorHeap::getDescriptorHeapDsv().removeAllDescriptors();
+    DescriptorHeap::getDescriptorHeapSampler().removeAllDescriptors();
+    m_cbvs.clear();
+    m_srvs.clear();
+    m_uavs.clear();
+    m_rtvs.clear();
+    m_dsvs.clear();
+}
+
 void ResourceManager::createSampler(D3D12_SAMPLER_DESC samplerDesc)
 {
     DescriptorHeap::getDescriptorHeapSampler().addSampler( &samplerDesc );

@@ -2,10 +2,11 @@
 
 #include <resource/Resource.h>
 #include <resource/DescriptorHeap.h>
+#include <bindless.h>
 
 Descriptor::Descriptor()
     : m_type(Type::InvalidView)
-    , m_descriptorIndex(0)
+    , m_descriptorIndex(INVALID_DESCRIPTOR_INDEX)
 {
     m_descriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(CD3DX12_DEFAULT{});
 }
@@ -50,6 +51,6 @@ void Descriptor::invalidate()
             break;
     }
     m_type = Type::InvalidView;
-    m_descriptorIndex = 0;
+    m_descriptorIndex = INVALID_DESCRIPTOR_INDEX;
     m_descriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(CD3DX12_DEFAULT{});
 }

@@ -1,0 +1,3 @@
+#pragma once
+
+#define INVALID_DESCRIPTOR_INDEX 0xFFFFFFFF

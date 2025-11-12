@@ -15,6 +15,8 @@ Material::~Material()
 {
     m_psoCache.clear();
     m_psoCache.shrink_to_fit();
+    ResourceManager::it().destroyResource(m_materialBuffer);
+    m_materialBufferDescriptor.invalidate();
 }
 
 void Material::addResourceView(Descriptor descriptor)
@@ -44,6 +46,8 @@ void Material::recreateInternalBuffers()
     {
         return;
     }
+
+    m_bindlessIndices.clear();
 
     for (Descriptor const& resourceView : m_desc.m_resourceViews)
     {

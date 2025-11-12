@@ -97,6 +97,15 @@ void DescriptorHeap::removeDescriptor( Descriptor const& descriptor )
     m_freeSlots.push( descriptor.getDescriptorIndex() );
 }
 
+void DescriptorHeap::removeAllDescriptors()
+{
+    while (!m_freeSlots.empty())
+    {
+        m_freeSlots.pop();
+    }
+    m_nextFreeSlot = 0;
+}
+
 DescriptorHeap& DescriptorHeap::getDescriptorHeapCbvSrvUav()
 {
     if ( !s_descriptorHeapCbvSrvUav )

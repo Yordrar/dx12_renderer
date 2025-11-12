@@ -23,6 +23,7 @@ VertexBuffer::VertexBuffer( void* vertices, size_t vertexSize, size_t vertexCoun
 VertexBuffer::~VertexBuffer()
 {
 	delete[] m_vertices;
+	ResourceManager::it().destroyResource(m_resource);
 }
 
 void VertexBuffer::bind( ComPtr<ID3D12GraphicsCommandList> commandList )

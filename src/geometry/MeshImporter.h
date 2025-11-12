@@ -5,6 +5,6 @@
 class MeshImporter
 {
 public:
-    static std::shared_ptr<Mesh> createEmpty();
-    static std::shared_ptr<Mesh> createFromObjFile(wchar_t const* objFilepath, wchar_t const* shaderFilepath);
+    static Mesh* createEmpty();
+    static Mesh* createFromObjFile(wchar_t const* objFilepath, wchar_t const* shaderFilepath);
 };

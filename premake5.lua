@@ -24,6 +24,7 @@ project "dx12_renderer"
 	includedirs {
 		"src",
 		"src/imgui",
+		"shader/",
 		"external/",
 		"external/dx12_agility_sdk/build/native/include",
 		"external/dxc/inc",

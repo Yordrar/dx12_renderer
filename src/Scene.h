@@ -17,8 +17,8 @@ public:
     Camera& getCamera() { return m_camera; }
     ResourceHandle getCameraBufferResource() const { return m_camera.getGPUBufferResource(); }
 
-    void addMesh( std::shared_ptr<Mesh> const& mesh );
-    std::vector< std::shared_ptr<Mesh> > const& getMeshes();
+    void addMesh( Mesh* mesh );
+    std::vector<Mesh*> const& getMeshes();
 
     void addPointLight(PointLight const& light);
     Descriptor getPointLightBufferSRV() const { return m_pointLightBufferSRV; }
@@ -38,7 +38,7 @@ private:
 
     Camera m_camera;
 
-    std::vector< std::shared_ptr<Mesh> > m_meshes;
+    std::vector<Mesh*> m_meshes;
 
     std::vector<PointLight> m_pointLights;
     ResourceHandle m_pointLightBuffer;

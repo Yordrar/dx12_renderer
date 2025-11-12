@@ -158,7 +158,7 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
     commandList->SetGraphicsRoot32BitConstant( 0, scene.getPointLightBufferSRV(), 4);
     commandList->SetGraphicsRoot32BitConstant( 0, scene.getDirectionalLightBufferSRV(), 5);
     commandList->SetGraphicsRoot32BitConstant( 0, scene.getSpotLightBufferSRV(), 6);
-    for ( std::shared_ptr<Mesh> const& currentMesh : scene.getMeshes() )
+    for ( Mesh* const& currentMesh : scene.getMeshes() )
     {
         for (Mesh::Submesh const& currentSubmesh : currentMesh->getSubmeshes())
         {

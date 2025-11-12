@@ -15,12 +15,12 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-std::shared_ptr<Mesh> MeshImporter::createEmpty()
+Mesh* MeshImporter::createEmpty()
 {
-    return std::shared_ptr<Mesh>(new Mesh());
+    return new Mesh();
 }
 
-std::shared_ptr<Mesh> MeshImporter::createFromObjFile(wchar_t const* objFilepath, wchar_t const* shaderFilepath)
+Mesh* MeshImporter::createFromObjFile(wchar_t const* objFilepath, wchar_t const* shaderFilepath)
 {
     std::string inputFile(WideStrToStr(objFilepath));
     std::string mtlDir = std::filesystem::path(inputFile).remove_filename().string();
@@ -77,7 +77,7 @@ std::shared_ptr<Mesh> MeshImporter::createFromObjFile(wchar_t const* objFilepath
         loadedMaterials.push_back(std::make_shared<Material>(newMaterialDesc));
     }
 
-    auto newMesh = std::shared_ptr<Mesh>(new Mesh());
+    auto newMesh = new Mesh();
 
     // Load shapes
     for (size_t shapeIdx = 0; shapeIdx < shapes.size(); shapeIdx++)

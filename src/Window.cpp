@@ -170,7 +170,10 @@ LRESULT Window::windowCallback(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
     case WM_LBUTTONUP:
     case WM_MOUSEMOVE:
     case WM_MOUSEWHEEL:
-        m_msgToCallbackMap[message](wParam, lParam);
+        if (m_msgToCallbackMap.contains(message))
+        {
+            m_msgToCallbackMap[message](wParam, lParam);
+        }
         break;
     default:
         break;
