@@ -44,6 +44,7 @@ D3D12_SHADER_BYTECODE ShaderManager::getShader( ShaderDesc& shaderDesc )
     if ( shaderDesc.m_enableDebug )
     {
         compileArgs.push_back( L"-Zi" );
+        compileArgs.push_back( L"-Qembed_debug" );
     }
     if ( shaderDesc.m_defines.size() > 0 )
     {

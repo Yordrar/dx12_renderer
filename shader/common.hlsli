@@ -2,6 +2,8 @@
 
 #include "types.h"
 
+const float PI = 3.14159265359;
+
 struct DrawConstants
 {
     uint passBufferIndex;

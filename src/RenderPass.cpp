@@ -173,7 +173,7 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
             currentPSODesc.m_shaderFilepath = currentSubmesh.m_shaderFilepath,
             currentPSODesc.m_primitiveTopologyType = currentSubmesh.m_primitiveTopologyType;
             currentPSODesc.m_rasterizerState = currentSubmesh.m_rasterizerState;
-                
+
             if (currentPSODesc != activePSODesc)
             {
                 commandList->SetPipelineState(currentMeshMaterial->getPSO(currentPSODesc).Get());

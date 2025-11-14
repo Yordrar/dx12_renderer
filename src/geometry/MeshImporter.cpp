@@ -20,6 +20,25 @@ Mesh* MeshImporter::createEmpty()
     return new Mesh();
 }
 
+ResourceHandle helperLoadTextureFromFile(std::string const& filePath, DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM)
+{
+    int width, height, nrChannelsInFile;
+    uint8_t* data = stbi_load(filePath.c_str(), &width, &height, &nrChannelsInFile, 4);
+    if (!data)
+    {
+        return ResourceHandle();
+    }
+
+    CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(format, width, height, 1, 1);
+
+    D3D12_SUBRESOURCE_DATA subresData;
+    subresData.pData = data;
+    subresData.RowPitch = width * 4;
+    subresData.SlicePitch = 0;
+
+    return ResourceManager::it().createResource(StrToWideStr(filePath).c_str(), resourceDesc, subresData);
+}
+
 Mesh* MeshImporter::createFromObjFile(wchar_t const* objFilepath, wchar_t const* shaderFilepath)
 {
     std::string inputFile(WideStrToStr(objFilepath));
@@ -54,25 +73,17 @@ Mesh* MeshImporter::createFromObjFile(wchar_t const* objFilepath, wchar_t const*
     loadedMaterials.reserve(materials.size());
     for (tinyobj::material_t const& material : materials)
     {
-        int width, height, nrChannelsInFile;
-        uint8_t* data = stbi_load((mtlDir + material.diffuse_texname).c_str(), &width, &height, &nrChannelsInFile, 4);
-        CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 1);
-
-        D3D12_SUBRESOURCE_DATA subresData;
-        subresData.pData = data;
-        subresData.RowPitch = width * 4;
-        subresData.SlicePitch = 0;
-
-        ResourceHandle diffuseTexture = ResourceManager::it().createResource(StrToWideStr(material.diffuse_texname).c_str(),
-            resourceDesc,
-            subresData);
+        ResourceHandle diffuseTexture = helperLoadTextureFromFile(mtlDir + material.diffuse_texname);
+        ResourceHandle normalTexture = helperLoadTextureFromFile(mtlDir + material.normal_texname);
+        ResourceHandle roughnessTexture = helperLoadTextureFromFile(mtlDir + material.roughness_texname);
+        ResourceHandle metallicTexture = helperLoadTextureFromFile(mtlDir + material.metallic_texname);
 
         Material::MaterialDesc newMaterialDesc;
         newMaterialDesc.m_name = StrToWideStr(material.name);
-        if (diffuseTexture.isValid())
-        {
-            newMaterialDesc.m_resourceViews.push_back(diffuseTexture.getDefaultShaderResourceView());
-        }
+        newMaterialDesc.m_resourceViews.push_back(diffuseTexture.isValid() ? diffuseTexture.getDefaultShaderResourceView() : Descriptor());
+        newMaterialDesc.m_resourceViews.push_back(normalTexture.isValid() ? normalTexture.getDefaultShaderResourceView() : Descriptor());
+        newMaterialDesc.m_resourceViews.push_back(roughnessTexture.isValid() ? roughnessTexture.getDefaultShaderResourceView() : Descriptor());
+        newMaterialDesc.m_resourceViews.push_back(metallicTexture.isValid() ? metallicTexture.getDefaultShaderResourceView() : Descriptor());
 
         loadedMaterials.push_back(std::make_shared<Material>(newMaterialDesc));
     }
@@ -219,7 +230,14 @@ Mesh* MeshImporter::createFromObjFile(wchar_t const* objFilepath, wchar_t const*
         newSubmesh.m_vertexBuffer = std::make_unique<VertexBuffer>(vertexBuffer.data(), sizeof(Mesh::Vertex), static_cast<UINT>(vertexBuffer.size()));
         newSubmesh.m_indexBuffer = std::make_unique<IndexBuffer>(indexBuffer.data(), static_cast<UINT>(index_count));
         newSubmesh.m_shaderFilepath = shaderFilepath;
-        newSubmesh.m_material = loadedMaterials[shapes[shapeIdx].mesh.material_ids[0]];
+        if (shapes[shapeIdx].mesh.material_ids[0] >= 0 && shapes[shapeIdx].mesh.material_ids[0] < loadedMaterials.size())
+        {
+            newSubmesh.m_material = loadedMaterials[shapes[shapeIdx].mesh.material_ids[0]];
+        }
+        else
+        {
+            newSubmesh.m_material = std::make_shared<Material>();
+        }
     }
 
     return newMesh;

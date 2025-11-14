@@ -5,6 +5,11 @@
 #include <geometry/Mesh.h>
 #include <resource/ResourceManager.h>
 
+Material::Material()
+{
+    m_desc.m_name = L"defaultMaterial";
+}
+
 Material::Material( MaterialDesc const& materialDesc )
     : m_desc( materialDesc )
 {

@@ -43,6 +43,7 @@ public:
         }
     };
 
+    Material();
     Material( MaterialDesc const& materialDesc );
     ~Material();
 

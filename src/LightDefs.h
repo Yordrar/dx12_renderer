@@ -4,20 +4,20 @@
 
 struct PointLight
 {
-    float3 position;
-    float3 color;
+    float4 position;
+    float4 color;
     float intensity;
 };
 
 struct DirectionalLight
 {
-    float3 direction;
-    float3 color;
+    float4 direction;
+    float4 color;
 };
 
 struct SpotLight
 {
-    float3 direction;
-    float3 color;
+    float4 direction;
+    float4 color;
     float angle;
 };
