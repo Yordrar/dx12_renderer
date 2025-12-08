@@ -2,20 +2,13 @@
 
 #include <resource/ResourceManager.h>
 
-Camera::Camera( wchar_t const* name, DirectX::XMVECTOR position, float fov, float aspect_ratio, float nearZ, float farZ )
+Camera::Camera( wchar_t const* name, ProjectionType projectionType)
 	: m_name( name )
-	, m_localRightVector( DirectX::XMVectorSet( 1, 0, 0, 0 ) )
-	, m_localUpVector( DirectX::XMVectorSet( 0, 1, 0, 0 ) )
-	, m_localForwardVector( DirectX::XMVectorSet( 0, 0, 1, 0 ) )
-	, m_aspectRatio( aspect_ratio )
-	, m_fov( fov )
-	, m_nearZ( nearZ )
-	, m_farZ( farZ )
+	, m_projectionType(projectionType)
+	, m_localRightVector( Vector4( 1, 0, 0, 0 ) )
+	, m_localUpVector( Vector4( 0, 1, 0, 0 ) )
+	, m_localForwardVector( Vector4( 0, 0, 1, 0 ) )
 {
-	m_cameraData.m_position = position;
-	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookToRH( m_cameraData.m_position, m_localForwardVector, m_localUpVector ) * DirectX::XMMatrixPerspectiveFovRH( fov, aspect_ratio, m_nearZ, m_farZ ) );
-	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
-
 	m_cameraBuffer = ResourceManager::it().createResource( std::wstring(m_name + L"_buffer").c_str(), CD3DX12_RESOURCE_DESC::Buffer( sizeof( m_cameraData ) ), D3D12_SUBRESOURCE_DATA{ &m_cameraData, sizeof( m_cameraData ), 0 } );
 	D3D12_RESOURCE_DESC cameraBufferResourceDesc = ResourceManager::it().getResourceDesc(m_cameraBuffer);
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc =
@@ -29,61 +22,58 @@ Camera::Camera( wchar_t const* name, DirectX::XMVECTOR position, float fov, floa
 	srvDesc.Buffer.NumElements = sizeof(m_cameraData)/sizeof(UINT);
 	srvDesc.Buffer.StructureByteStride = 0;
 	m_cameraBufferDescriptor = ResourceManager::it().getShaderResourceView(m_cameraBuffer, srvDesc);
+
+	recalculateCameraData();
 }
 
 void Camera::move( float delta_x, float delta_y, float delta_z )
 {
-	m_cameraData.m_position.m128_f32[0] += delta_x;
-	m_cameraData.m_position.m128_f32[1] += delta_y;
-	m_cameraData.m_position.m128_f32[2] += delta_z;
+	m_cameraData.m_position += Vector3(delta_x, delta_y, delta_z);
 
-	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookToRH( m_cameraData.m_position, m_localForwardVector, m_localUpVector ) * DirectX::XMMatrixPerspectiveFovRH( m_fov, m_aspectRatio, m_nearZ, m_farZ ));
-	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
-
-	ResourceManager::it().setResourceNeedsCopyToGPU(m_cameraBuffer);
+	recalculateCameraData();
 }
 
 void Camera::rotate( float delta_angles_x, float delta_angles_y )
 {
 	// Create rotation quaternion for x axis
-	float angle_x_rad = DirectX::XMConvertToRadians( delta_angles_x / 2.0f);
-	DirectX::XMFLOAT3 quaternion_x_imaginary(sinf(angle_x_rad) * m_localRightVector.m128_f32[0], sinf(angle_x_rad) * m_localRightVector.m128_f32[1], sinf(angle_x_rad) * m_localRightVector.m128_f32[2]);
-	float quaternion_x_real = cosf(angle_x_rad);
-	DirectX::XMVECTOR quaternion_x = DirectX::XMVectorSet(quaternion_x_imaginary.x, quaternion_x_imaginary.y, quaternion_x_imaginary.z, quaternion_x_real);
+	float angle_x_rad = math::Deg2Rad( delta_angles_x / 2.0f);
+	Quaternion quaternion_x = Quaternion::rotation(m_localRightVector, angle_x_rad);
 
 	// Create rotation quaternion for y axis
-	float angle_y_rad = DirectX::XMConvertToRadians( delta_angles_y / 2.0f);
-	DirectX::XMFLOAT3 quaternion_y_imaginary(0, sinf(angle_y_rad), 0);
-	float quaternion_y_real = cosf(angle_y_rad);
-	DirectX::XMVECTOR quaternion_y = DirectX::XMVectorSet(quaternion_y_imaginary.x, quaternion_y_imaginary.y, quaternion_y_imaginary.z, quaternion_y_real);
+	float angle_y_rad = math::Deg2Rad( delta_angles_y / 2.0f);
+	Quaternion quaternion_y = Quaternion::rotation(Vector3(0,1,0), angle_y_rad);
 
 	// Combine quaternions
-	DirectX::XMVECTOR quaternion = DirectX::XMQuaternionNormalize(DirectX::XMQuaternionMultiply(quaternion_x, quaternion_y));
+	Quaternion quaternion = (quaternion_x * quaternion_y);
+	quaternion.normalize();
 
 	//Apply result to basis vectors and position
+	m_cameraData.m_position = quaternion.apply(m_cameraData.m_position);
+	m_localForwardVector = quaternion.apply(m_localForwardVector);
+	m_localRightVector = quaternion.apply(m_localRightVector);
+	m_localUpVector = quaternion.apply(m_localUpVector);
+
+	recalculateCameraData();
+}
+
+void Camera::recalculateCameraData()
+{
+	Matrix4 projectionMatrix;
+	switch (m_projectionType)
 	{
-		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion, m_cameraData.m_position );
-		intermediate_result = DirectX::XMQuaternionMultiply(intermediate_result, DirectX::XMQuaternionConjugate(quaternion));
-		m_cameraData.m_position = intermediate_result;
-	}
-	{
-		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion, m_localForwardVector );
-		intermediate_result = DirectX::XMQuaternionMultiply( intermediate_result, DirectX::XMQuaternionConjugate( quaternion ) );
-		m_localForwardVector = intermediate_result;
-	}
-	{
-		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion_y, m_localRightVector );
-		intermediate_result = DirectX::XMQuaternionMultiply( intermediate_result, DirectX::XMQuaternionConjugate( quaternion_y ) );
-		m_localRightVector = intermediate_result;
-	}
-	{
-		DirectX::XMVECTOR intermediate_result = DirectX::XMQuaternionMultiply( quaternion, m_localUpVector );
-		intermediate_result = DirectX::XMQuaternionMultiply( intermediate_result, DirectX::XMQuaternionConjugate( quaternion ) );
-		m_localUpVector = intermediate_result;
+	case ProjectionType::Perspective:
+		projectionMatrix = Matrix4::perspective(m_fov, m_aspectRatio, m_nearZ, m_farZ);
+		break;
+	case ProjectionType::Orthographic:
+		projectionMatrix = Matrix4::orthographic(1280 * 4, 720 * 4, m_nearZ, m_farZ);
+		break;
+	default:
+		assert(false);
+		break;
 	}
 
-	m_cameraData.m_viewProjMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixLookToRH( m_cameraData.m_position, m_localForwardVector, m_localUpVector ) * DirectX::XMMatrixPerspectiveFovRH( m_fov, m_aspectRatio, m_nearZ, m_farZ ));
-	m_cameraData.m_inverseViewProjMatrix = DirectX::XMMatrixInverse( nullptr, m_cameraData.m_viewProjMatrix );
+	m_cameraData.m_viewProjMatrix = projectionMatrix * Matrix4::lookAt(m_cameraData.m_position, m_localForwardVector, Vector3(0,1,0));
+	m_cameraData.m_inverseViewProjMatrix = m_cameraData.m_viewProjMatrix.getInverse();
 
 	ResourceManager::it().setResourceNeedsCopyToGPU(m_cameraBuffer);
 }

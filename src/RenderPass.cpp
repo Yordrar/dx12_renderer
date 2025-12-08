@@ -154,10 +154,13 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
         .m_rtFormats = m_rtFormats,
         .m_dsFormat = m_dsFormat
     };
-    commandList->SetGraphicsRoot32BitConstant( 0, m_passBufferDescriptor.getDescriptorIndex(), 0 );
-    commandList->SetGraphicsRoot32BitConstant( 0, scene.getPointLightBufferSRV(), 4);
-    commandList->SetGraphicsRoot32BitConstant( 0, scene.getDirectionalLightBufferSRV(), 5);
-    commandList->SetGraphicsRoot32BitConstant( 0, scene.getSpotLightBufferSRV(), 6);
+    commandList->SetGraphicsRoot32BitConstant(0, m_passBufferDescriptor.getDescriptorIndex(), 0);
+    commandList->SetGraphicsRoot32BitConstant(0, scene.getPointLightBufferSRV(), 4);
+    commandList->SetGraphicsRoot32BitConstant(0, scene.getDirectionalLightBufferSRV(), 5);
+    commandList->SetGraphicsRoot32BitConstant(0, scene.getSpotLightBufferSRV(), 6);
+    commandList->SetGraphicsRoot32BitConstant(0, scene.getNumPointLights(), 7);
+    commandList->SetGraphicsRoot32BitConstant(0, scene.getNumDirectionalLights(), 8);
+    commandList->SetGraphicsRoot32BitConstant(0, scene.getNumSpotLights(), 9);
     for ( Mesh* const& currentMesh : scene.getMeshes() )
     {
         for (Mesh::Submesh const& currentSubmesh : currentMesh->getSubmeshes())
@@ -195,10 +198,9 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
             for (Camera* camera : cameras)
             {
                 br.recordBarrierTransition(camera->getGPUBufferResource(), D3D12_RESOURCE_STATE_COMMON);
+                br.submitBarriers(commandList);
 
                 commandList->SetGraphicsRoot32BitConstant(0, camera->getCameraBufferDescriptor().getDescriptorIndex(), 1);
-
-                br.submitBarriers(commandList);
 
                 currentSubmesh.record(commandList);
             }

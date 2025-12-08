@@ -1,6 +1,6 @@
 #pragma once
 
-#include <MathTypes.h>
+#include <core/Math.h>
 
 struct PointLight
 {

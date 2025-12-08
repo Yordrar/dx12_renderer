@@ -1,23 +1,19 @@
 #pragma once
 
+#include <core/Math.h>
 #include <resource/Resource.h>
 #include <geometry/Mesh.h>
 
 class Camera
 {
 public:
-	struct Frustum
+	enum class ProjectionType
 	{
-		DirectX::XMVECTOR m_cornerPositions[8];
-		DirectX::XMVECTOR m_planes[6]; // Left Right Top Bottom Near Far
+		Perspective,
+		Orthographic
 	};
 
-	Camera( wchar_t const* name,
-		DirectX::XMVECTOR position = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f),
-		float fov = 90.0f,
-		float aspect_ratio = 16.0f/9.0f,
-		float nearZ = 0.1f,
-		float farZ = 10000.0f );
+	Camera( wchar_t const* name, ProjectionType projectionType = ProjectionType::Perspective );
 	~Camera() = default;
 
 	void move( float delta_x, float delta_y, float delta_z );
@@ -26,23 +22,33 @@ public:
 	ResourceHandle getGPUBufferResource() const { return m_cameraBuffer; }
 	Descriptor getCameraBufferDescriptor() const { return m_cameraBufferDescriptor; }
 
+public:
+	void recalculateCameraData();
+
 	struct
 	{
-		DirectX::XMMATRIX m_viewProjMatrix;
-		DirectX::XMMATRIX m_inverseViewProjMatrix;
-		DirectX::XMVECTOR m_position;
+		Matrix4 m_viewProjMatrix;
+		Matrix4 m_inverseViewProjMatrix;
+		Vector4 m_position;
 	} m_cameraData;
 	
 	ResourceHandle m_cameraBuffer;
 	Descriptor m_cameraBufferDescriptor;
 
 	std::wstring m_name;
-	DirectX::XMVECTOR m_localRightVector;
-	DirectX::XMVECTOR m_localUpVector;
-	DirectX::XMVECTOR m_localForwardVector;
-	float m_aspectRatio;
-	float m_fov;
-	float m_nearZ;
-	float m_farZ;
+	ProjectionType m_projectionType;
+	Vector3 m_localRightVector;
+	Vector3 m_localUpVector;
+	Vector3 m_localForwardVector;
+
+	// Perspective camera data
+	float m_aspectRatio = 16.0f / 9.0f;
+	float m_fov = 90.0f;
+	float m_nearZ = 0.1f;
+	float m_farZ = 10000.0f;
+
+	// Orthographic camera data
+	float width = 1.0f;
+	float height = 1.0f;
 };
 

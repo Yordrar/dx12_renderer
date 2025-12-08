@@ -1,6 +1,7 @@
 #include "MeshImporter.h"
 
 #include <Utils.h>
+#include <core/Math.h>
 #include <geometry/Mesh.h>
 #include <geometry/VertexBuffer.h>
 #include <geometry/IndexBuffer.h>
@@ -114,8 +115,6 @@ Mesh* MeshImporter::createFromObjFile(wchar_t const* objFilepath, wchar_t const*
                 vertex.m_position.y = attrib.vertices[3 * size_t(idx.vertex_index) + 1];
                 vertex.m_position.z = attrib.vertices[3 * size_t(idx.vertex_index) + 2];
 
-                DirectX::XMVECTOR positionVector = DirectX::XMVectorSet(vertex.m_position.x, vertex.m_position.y, vertex.m_position.z, 0.0f);
-
                 // Check if normal_index is zero or positive. negative = no normal data
                 if (idx.normal_index >= 0)
                 {
@@ -156,23 +155,23 @@ Mesh* MeshImporter::createFromObjFile(wchar_t const* objFilepath, wchar_t const*
         //meshopt_optimizeVertexFetch(vertexBuffer.data(), indexBuffer.data(), index_count, vertexBuffer.data(), vertex_count, sizeof(Vertex));
 
         // Calculate tangent space for vertices
-        DirectX::XMFLOAT3* tan1 = new DirectX::XMFLOAT3[vertex_count];
-        DirectX::XMFLOAT3* tan2 = new DirectX::XMFLOAT3[vertex_count];
-        ZeroMemory(tan1, vertex_count * sizeof(DirectX::XMFLOAT3));
-        ZeroMemory(tan2, vertex_count * sizeof(DirectX::XMFLOAT3));
+        Vector3* tan1 = new Vector3[vertex_count];
+        Vector3* tan2 = new Vector3[vertex_count];
+        ZeroMemory(tan1, vertex_count * sizeof(Vector3));
+        ZeroMemory(tan2, vertex_count * sizeof(Vector3));
         for (int i = 0; i < indexBuffer.size(); i += 3)
         {
             long i1 = indexBuffer[i];
             long i2 = indexBuffer[i+1];
             long i3 = indexBuffer[i+2];
 
-            const DirectX::XMFLOAT3& v1 = vertexBuffer[i1].m_position;
-            const DirectX::XMFLOAT3& v2 = vertexBuffer[i2].m_position;
-            const DirectX::XMFLOAT3& v3 = vertexBuffer[i3].m_position;
+            const Vector3& v1 = vertexBuffer[i1].m_position;
+            const Vector3& v2 = vertexBuffer[i2].m_position;
+            const Vector3& v3 = vertexBuffer[i3].m_position;
 
-            const DirectX::XMFLOAT2& w1 = vertexBuffer[i1].m_uvs;
-            const DirectX::XMFLOAT2& w2 = vertexBuffer[i2].m_uvs;
-            const DirectX::XMFLOAT2& w3 = vertexBuffer[i3].m_uvs;
+            const Vector2& w1 = vertexBuffer[i1].m_uvs;
+            const Vector2& w2 = vertexBuffer[i2].m_uvs;
+            const Vector2& w3 = vertexBuffer[i3].m_uvs;
 
             float x1 = v2.x - v1.x;
             float x2 = v3.x - v1.x;
@@ -187,41 +186,30 @@ Mesh* MeshImporter::createFromObjFile(wchar_t const* objFilepath, wchar_t const*
             float t2 = w3.y - w1.y;
 
             float r = 1.0F / (s1 * t2 - s2 * t1);
-            DirectX::XMFLOAT3 sdir((t2 * x1 - t1 * x2) * r, (t2 * y1 - t1 * y2) * r,
+            Vector3 sdir((t2 * x1 - t1 * x2) * r, (t2 * y1 - t1 * y2) * r,
                 (t2 * z1 - t1 * z2) * r);
-            DirectX::XMFLOAT3 tdir((s1 * x2 - s2 * x1) * r, (s1 * y2 - s2 * y1) * r,
+            Vector3 tdir((s1 * x2 - s2 * x1) * r, (s1 * y2 - s2 * y1) * r,
                 (s1 * z2 - s2 * z1) * r);
 
-            tan1[i1].x += sdir.x;
-            tan1[i1].y += sdir.y;
-            tan1[i1].z += sdir.z;
-            tan1[i2].x += sdir.x;
-            tan1[i2].y += sdir.y;
-            tan1[i2].z += sdir.z;
-            tan1[i3].x += sdir.x;
-            tan1[i3].y += sdir.y;
-            tan1[i3].z += sdir.z;
+            tan1[i1] += sdir;
+            tan1[i2] += sdir;
+            tan1[i3] += sdir;
 
-            tan2[i1].x += tdir.x;
-            tan2[i1].y += tdir.y;
-            tan2[i1].z += tdir.z;
-            tan2[i2].x += tdir.x;
-            tan2[i2].y += tdir.y;
-            tan2[i2].z += tdir.z;
-            tan2[i3].x += tdir.x;
-            tan2[i3].y += tdir.y;
-            tan2[i3].z += tdir.z;
+            tan2[i1] += tdir;
+            tan2[i2] += tdir;
+            tan2[i3] += tdir;
         }
 
         //Orthogonalize and store in vertices
         for (int i = 0; i < vertex_count; i++)
         {
-            const DirectX::XMFLOAT3& n = vertexBuffer[i].m_normal;
-            const DirectX::XMFLOAT3& t = tan1[i];
-            const DirectX::XMFLOAT3& b = tan2[i];
+            Vector3 const& n = vertexBuffer[i].m_normal;
+            Vector3 const& t = tan1[i];
+            Vector3 const& b = tan2[i];
             // Gram-Schmidt orthogonalize
-            DirectX::XMStoreFloat3(&vertexBuffer[i].m_tangent, DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(DirectX::XMLoadFloat3(&t), DirectX::XMVectorScale(DirectX::XMLoadFloat3(&n), DirectX::XMVector3Dot(DirectX::XMLoadFloat3(&n), DirectX::XMLoadFloat3(&t)).m128_f32[0]))));
-            DirectX::XMStoreFloat3(&vertexBuffer[i].m_bitangent, DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(DirectX::XMLoadFloat3(&b), DirectX::XMVectorScale(DirectX::XMLoadFloat3(&n), DirectX::XMVector3Dot(DirectX::XMLoadFloat3(&n), DirectX::XMLoadFloat3(&b)).m128_f32[0]))));
+            
+            vertexBuffer[i].m_tangent = (t - n * n.dot(t)).getNormalized();
+            vertexBuffer[i].m_bitangent = (b - n * n.dot(b)).getNormalized();
         }
 
         newMesh->m_submeshes.emplace_back();

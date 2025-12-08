@@ -22,12 +22,15 @@ public:
 
     void addPointLight(PointLight const& light);
     Descriptor getPointLightBufferSRV() const { return m_pointLightBufferSRV; }
+    uint32_t getNumPointLights() const { return (uint32_t)m_pointLights.size(); }
 
     void addDirectionalLight(DirectionalLight const& light);
     Descriptor getDirectionalLightBufferSRV() const { return m_directionalLightBufferSRV; }
+    uint32_t getNumDirectionalLights() const { return (uint32_t)m_directionalLights.size(); }
 
     void addSpotLight(SpotLight const& light);
     Descriptor getSpotLightBufferSRV() const { return m_spotLightBufferSRV; }
+    uint32_t getNumSpotLights() const { return (uint32_t)m_spotLights.size(); }
 
 private:
     void recreatePointLightBuffer();

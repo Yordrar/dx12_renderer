@@ -2,6 +2,7 @@
 
 #include <stdafx.h>
 
+#include <core/Math.h>
 #include <geometry/VertexBuffer.h>
 #include <geometry/IndexBuffer.h>
 #include <geometry/Material.h>
@@ -26,11 +27,11 @@ public:
 
     struct Vertex
     {
-        DirectX::XMFLOAT3 m_position;
-        DirectX::XMFLOAT3 m_normal;
-        DirectX::XMFLOAT2 m_uvs;
-        DirectX::XMFLOAT3 m_tangent;
-        DirectX::XMFLOAT3 m_bitangent;
+        Vector3 m_position;
+        Vector3 m_normal;
+        Vector2 m_uvs;
+        Vector3 m_tangent;
+        Vector3 m_bitangent;
     };
 
     ~Mesh() = default;

@@ -2,7 +2,7 @@
 
 #include "types.h"
 
-const float PI = 3.14159265359;
+#define PI 3.14159265359;
 
 struct DrawConstants
 {
@@ -13,6 +13,9 @@ struct DrawConstants
     uint pointLightBufferIndex;
     uint directionalLightBufferIndex;
     uint spotLightBufferIndex;
+    uint numPointLights;
+    uint numDirectionalLights;
+    uint numSpotLights;
 };
 ConstantBuffer<DrawConstants> drawConstants : register(b0, space0);
 
