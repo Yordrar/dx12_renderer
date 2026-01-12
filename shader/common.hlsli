@@ -2,7 +2,7 @@
 
 #include "types.h"
 
-#define PI 3.14159265359;
+#define PI 3.14159265359
 
 struct DrawConstants
 {
@@ -56,4 +56,11 @@ StructuredBuffer<DirectionalLight> getDirectionalLightBuffer()
 StructuredBuffer<SpotLight> getSpotLightBuffer()
 {
     return ResourceDescriptorHeap[drawConstants.spotLightBufferIndex];
+}
+
+float3 sampleEquirectangularTex(Texture2D texture, SamplerState samp, float3 direction)
+{
+    float u = 0.5 + (atan2(direction.z, direction.x) / (2.0 * PI));
+    float v = 0.5 - (asin(direction.y) / PI);
+    return texture.Sample(samp, float2(u, v)).rgb;
 }

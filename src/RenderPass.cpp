@@ -28,7 +28,7 @@ RenderPass::RenderPass( wchar_t const* name,
         m_rtFormats.NumRenderTargets = 1;
     }
 
-    m_dsFormat = depthStencilTarget.getDSVDesc().Format;
+    m_dsFormat = depthStencilTarget.isValid() ? depthStencilTarget.getDSVDesc().Format : DXGI_FORMAT_UNKNOWN;
 }
 
 RenderPass::~RenderPass()
@@ -72,7 +72,7 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
         srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
         srvDesc.Buffer.NumElements = static_cast<UINT>( m_passBufferData.size() );
         srvDesc.Buffer.StructureByteStride = 0;
-        m_passBufferDescriptor = ResourceManager::it().getShaderResourceView( m_passBuffer, srvDesc );
+        m_passBufferDescriptor = ResourceManager::it().getSRV( m_passBuffer, srvDesc );
     }
 
     renderer.getProfiler().startQuery( commandList.Get(), m_profilerQueryIndex );
@@ -114,13 +114,16 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
     // Clear and set render targets
     BarrierRecorder br;
     br.recordBarrierTransition(renderTarget.getResourceHandle(), D3D12_RESOURCE_STATE_RENDER_TARGET);
-    if (m_depthStencilTarget.getDSVDesc().Flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH)
+    if (m_depthStencilTarget.isValid())
     {
-        br.recordBarrierTransition(m_depthStencilTarget.getResourceHandle(), D3D12_RESOURCE_STATE_DEPTH_READ);
-    }
-    else
-    {
-        br.recordBarrierTransition(m_depthStencilTarget.getResourceHandle(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        if (m_depthStencilTarget.getDSVDesc().Flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH)
+        {
+            br.recordBarrierTransition(m_depthStencilTarget.getResourceHandle(), D3D12_RESOURCE_STATE_DEPTH_READ);
+        }
+        else
+        {
+            br.recordBarrierTransition(m_depthStencilTarget.getResourceHandle(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        }
     }
 
     for ( Descriptor const& descriptor : m_passResources )
@@ -133,7 +136,7 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
     {
         FLOAT const clearColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
         commandList->ClearRenderTargetView(renderTarget.getDescriptorHandle(), clearColor, 0, nullptr);
-        if ((m_depthStencilTarget.getDSVDesc().Flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH) == 0)
+        if (m_depthStencilTarget.isValid() && (m_depthStencilTarget.getDSVDesc().Flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH) == 0)
         {
             commandList->ClearDepthStencilView(m_depthStencilTarget.getDescriptorHandle(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
         }
@@ -141,7 +144,7 @@ void RenderPass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> c
 
     D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_depthStencilTarget.getDescriptorHandle();
     D3D12_CPU_DESCRIPTOR_HANDLE rtv = renderTarget.getDescriptorHandle();
-    commandList->OMSetRenderTargets( 1, &rtv, false, &dsv );
+    commandList->OMSetRenderTargets( 1, &rtv, false, m_depthStencilTarget.isValid() ? &dsv : nullptr );
 
     // Record scenes
     std::wstring currentMaterialName;
@@ -223,6 +226,11 @@ void RenderPass::setScissorRect(D3D12_RECT const& rect)
 {
     m_useCustomScissorRect = true;
     m_scissorRect = rect;
+}
+
+void RenderPass::setDepthEnable(bool enable)
+{
+    m_depthStencilState.DepthEnable = enable;
 }
 
 void RenderPass::setDepthWriteMask(D3D12_DEPTH_WRITE_MASK depthWriteMask)

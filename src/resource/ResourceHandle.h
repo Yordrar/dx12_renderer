@@ -18,20 +18,20 @@ public:
 
     bool operator==(ResourceHandle const& other) const { return m_index == other.m_index && m_generation == other.m_generation; }
 
-    Descriptor const& getDefaultConstantBufferView();
-    Descriptor const& getDefaultShaderResourceView();
-    Descriptor const& getDefaultUnorderedAccessView();
-    Descriptor const& getDefaultRenderTargetView();
-    Descriptor const& getDefaultDepthStencilView(D3D12_DSV_FLAGS flags = D3D12_DSV_FLAG_NONE);
+    Descriptor const& getDefaultCBV();
+    Descriptor const& getDefaultSRV();
+    Descriptor const& getDefaultUAV();
+    Descriptor const& getDefaultRTV();
+    Descriptor const& getDefaultDSV(D3D12_DSV_FLAGS flags = D3D12_DSV_FLAG_NONE);
 
-    Descriptor const& getShaderResourceView(UINT mostDetailedMip, UINT numMips = 0);
-    Descriptor const& getUnorderedAccessView(UINT mipSlice);
+    Descriptor const& getSRV(UINT mostDetailedMip, UINT numMips = 0);
+    Descriptor const& getUAV(UINT mipSlice);
 
-    Descriptor const& getConstantBufferView(D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc);
-    Descriptor const& getShaderResourceView(D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc);
-    Descriptor const& getUnorderedAccessView(D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc);
-    Descriptor const& getRenderTargetView(D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc);
-    Descriptor const& getDepthStencilView(D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc);
+    Descriptor const& getCBV(D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc);
+    Descriptor const& getSRV(D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc);
+    Descriptor const& getUAV(D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc);
+    Descriptor const& getRTV(D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc);
+    Descriptor const& getDSV(D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc);
 
 private:
     D3D12_CONSTANT_BUFFER_VIEW_DESC getDefaultCBVDesc();

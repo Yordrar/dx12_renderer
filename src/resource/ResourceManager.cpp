@@ -100,7 +100,7 @@ ResourceHandle ResourceManager::loadTextureFromFile(wchar_t const* name, wchar_t
     return ResourceManager::it().createResource(name, resourceDesc, subresData);
 }
 
-Descriptor const& ResourceManager::getConstantBufferView(ResourceHandle handle, D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc)
+Descriptor const& ResourceManager::getCBV(ResourceHandle handle, D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc)
 {
     assert(isResourceHandleValid(handle));
     for (Descriptor const& descriptor : m_cbvs)
@@ -124,7 +124,7 @@ Descriptor const& ResourceManager::getConstantBufferView(ResourceHandle handle, 
     return m_cbvs[m_cbvs.size() - 1];
 }
 
-Descriptor const& ResourceManager::getShaderResourceView(ResourceHandle handle, D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc)
+Descriptor const& ResourceManager::getSRV(ResourceHandle handle, D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc)
 {
     assert(isResourceHandleValid(handle));
     for (Descriptor const& descriptor : m_srvs)
@@ -147,7 +147,7 @@ Descriptor const& ResourceManager::getShaderResourceView(ResourceHandle handle, 
     return m_srvs[m_srvs.size() - 1];
 }
 
-Descriptor const& ResourceManager::getUnorderedAccessView(ResourceHandle handle, D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc)
+Descriptor const& ResourceManager::getUAV(ResourceHandle handle, D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc)
 {
     assert(isResourceHandleValid(handle));
     for (Descriptor const& descriptor : m_uavs)
@@ -170,7 +170,7 @@ Descriptor const& ResourceManager::getUnorderedAccessView(ResourceHandle handle,
     return m_uavs[m_uavs.size() - 1];
 }
 
-Descriptor const& ResourceManager::getRenderTargetView(ResourceHandle handle, D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc)
+Descriptor const& ResourceManager::getRTV(ResourceHandle handle, D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc)
 {
     assert(isResourceHandleValid(handle));
     for (Descriptor const& descriptor : m_rtvs)
@@ -193,7 +193,7 @@ Descriptor const& ResourceManager::getRenderTargetView(ResourceHandle handle, D3
     return m_rtvs[m_rtvs.size() - 1];
 }
 
-Descriptor const& ResourceManager::getDepthStencilView(ResourceHandle handle, D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc)
+Descriptor const& ResourceManager::getDSV(ResourceHandle handle, D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc)
 {
     assert(isResourceHandleValid(handle));
     for (Descriptor const& descriptor : m_dsvs)

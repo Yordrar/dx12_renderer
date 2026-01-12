@@ -23,8 +23,10 @@ public:
     void addResourceView( Descriptor const& descriptor );
     void setScissorRect( D3D12_RECT const& rect );
     
+    void setDepthEnable(bool enable);
     void setDepthWriteMask(D3D12_DEPTH_WRITE_MASK depthWriteMask);
     void setDepthFunc(D3D12_COMPARISON_FUNC depthFunc);
+
     void setBlendDesc(D3D12_BLEND_DESC const& blendDesc) { m_blendState = CD3DX12_BLEND_DESC(blendDesc); }
     
     void setClearRenderTargetsBeforeRendering(bool clearTargets) { m_clearRenderTargetsBeforeRendering = clearTargets; }

@@ -73,7 +73,7 @@ void Material::recreateInternalBuffers()
     srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
     srvDesc.Buffer.NumElements = static_cast<UINT>(std::max(m_bindlessIndices.size(), 1Ui64));
     srvDesc.Buffer.StructureByteStride = 0;
-    m_materialBufferDescriptor = m_materialBuffer.getShaderResourceView(srvDesc);
+    m_materialBufferDescriptor = m_materialBuffer.getSRV(srvDesc);
 }
 
 ComPtr<ID3D12PipelineState> Material::createPSO(PSODesc const& psoDesc)

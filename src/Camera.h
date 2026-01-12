@@ -17,6 +17,7 @@ public:
 	~Camera() = default;
 
 	void move( float delta_x, float delta_y, float delta_z );
+	void move( Vector3 delta );
 	void rotate( float delta_angles_x, float delta_angles_y );
 
 	ResourceHandle getGPUBufferResource() const { return m_cameraBuffer; }

@@ -4,7 +4,7 @@ struct CameraData
 {
     float4x4 viewProjMatrix;
     float4x4 inverseViewProjMatrix;
-    float4 cameraPosition;
+    float4 position;
 };
 
 struct GeometryData

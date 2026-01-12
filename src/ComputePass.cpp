@@ -68,7 +68,7 @@ void ComputePass::record( Renderer& renderer, ComPtr<ID3D12GraphicsCommandList> 
         srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
         srvDesc.Buffer.NumElements = static_cast<UINT>( m_passBufferData.size() );
         srvDesc.Buffer.StructureByteStride = 0;
-        m_passBufferDescriptor = ResourceManager::it().getShaderResourceView( m_passBuffer, srvDesc );
+        m_passBufferDescriptor = ResourceManager::it().getSRV( m_passBuffer, srvDesc );
     }
 
     ResourceManager::it().copyResourcesToGPU( commandList );

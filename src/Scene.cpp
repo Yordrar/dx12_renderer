@@ -64,7 +64,7 @@ void Scene::recreatePointLightBuffer()
     srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     srvDesc.Buffer.NumElements = static_cast<UINT>(m_pointLights.size());
     srvDesc.Buffer.StructureByteStride = sizeof(PointLight);
-    m_pointLightBufferSRV = ResourceManager::it().getShaderResourceView(m_pointLightBuffer, srvDesc);
+    m_pointLightBufferSRV = ResourceManager::it().getSRV(m_pointLightBuffer, srvDesc);
 }
 
 void Scene::recreateDirectionalLightBuffer()
@@ -85,7 +85,7 @@ void Scene::recreateDirectionalLightBuffer()
     srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     srvDesc.Buffer.NumElements = static_cast<UINT>(m_directionalLights.size());
     srvDesc.Buffer.StructureByteStride = sizeof(DirectionalLight);
-    m_directionalLightBufferSRV = ResourceManager::it().getShaderResourceView(m_directionalLightBuffer, srvDesc);
+    m_directionalLightBufferSRV = ResourceManager::it().getSRV(m_directionalLightBuffer, srvDesc);
 }
 
 void Scene::recreateSpotLightBuffer()
@@ -106,5 +106,5 @@ void Scene::recreateSpotLightBuffer()
     srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     srvDesc.Buffer.NumElements = static_cast<UINT>(m_spotLights.size());
     srvDesc.Buffer.StructureByteStride = sizeof(SpotLight);
-    m_spotLightBufferSRV = ResourceManager::it().getShaderResourceView(m_spotLightBuffer, srvDesc);
+    m_spotLightBufferSRV = ResourceManager::it().getSRV(m_spotLightBuffer, srvDesc);
 }

@@ -9,35 +9,35 @@ bool ResourceHandle::isValid() const
         ResourceManager::it().doesResourceHandlePointToValidResource(*this);
 }
 
-Descriptor const& ResourceHandle::getDefaultConstantBufferView()
+Descriptor const& ResourceHandle::getDefaultCBV()
 {
     auto cbvDesc = getDefaultCBVDesc();
-    return getConstantBufferView(cbvDesc);
+    return getCBV(cbvDesc);
 }
 
-Descriptor const& ResourceHandle::getDefaultShaderResourceView()
+Descriptor const& ResourceHandle::getDefaultSRV()
 {
-    return getShaderResourceView(getDefaultSRVDesc());
+    return getSRV(getDefaultSRVDesc());
 }
 
-Descriptor const& ResourceHandle::getDefaultUnorderedAccessView()
+Descriptor const& ResourceHandle::getDefaultUAV()
 {
-    return getUnorderedAccessView(getDefaultUAVDesc());
+    return getUAV(getDefaultUAVDesc());
 }
 
-Descriptor const& ResourceHandle::getDefaultRenderTargetView()
+Descriptor const& ResourceHandle::getDefaultRTV()
 {
-    return getRenderTargetView(getDefaultRTVDesc());
+    return getRTV(getDefaultRTVDesc());
 }
 
-Descriptor const& ResourceHandle::getDefaultDepthStencilView(D3D12_DSV_FLAGS flags)
+Descriptor const& ResourceHandle::getDefaultDSV(D3D12_DSV_FLAGS flags)
 {
     D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = getDefaultDSVDesc();
     dsvDesc.Flags = flags;
-    return getDepthStencilView(dsvDesc);
+    return getDSV(dsvDesc);
 }
 
-Descriptor const& ResourceHandle::getShaderResourceView(UINT mostDetailedMip, UINT numMips)
+Descriptor const& ResourceHandle::getSRV(UINT mostDetailedMip, UINT numMips)
 {
     D3D12_RESOURCE_DESC resourceDesc = ResourceManager::it().getResourceDesc(*this);
 
@@ -82,10 +82,10 @@ Descriptor const& ResourceHandle::getShaderResourceView(UINT mostDetailedMip, UI
         srvDesc.Texture3D.MipLevels = numMips;
         break;
     }
-    return getShaderResourceView(srvDesc);
+    return getSRV(srvDesc);
 }
 
-Descriptor const& ResourceHandle::getUnorderedAccessView(UINT mipSlice)
+Descriptor const& ResourceHandle::getUAV(UINT mipSlice)
 {
     D3D12_RESOURCE_DESC resourceDesc = ResourceManager::it().getResourceDesc(*this);
     D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = getDefaultUAVDesc();
@@ -119,32 +119,32 @@ Descriptor const& ResourceHandle::getUnorderedAccessView(UINT mipSlice)
         uavDesc.Texture3D.MipSlice = mipSlice;
         break;
     }
-    return getUnorderedAccessView(uavDesc);
+    return getUAV(uavDesc);
 }
 
-Descriptor const& ResourceHandle::getConstantBufferView(D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc)
+Descriptor const& ResourceHandle::getCBV(D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc)
 {
-    return ResourceManager::it().getConstantBufferView(*this, cbvDesc);
+    return ResourceManager::it().getCBV(*this, cbvDesc);
 }
 
-Descriptor const& ResourceHandle::getShaderResourceView(D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc)
+Descriptor const& ResourceHandle::getSRV(D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc)
 {
-    return ResourceManager::it().getShaderResourceView(*this, srvDesc);
+    return ResourceManager::it().getSRV(*this, srvDesc);
 }
 
-Descriptor const& ResourceHandle::getUnorderedAccessView(D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc)
+Descriptor const& ResourceHandle::getUAV(D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc)
 {
-    return ResourceManager::it().getUnorderedAccessView(*this, uavDesc);
+    return ResourceManager::it().getUAV(*this, uavDesc);
 }
 
-Descriptor const& ResourceHandle::getRenderTargetView(D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc)
+Descriptor const& ResourceHandle::getRTV(D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc)
 {
-    return ResourceManager::it().getRenderTargetView(*this, rtvDesc);
+    return ResourceManager::it().getRTV(*this, rtvDesc);
 }
 
-Descriptor const& ResourceHandle::getDepthStencilView(D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc)
+Descriptor const& ResourceHandle::getDSV(D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc)
 {
-    return ResourceManager::it().getDepthStencilView(*this, dsvDesc);
+    return ResourceManager::it().getDSV(*this, dsvDesc);
 }
 
 D3D12_CONSTANT_BUFFER_VIEW_DESC ResourceHandle::getDefaultCBVDesc()

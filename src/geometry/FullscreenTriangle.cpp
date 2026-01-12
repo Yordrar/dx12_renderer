@@ -11,21 +11,15 @@ FullscreenTriangle::FullscreenTriangle( wchar_t const* shaderFilepath )
 
     std::vector<Vertex> vertexBuffer(3);
     Vertex v1;
-    v1.m_position.x = -1;
-    v1.m_position.y = 1;
-    v1.m_position.z = 0;
+    v1.m_position = Vector3(-1, 1, 0);
     v1.m_uvs.x = 0;
     v1.m_uvs.y = 0;
     Vertex v2;
-    v2.m_position.x = 3;
-    v2.m_position.y = 1;
-    v2.m_position.z = 0;
+    v2.m_position = Vector3(3, 1, 0);
     v2.m_uvs.x = 2;
     v2.m_uvs.y = 0;
     Vertex v3;
-    v3.m_position.x = -1;
-    v3.m_position.y = -3;
-    v3.m_position.z = 0;
+    v3.m_position = Vector3(-1, -3, 0);
     v3.m_uvs.x = 0;
     v3.m_uvs.y = 2;
     vertexBuffer.push_back(v1);

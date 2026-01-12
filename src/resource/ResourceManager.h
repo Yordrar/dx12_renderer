@@ -20,11 +20,11 @@ public:
 
     ResourceHandle loadTextureFromFile(wchar_t const* name, wchar_t const* filePath);
 
-    Descriptor const& getConstantBufferView(ResourceHandle handle, D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc);
-    Descriptor const& getShaderResourceView(ResourceHandle handle, D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc);
-    Descriptor const& getUnorderedAccessView(ResourceHandle handle, D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc);
-    Descriptor const& getRenderTargetView(ResourceHandle handle, D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc);
-    Descriptor const& getDepthStencilView(ResourceHandle handle, D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc);
+    Descriptor const& getCBV(ResourceHandle handle, D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDesc);
+    Descriptor const& getSRV(ResourceHandle handle, D3D12_SHADER_RESOURCE_VIEW_DESC const& srvDesc);
+    Descriptor const& getUAV(ResourceHandle handle, D3D12_UNORDERED_ACCESS_VIEW_DESC const& uavDesc);
+    Descriptor const& getRTV(ResourceHandle handle, D3D12_RENDER_TARGET_VIEW_DESC const& rtvDesc);
+    Descriptor const& getDSV(ResourceHandle handle, D3D12_DEPTH_STENCIL_VIEW_DESC const& dsvDesc);
 
     ComPtr<ID3D12Resource> getD3DResource(ResourceHandle handle) const;
     D3D12_RESOURCE_STATES getResourceState(ResourceHandle handle) const;

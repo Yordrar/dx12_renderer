@@ -81,10 +81,10 @@ Mesh* MeshImporter::createFromObjFile(wchar_t const* objFilepath, wchar_t const*
 
         Material::MaterialDesc newMaterialDesc;
         newMaterialDesc.m_name = StrToWideStr(material.name);
-        newMaterialDesc.m_resourceViews.push_back(diffuseTexture.isValid() ? diffuseTexture.getDefaultShaderResourceView() : Descriptor());
-        newMaterialDesc.m_resourceViews.push_back(normalTexture.isValid() ? normalTexture.getDefaultShaderResourceView() : Descriptor());
-        newMaterialDesc.m_resourceViews.push_back(roughnessTexture.isValid() ? roughnessTexture.getDefaultShaderResourceView() : Descriptor());
-        newMaterialDesc.m_resourceViews.push_back(metallicTexture.isValid() ? metallicTexture.getDefaultShaderResourceView() : Descriptor());
+        newMaterialDesc.m_resourceViews.push_back(diffuseTexture.isValid() ? diffuseTexture.getDefaultSRV() : Descriptor());
+        newMaterialDesc.m_resourceViews.push_back(normalTexture.isValid() ? normalTexture.getDefaultSRV() : Descriptor());
+        newMaterialDesc.m_resourceViews.push_back(roughnessTexture.isValid() ? roughnessTexture.getDefaultSRV() : Descriptor());
+        newMaterialDesc.m_resourceViews.push_back(metallicTexture.isValid() ? metallicTexture.getDefaultSRV() : Descriptor());
 
         loadedMaterials.push_back(std::make_shared<Material>(newMaterialDesc));
     }

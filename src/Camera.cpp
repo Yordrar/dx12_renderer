@@ -21,7 +21,7 @@ Camera::Camera( wchar_t const* name, ProjectionType projectionType)
 	srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 	srvDesc.Buffer.NumElements = sizeof(m_cameraData)/sizeof(UINT);
 	srvDesc.Buffer.StructureByteStride = 0;
-	m_cameraBufferDescriptor = ResourceManager::it().getShaderResourceView(m_cameraBuffer, srvDesc);
+	m_cameraBufferDescriptor = ResourceManager::it().getSRV(m_cameraBuffer, srvDesc);
 
 	recalculateCameraData();
 }
@@ -29,6 +29,13 @@ Camera::Camera( wchar_t const* name, ProjectionType projectionType)
 void Camera::move( float delta_x, float delta_y, float delta_z )
 {
 	m_cameraData.m_position += Vector3(delta_x, delta_y, delta_z);
+
+	recalculateCameraData();
+}
+
+void Camera::move(Vector3 delta)
+{
+	m_cameraData.m_position += delta;
 
 	recalculateCameraData();
 }
@@ -65,7 +72,7 @@ void Camera::recalculateCameraData()
 		projectionMatrix = Matrix4::perspective(m_fov, m_aspectRatio, m_nearZ, m_farZ);
 		break;
 	case ProjectionType::Orthographic:
-		projectionMatrix = Matrix4::orthographic(1280 * 4, 720 * 4, m_nearZ, m_farZ);
+		projectionMatrix = Matrix4::orthographic(1280 * 4, 1280 * 4, m_nearZ, m_farZ);
 		break;
 	default:
 		assert(false);

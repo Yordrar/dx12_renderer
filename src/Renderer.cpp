@@ -143,7 +143,7 @@ Renderer::Renderer( HWND hWnd, RECT clientRect)
         };
         rtvDesc.Texture2D.MipSlice = 0;
         rtvDesc.Texture2D.PlaneSlice = 0;
-        m_backBufferRTVs[i] = ResourceManager::it().getRenderTargetView( backbufferResource, rtvDesc );
+        m_backBufferRTVs[i] = ResourceManager::it().getRTV( backbufferResource, rtvDesc );
         m_backBufferHandles[i] = backbufferResource;
     }
 
